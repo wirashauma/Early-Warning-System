@@ -22,7 +22,7 @@ interface ActiveAlert {
   id: string;
   title: string;
   message: string;
-  severity: "INFO" | "WARNING" | "DANGER";
+  severity: "INFO" | "WARNING" | "ALERT" | "DANGER";
   targetArea: string | null;
 }
 
@@ -40,9 +40,17 @@ const statusLegend = [
     color: "bg-amber-500",
     title: "Kuning (Waspada)",
     description: "Ketinggian air meningkat, masyarakat diminta waspada dan bersiap.",
-    threshold: "150 – 199 cm",
+    threshold: "150 – 174 cm",
     action: "Siapkan tas darurat, dokumen penting, dan rute evakuasi keluarga.",
     icon: "⚠️",
+  },
+  {
+    color: "bg-orange-500",
+    title: "Oranye (Siaga)",
+    description: "Ketinggian air mendekati level bahaya, evakuasi parsial atau kelompok rentan mungkin diperlukan.",
+    threshold: "175 – 199 cm",
+    action: "Amankan barang berharga ke tempat tinggi, pantau ketat arahan evakuasi dari petugas.",
+    icon: "🔔",
   },
   {
     color: "bg-rose-500",
@@ -79,7 +87,7 @@ const faqs = [
     a: "Admin mengelola sensor, memvalidasi data/alert, dan memastikan informasi darurat dikirim tepat waktu.",
   },
   {
-    q: "Apa yang harus dilakukan saat status Kuning?",
+    q: "Apa yang harus dilakukan saat status Kuning atau Oranye?",
     a: "Siapkan dokumen penting, tas siaga, dan pantau terus pembaruan status dari dashboard maupun petugas.",
   },
   {
@@ -217,7 +225,7 @@ export default function Home() {
               </p>
             </Reveal>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               {statusLegend.map((item, index) => (
                 <Reveal key={item.title} delayMs={90 * (index + 1)}>
                   <Card className="h-full border-blue-100 bg-white/95">
