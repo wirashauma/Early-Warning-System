@@ -33,6 +33,20 @@ declare global {
 
 const SCRIPT_ID = "ews-google-maps-script";
 
+function getStatusBadge(status: Sensor["status"]) {
+  if (status === "danger") {
+    return { label: "Bahaya", color: "#e11d48" };
+  }
+  if (status === "alert") {
+    return { label: "Siaga", color: "#f97316" }; // Orange 500
+  }
+  if (status === "warning") {
+    return { label: "Waspada", color: "#f59e0b" }; // Amber 500
+  }
+
+  return { label: "Normal", color: "#10b981" };
+}
+
 export function AdminGoogleSensorMap({ sensors }: AdminGoogleSensorMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [scriptState, setScriptState] = useState<ScriptState>({ ready: false, error: null });
@@ -119,6 +133,7 @@ export function AdminGoogleSensorMap({ sensors }: AdminGoogleSensorMapProps) {
     const infoWindow = new window.google.maps.InfoWindow();
 
     sensors.forEach((sensor) => {
+      const status = getStatusBadge(sensor.status);
       const marker = new window.google!.maps!.Marker({
         map,
         position: { lat: sensor.latitude, lng: sensor.longitude },
@@ -131,6 +146,7 @@ export function AdminGoogleSensorMap({ sensors }: AdminGoogleSensorMapProps) {
             <div style="min-width:180px;font-family:Inter,Arial,sans-serif;padding:2px 0;">
               <p style="font-size:13px;font-weight:700;margin:0 0 6px;color:#0f172a;">${sensor.name}</p>
               <p style="font-size:12px;margin:0 0 4px;color:#334155;">Ketinggian Air: <strong>${sensor.lastLevelCm} cm</strong></p>
+              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Status: <strong style=\"color:${status.color};\">${status.label}</strong></p>
               <p style="font-size:12px;margin:0;color:#334155;">Status Baterai: <strong>${sensor.batteryPercent}%</strong></p>
             </div>
           `,
