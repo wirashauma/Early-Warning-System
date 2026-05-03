@@ -38,14 +38,16 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> register({
     required String name,
     required String email,
-    required String phone,
     required String password,
-    String address = '',
+    String? institution,
   }) async {
     _setLoading(true);
     _errorMessage = null;
     final result = await _authService.register(
-      name: name, email: email, phone: phone, password: password, address: address,
+      name: name,
+      email: email,
+      password: password,
+      institution: institution,
     );
     _isLoading = false;
     if (!result.isSuccess) {
@@ -60,23 +62,23 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     final result = await _authService.forgotPassword(email);
     _isLoading = false;
-    if (!result.isSuccess) {
-      _errorMessage = result.errorMessage;
+    if (result == null || result.isEmpty) {
+      _errorMessage = 'Permintaan reset password gagal. Silakan coba lagi.';
       notifyListeners();
       return null;
     }
     notifyListeners();
-    return result.message;
+    return result;
   }
 
   Future<bool> updateProfile({
     required String name,
-    required String phone,
-    required String address,
+    String? phone,
+    String? address,
   }) async {
     _setLoading(true);
     _errorMessage = null;
-    final result = await _authService.updateProfile(name: name, phone: phone, address: address);
+    final result = await _authService.updateProfile(name: name);
     _isLoading = false;
     if (!result.isSuccess) {
       _errorMessage = result.errorMessage;
