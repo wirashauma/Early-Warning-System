@@ -13,7 +13,8 @@ import type { WaterStatus } from "@/types/water-level";
 
 function getThermometerColor(status: WaterStatus) {
   if (status === "danger") return "bg-rose-500";
-  if (status === "alert") return "bg-amber-500";
+  if (status === "alert") return "bg-orange-500";
+  if (status === "warning") return "bg-amber-500";
   return "bg-emerald-500";
 }
 
@@ -33,6 +34,7 @@ const fallbackSensor: Sensor = {
 const sideIndicators = [
   { label: "Hijau (Normal)", color: "bg-emerald-500", text: "Kondisi aman, lanjutkan pemantauan." },
   { label: "Kuning (Waspada)", color: "bg-amber-500", text: "Siapkan kebutuhan darurat dan pantau update." },
+  { label: "Oranye (Siaga)", color: "bg-orange-500", text: "Siaga evakuasi parsial dan amankan barang." },
   { label: "Merah (Bahaya)", color: "bg-rose-600", text: "Lakukan evakuasi sesuai arahan petugas." },
 ];
 
