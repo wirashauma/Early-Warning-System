@@ -41,9 +41,11 @@ function getStatusBadge(status: Sensor["status"]) {
   if (status === "danger") {
     return { label: "Bahaya", color: "#e11d48" };
   }
-
   if (status === "alert") {
-    return { label: "Waspada", color: "#f59e0b" };
+    return { label: "Siaga", color: "#f97316" }; // Orange 500
+  }
+  if (status === "warning") {
+    return { label: "Waspada", color: "#f59e0b" }; // Amber 500
   }
 
   return { label: "Normal", color: "#10b981" };
