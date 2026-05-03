@@ -6,7 +6,6 @@ import { AuthModule } from './auth/auth.module';
 import { EmergencyContactsModule } from './emergency-contacts/emergency-contacts.module';
 import { HealthController } from './health/health.controller';
 import { FirebaseModule } from './common/firebase/firebase.module';
-import { LocationsModule } from './locations/locations.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RainfallModule } from './rainfall/rainfall.module';
 import { SensorsModule } from './sensors/sensors.module';
@@ -26,7 +25,6 @@ import { WaterLevelsModule } from './water-levels/water-levels.module';
     ThresholdsModule,
     UsersModule,
     EmergencyContactsModule,
-    LocationsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],
