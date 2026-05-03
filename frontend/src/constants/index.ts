@@ -2,9 +2,10 @@ export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001";
 
-export const statusColor: Record<"safe" | "alert" | "danger", string> = {
+export const statusColor: Record<"safe" | "warning" | "alert" | "danger", string> = {
   safe: "bg-emerald-100 text-emerald-700",
-  alert: "bg-amber-100 text-amber-700",
+  warning: "bg-amber-100 text-amber-700",
+  alert: "bg-orange-100 text-orange-700",
   danger: "bg-rose-100 text-rose-700",
 };
 
