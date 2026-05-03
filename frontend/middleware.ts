@@ -11,30 +11,30 @@ const PUBLIC_ROUTES = new Set([
 ]);
 
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  // Check if route is public
-  const isPublicRoute = PUBLIC_ROUTES.has(pathname) || 
-                        pathname.startsWith("/dashboard") ||
-                        pathname.startsWith("/map") ||
-                        pathname.startsWith("/emergency") ||
-                        pathname.startsWith("/education");
+  // 1. Tentukan apakah route ini publik secara eksplisit atau prefix-based
+  const isPublicRoute = 
+    PUBLIC_ROUTES.has(pathname) || 
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/map") ||
+    pathname.startsWith("/emergency") ||
+    pathname.startsWith("/education");
 
-  if (isPublicRoute) {
-    return NextResponse.next();
-  }
-
-  // Get tokens from cookies (stored by login flow)
+  // 2. Ambil token dari cookies (disimpan oleh flow login di client)
   const accessToken = request.cookies.get("ews_access_token")?.value;
-  
-  // If no token, redirect to login
+
+  // 3. Logika Proteksi: Jika mencoba akses halaman privat tanpa token, lempar ke login
   if (!accessToken && !isPublicRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Route protection based on role (requires role to be passed via header or query param)
-  // Note: For client-side protection, consider using the useAuth hook in components
-  
+  // 4. Logika Redirect: Jika sudah login tapi mencoba ke halaman login/register, lempar ke dashboard admin/user
+  // (Optional, tapi disarankan untuk UX yang lebih baik)
+  if (accessToken && (pathname === "/login" || pathname === "/register")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   return NextResponse.next();
 }
 
