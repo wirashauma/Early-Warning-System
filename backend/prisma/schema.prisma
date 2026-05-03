@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // Menambahkan kembali FIELD_OFFICER atau menyamakan dengan backend
@@ -26,6 +27,7 @@ enum SensorConnectivity {
 enum WaterLevelStatus {
   NORMAL
   WARNING
+  ALERT
   DANGER
 }
 
@@ -38,6 +40,7 @@ enum RainfallIntensity {
 enum AlertSeverity {
   INFO
   WARNING
+  ALERT
   DANGER
 }
 
@@ -131,6 +134,8 @@ model Threshold {
   normalMax  Float    @map("normal_max")
   warningMin Float    @map("warning_min")
   warningMax Float    @map("warning_max")
+  alertMin   Float?   @map("alert_min")
+  alertMax   Float?   @map("alert_max")
   dangerMin  Float    @map("danger_min")
   dangerMax  Float?   @map("danger_max")
   updatedBy  String?  @map("updated_by")
