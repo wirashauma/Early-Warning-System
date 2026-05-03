@@ -7,6 +7,8 @@ interface HistoryQuery {
   startDate?: string;
   endDate?: string;
   interval?: 'hourly' | 'daily' | 'weekly';
+  page?: string;
+  limit?: string;
 }
 
 @Controller('water-levels')
