@@ -21,8 +21,9 @@ interface UserRealtimeDashboardProps {
 
 const statusRank: Record<WaterStatus, number> = {
   safe: 0,
-  alert: 1,
-  danger: 2,
+  warning: 1,
+  alert: 2,
+  danger: 3,
 };
 
 const statusMeta: Record<
@@ -48,7 +49,7 @@ const statusMeta: Record<
       "Simpan jalur evakuasi sebagai antisipasi.",
     ],
   },
-  alert: {
+  warning: {
     label: "Waspada",
     summary: "Terjadi kenaikan air, siapkan perlengkapan dan rencana evakuasi.",
     panelClass: "border-amber-100 bg-amber-50 text-amber-900",
@@ -58,6 +59,18 @@ const statusMeta: Record<
       "Pantau dashboard tiap 10-15 menit.",
       "Siapkan tas siaga dan dokumen penting.",
       "Prioritaskan kesiapan anggota keluarga rentan.",
+    ],
+  },
+  alert: {
+    label: "Siaga",
+    summary: "Kondisi mendekati bahaya, amankan barang berharga dan bersiap evakuasi.",
+    panelClass: "border-orange-100 bg-orange-50 text-orange-900",
+    dotClass: "bg-orange-500",
+    heroClass: "bg-orange-500 shadow-orange-500/20",
+    actions: [
+      "Amankan barang berharga ke tempat yang lebih tinggi.",
+      "Pantau instruksi evakuasi dari petugas lapangan.",
+      "Siapkan kendaraan dan rute evakuasi yang aman.",
     ],
   },
   danger: {
@@ -88,6 +101,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const overallStatus = sortedSensors[0]?.status ?? latest.status;
   const dangerCount = liveBySensor.filter((sensor) => sensor.status === "danger").length;
   const alertCount = liveBySensor.filter((sensor) => sensor.status === "alert").length;
+  const warningCount = liveBySensor.filter((sensor) => sensor.status === "warning").length;
 
   const selectedSensor = useMemo(
     () => sensorsSnapshot.find((sensor) => sensor.id === latest.sensorId) ?? sensorsSnapshot[0],
@@ -158,8 +172,8 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
 
           <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
             <p className="text-sm font-medium text-slate-500">Sensor Berisiko</p>
-            <p className="mt-1 text-3xl font-extrabold text-rose-600">{dangerCount + alertCount}</p>
-            <p className="mt-1 text-xs text-slate-400 truncate">Bahaya: {dangerCount} • Waspada: {alertCount}</p>
+            <p className="mt-1 text-3xl font-extrabold text-rose-600">{dangerCount + alertCount + warningCount}</p>
+            <p className="mt-1 text-xs text-slate-400 truncate">Bahaya: {dangerCount} • Siaga: {alertCount} • Waspada: {warningCount}</p>
           </div>
 
           <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
