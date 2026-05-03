@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { SensorConnectivity, SensorType } from '@prisma/client';
 import { ok } from '../common/api-response';
@@ -26,8 +27,11 @@ export class SensorsController {
   constructor(private readonly sensorsService: SensorsService) {}
 
   @Get()
-  async findAll() {
-    const data = await this.sensorsService.findAll();
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const data = await this.sensorsService.findAll(
+      Number(page) || 1,
+      Number(limit) || 20,
+    );
     return ok(data);
   }
 
