@@ -18,5 +18,5 @@ export interface BackendAuthUser {
   email: string;
   avatar?: string | null;
   institution?: string | null;
-  role: BackendUserRole | string;
+  role: BackendUserRole;
 }
