@@ -11,6 +11,8 @@ interface HistoryQuery {
   startDate?: string;
   endDate?: string;
   interval?: 'hourly' | 'daily' | 'weekly';
+  page?: string;
+  limit?: string;
 }
 
 @Injectable()
@@ -112,18 +114,35 @@ export class WaterLevelsService {
       throw new NotFoundException('Sensor tidak ditemukan.');
     }
 
-    const logs = await this.prisma.waterLevelLog.findMany({
-      where: {
-        sensorId: sensor.id,
-        recordedAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      orderBy: { recordedAt: 'asc' },
-    });
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    return logs.map((item) => ({
+    const [logs, total] = await this.prisma.$transaction([
+      this.prisma.waterLevelLog.findMany({
+        where: {
+          sensorId: sensor.id,
+          recordedAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        orderBy: { recordedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.waterLevelLog.count({
+        where: {
+          sensorId: sensor.id,
+          recordedAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      }),
+    ]);
+
+    const items = logs.map((item) => ({
       id: item.id,
       sensorId: sensor.sensorId,
       sensorName: sensor.name,
@@ -135,5 +154,15 @@ export class WaterLevelsService {
       recordedAt: item.recordedAt,
       interval: query.interval ?? 'hourly',
     }));
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
