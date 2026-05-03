@@ -3,9 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
+// Menambahkan kembali FIELD_OFFICER atau menyamakan dengan backend
 enum UserRole {
   ADMIN
   USER
@@ -50,17 +51,17 @@ enum EmergencyCategory {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(USER)
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        UserRole @default(USER)
   institution String?
-  phone     String?
-  isActive  Boolean  @default(true) @map("is_active")
-  avatar    String?  // Kolom avatar sudah ditambahkan
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  phone       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  avatar      String?  @db.Text 
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   alerts     Alert[]
   thresholds Threshold[]
@@ -86,6 +87,8 @@ model Sensor {
   waterLevelLogs WaterLevelLog[]
   rainfallLogs   RainfallLog[]
 
+  @@index([type])
+  @@index([isActive])
   @@map("sensors")
 }
 
@@ -101,13 +104,14 @@ model WaterLevelLog {
   sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
 
   @@index([sensorId, recordedAt])
+  @@index([recordedAt])
   @@map("water_level_logs")
 }
 
 model RainfallLog {
   id         String            @id @default(uuid())
   sensorId   String            @map("sensor_id")
-  rainfall   Float
+  rainfall   Float             // Menghapus @map("rainfall") yang redundan
   unit       String            @default("mm/hour")
   intensity  RainfallIntensity
   recordedAt DateTime          @map("recorded_at")
@@ -116,12 +120,13 @@ model RainfallLog {
   sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
 
   @@index([sensorId, recordedAt])
+  @@index([recordedAt])
   @@map("rainfall_logs")
 }
 
 model Threshold {
   id         String   @id @default(uuid())
-  type       String   @unique
+  type       String   @unique 
   normalMin  Float    @map("normal_min")
   normalMax  Float    @map("normal_max")
   warningMin Float    @map("warning_min")
@@ -133,6 +138,7 @@ model Threshold {
 
   user User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
 
+  @@index([updatedBy])
   @@map("thresholds")
 }
 
@@ -141,14 +147,16 @@ model Alert {
   title      String
   message    String
   severity   AlertSeverity
-  channels   Json
+  channels   Json          // Reverted to Json to avoid data loss
   targetArea String?       @map("target_area")
-  sentBy     String        @map("sent_by")
+  sentBy     String?       @map("sent_by") 
   sentAt     DateTime      @default(now()) @map("sent_at")
   createdAt  DateTime      @default(now()) @map("created_at")
 
-  user User @relation(fields: [sentBy], references: [id], onDelete: Restrict)
+  user User? @relation(fields: [sentBy], references: [id], onDelete: SetNull)
 
+  @@index([sentAt])
+  @@index([sentBy])
   @@map("alerts")
 }
 
@@ -161,5 +169,6 @@ model EmergencyContact {
   createdAt DateTime          @default(now()) @map("created_at")
   updatedAt DateTime          @updatedAt @map("updated_at")
 
+  @@index([category])
   @@map("emergency_contacts")
 }
