@@ -4,7 +4,8 @@ import { Badge } from "./Badge";
 
 const statusLabel: Record<WaterStatus, string> = {
   safe: "Normal",
-  alert: "Waspada",
+  warning: "Waspada",
+  alert: "Siaga",
   danger: "Bahaya",
 };
 
