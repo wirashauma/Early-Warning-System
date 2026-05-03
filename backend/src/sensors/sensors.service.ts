@@ -16,23 +16,40 @@ interface UpsertSensorPayload {
 export class SensorsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.sensor.findMany({
-      where: { isActive: true },
-      orderBy: { sensorId: 'asc' },
-      select: {
-        id: true,
-        sensorId: true,
-        name: true,
-        type: true,
-        latitude: true,
-        longitude: true,
-        batteryLevel: true,
-        connectivity: true,
-        lastActiveAt: true,
-        installedAt: true,
+  async findAll(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.sensor.findMany({
+        where: { isActive: true },
+        orderBy: { sensorId: 'asc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          sensorId: true,
+          name: true,
+          type: true,
+          latitude: true,
+          longitude: true,
+          batteryLevel: true,
+          connectivity: true,
+          lastActiveAt: true,
+          installedAt: true,
+        },
+      }),
+      this.prisma.sensor.count({ where: { isActive: true } }),
+    ]);
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async create(payload: UpsertSensorPayload) {
