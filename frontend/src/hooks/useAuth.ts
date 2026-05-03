@@ -209,12 +209,18 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     try {
+      // Panggil API logout untuk membersihkan session di server
       await api.post("/auth/logout");
     } catch {
       console.warn("Logout API failed, forcing local logout");
     } finally {
+      // Bersihkan semua data persistensi lokal
       clearPersistedAuth();
       setUser(null);
+      
+      // SOLUSI KRITIS: Gunakan window.location.href untuk hard reload.
+      // Ini memastikan state Next.js bersih total dan kembali ke Landing Page sebagai guest.
+      window.location.href = "/";
     }
   }, []);
 
