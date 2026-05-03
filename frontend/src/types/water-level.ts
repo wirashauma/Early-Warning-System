@@ -1,4 +1,4 @@
-export type WaterStatus = "safe" | "alert" | "danger";
+export type WaterStatus = "safe" | "warning" | "alert" | "danger";
 
 export interface WaterLevelPoint {
   timestamp: string;
@@ -10,6 +10,7 @@ export interface WaterLevelPoint {
 
 export interface ThresholdConfig {
   safeMaxCm: number;
+  warningMaxCm: number;
   alertMaxCm: number;
   dangerMinCm: number;
 }
