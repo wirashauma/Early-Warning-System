@@ -1,56 +1,65 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { API_URL } from "@/constants";
 
-// Kunci yang sama dengan yang kita gunakan di useAuth.ts
 const ACCESS_TOKEN_KEY = "ews_access_token";
+const REFRESH_TOKEN_KEY = "ews_refresh_token";
+const AUTH_USER_KEY = "ews_user_data";
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10_000,
+  timeout: 15_000,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// 1. REQUEST INTERCEPTOR: Menyematkan token ke setiap request
+// 1. REQUEST INTERCEPTOR: Attach Bearer Token
 api.interceptors.request.use(
   (config) => {
-    // Pastikan kode ini berjalan di browser (Client-side), bukan di server Next.js
     if (typeof window !== "undefined") {
       const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-      if (token) {
-        // Tambahkan header Authorization berformat "Bearer <token>"
+      if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// 2. RESPONSE INTERCEPTOR: Menangani response dan error global
+// 2. RESPONSE INTERCEPTOR: Global Error Handling & Auth Guard
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Deteksi jika error karena token tidak valid / kadaluarsa (Unauthorized)
-    if (error?.response?.status === 401) {
-      if (typeof window !== "undefined" && !window.location.pathname.includes('/login')) {
-        // Opsional: Anda bisa memaksa hapus token dan redirect user ke halaman login di sini
-        // localStorage.removeItem(ACCESS_TOKEN_KEY);
-        // localStorage.removeItem("ews_user_data");
-        // localStorage.removeItem("ews_refresh_token");
-        // window.location.href = '/login';
+  async (error: AxiosError) => {
+    const originalRequest = error.config;
+    
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
+      if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+        console.warn("Session expired or unauthorized. Redirecting to login...");
         
-        console.warn("Sesi kadaluarsa. Silakan login kembali.");
+        // Optional: Attempt Token Refresh logic here if needed
+        
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_USER_KEY);
+        
+        // Only redirect if not already on public pages
+        const isPublicPage = ["/login", "/register", "/", "/emergency"].includes(window.location.pathname);
+        if (!isPublicPage) {
+          window.location.href = "/login?expired=true";
+        }
       }
     }
 
-    const message =
-      error?.response?.data?.message ??
-      error?.message ??
-      "Terjadi kesalahan saat memproses permintaan.";
-      
-    return Promise.reject(new Error(message));
-  },
+    // Map Backend Errors to Human Readable Messages
+    const backendMessage = (error.response?.data as any)?.message;
+    const errorMessage = Array.isArray(backendMessage) 
+      ? backendMessage[0] 
+      : backendMessage || error.message || "Terjadi kesalahan sistem.";
+
+    return Promise.reject(new Error(errorMessage));
+  }
 );
 
 export default api;
