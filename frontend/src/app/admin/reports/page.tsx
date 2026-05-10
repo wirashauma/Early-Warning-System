@@ -38,7 +38,8 @@ export default function AdminReportsPage() {
 
   const loadSensors = async () => {
     const response = await api.get("/sensors");
-    const rows = (response.data?.data ?? []) as Array<{ id: string; sensorId: string; name: string }>;
+    const data = response.data?.data;
+    const rows = Array.isArray(data) ? data : [];
     setSensorOptions(rows);
     return rows;
   };
@@ -182,7 +183,7 @@ export default function AdminReportsPage() {
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
             >
               <option value="all">Semua Sensor</option>
-              {sensorOptions.map((sensor) => (
+              {Array.isArray(sensorOptions) && sensorOptions.map((sensor) => (
                 <option key={sensor.id} value={sensor.sensorId}>
                   {sensor.name}
                 </option>
@@ -197,7 +198,7 @@ export default function AdminReportsPage() {
                 setAppliedFilter(filterForm);
                 setErrorMessage(null);
                 try {
-                  await loadHistory(filterForm, sensorOptions);
+                  await loadHistory(filterForm, Array.isArray(sensorOptions) ? sensorOptions : []);
                 } catch (error) {
                   setErrorMessage(error instanceof Error ? error.message : "Gagal memuat data filter.");
                 }
