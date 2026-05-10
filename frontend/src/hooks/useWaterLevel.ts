@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io, type Socket } from "socket.io-client";
+import { WS_URL } from "@/constants";
 import api from "@/lib/api";
 import type { Sensor } from "@/types/sensor";
 import type { LiveWaterLevel, WaterLevelPoint } from "@/types/water-level";
@@ -42,14 +44,32 @@ interface ApiWaterHistory {
   recordedAt: string;
 }
 
+interface RealtimeSensorUpdatePayload {
+  sensorId: string;
+  sensorName?: string;
+  waterLevel?: number;
+  rainfall?: number;
+  status?: string;
+  batteryLevel?: number | null;
+  connectivity?: string;
+  latitude?: number;
+  longitude?: number;
+  lastActiveAt?: string;
+  recordedAt?: string;
+}
+
 function mapStatus(status?: string) {
-  if (status === "DANGER") return "danger" as const;
-  if (status === "WARNING") return "alert" as const;
+  const normalized = status?.toUpperCase();
+
+  if (normalized === "DANGER") return "danger" as const;
+  if (normalized === "WARNING") return "alert" as const;
+  if (normalized === "ALERT") return "alert" as const;
+  if (normalized === "SAFE") return "safe" as const;
   return "safe" as const;
 }
 
 function mapConnectivity(connectivity?: string) {
-  return connectivity === "ONLINE" ? "online" : "offline";
+  return connectivity?.toUpperCase() === "ONLINE" ? "online" : "offline";
 }
 
 function toIsoNow() {
@@ -61,68 +81,139 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   const [historyBySensor, setHistoryBySensor] = useState<Record<string, WaterLevelPoint[]>>({});
   const [latestBySensor, setLatestBySensor] = useState<Record<string, LiveWaterLevel>>({});
   const [sensorsSnapshot, setSensorsSnapshot] = useState<Sensor[]>([]);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadCurrent = async () => {
-      try {
-        const [sensorsResp, waterResp, rainfallResp] = await Promise.all([
-          api.get("/sensors"),
-          api.get("/water-levels/current"),
-          api.get("/rainfall/current"),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        const sensors = (sensorsResp.data?.data ?? []) as ApiSensor[];
-        const waterRows = (waterResp.data?.data ?? []) as ApiWaterCurrent[];
-        const rainfallRows = (rainfallResp.data?.data ?? []) as ApiRainfallCurrent[];
-
-        const waterBySensorId = new Map(waterRows.map((row) => [row.sensorId, row]));
-        const rainfallBySensorId = new Map(rainfallRows.map((row) => [row.sensorId, row]));
-
-        const nextSensors: Sensor[] = sensors.map((sensor) => {
-          const water = waterBySensorId.get(sensor.sensorId);
-          return {
-            id: sensor.sensorId,
-            name: sensor.name,
-            riverName: sensor.name,
-            latitude: sensor.latitude,
-            longitude: sensor.longitude,
-            connectivity: mapConnectivity(sensor.connectivity),
-            batteryPercent: sensor.batteryLevel ?? 0,
-            lastLevelCm: water?.waterLevel ?? 0,
-            status: mapStatus(water?.status),
-            updatedAt: water?.recordedAt ?? sensor.lastActiveAt ?? toIsoNow(),
-          };
-        });
-
-        setSensorsSnapshot(nextSensors);
-
-        const nextLiveBySensor = nextSensors.reduce<Record<string, LiveWaterLevel>>((acc, sensor) => {
-          const rain = rainfallBySensorId.get(sensor.id);
-          acc[sensor.id] = {
-            sensorId: sensor.id,
-            sensorName: sensor.name,
-            levelCm: sensor.lastLevelCm,
-            rainfallMm: rain?.rainfall ?? 0,
-            status: sensor.status,
-            updatedAt: sensor.updatedAt,
-          };
-          return acc;
-        }, {});
-
-        setLatestBySensor(nextLiveBySensor);
-      } catch {
-        if (!cancelled) {
-          setSensorsSnapshot([]);
-          setLatestBySensor({});
-        }
-      }
+    return () => {
+      isMountedRef.current = false;
     };
+  }, []);
+
+  const loadCurrent = useCallback(async () => {
+    try {
+      const [sensorsResp, waterResp, rainfallResp] = await Promise.all([
+        api.get("/sensors"),
+        api.get("/water-levels/current"),
+        api.get("/rainfall/current"),
+      ]);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      const sensors = (sensorsResp.data?.data ?? []) as ApiSensor[];
+      const waterRows = (waterResp.data?.data ?? []) as ApiWaterCurrent[];
+      const rainfallRows = (rainfallResp.data?.data ?? []) as ApiRainfallCurrent[];
+
+      const waterBySensorId = new Map(waterRows.map((row) => [row.sensorId, row]));
+      const rainfallBySensorId = new Map(rainfallRows.map((row) => [row.sensorId, row]));
+
+      const nextSensors: Sensor[] = sensors.map((sensor) => {
+        const water = waterBySensorId.get(sensor.sensorId);
+        return {
+          id: sensor.sensorId,
+          name: sensor.name,
+          riverName: sensor.name,
+          latitude: sensor.latitude,
+          longitude: sensor.longitude,
+          connectivity: mapConnectivity(sensor.connectivity),
+          batteryPercent: sensor.batteryLevel ?? 0,
+          lastLevelCm: water?.waterLevel ?? 0,
+          status: mapStatus(water?.status),
+          updatedAt: water?.recordedAt ?? sensor.lastActiveAt ?? toIsoNow(),
+        };
+      });
+
+      setSensorsSnapshot(nextSensors);
+
+      const nextLiveBySensor = nextSensors.reduce<Record<string, LiveWaterLevel>>((acc, sensor) => {
+        const rain = rainfallBySensorId.get(sensor.id);
+        acc[sensor.id] = {
+          sensorId: sensor.id,
+          sensorName: sensor.name,
+          levelCm: sensor.lastLevelCm,
+          rainfallMm: rain?.rainfall ?? 0,
+          status: sensor.status,
+          updatedAt: sensor.updatedAt,
+        };
+        return acc;
+      }, {});
+
+      setLatestBySensor(nextLiveBySensor);
+    } catch {
+      if (isMountedRef.current) {
+        setSensorsSnapshot([]);
+        setLatestBySensor({});
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const socket: Socket = io(WS_URL, {
+      transports: ["websocket"],
+      reconnectionAttempts: 5,
+    });
+
+    const applyRealtimeUpdate = (payload: RealtimeSensorUpdatePayload) => {
+      if (!payload.sensorId) {
+        return;
+      }
+
+      const timestamp = payload.recordedAt ?? payload.lastActiveAt ?? toIsoNow();
+
+      // Functional updates keep the merge atomic and avoid stale closure/race-condition issues.
+      setSensorsSnapshot((prev) => {
+        const sensorIndex = prev.findIndex((sensor) => sensor.id === payload.sensorId);
+
+        if (sensorIndex === -1) {
+          return prev;
+        }
+
+        const next = [...prev];
+        const currentSensor = next[sensorIndex];
+
+        next[sensorIndex] = {
+          ...currentSensor,
+          name: payload.sensorName ?? currentSensor.name,
+          riverName: payload.sensorName ?? currentSensor.riverName,
+          latitude: payload.latitude ?? currentSensor.latitude,
+          longitude: payload.longitude ?? currentSensor.longitude,
+          connectivity:
+            payload.connectivity !== undefined
+              ? mapConnectivity(payload.connectivity)
+              : currentSensor.connectivity,
+          batteryPercent: payload.batteryLevel ?? currentSensor.batteryPercent,
+          lastLevelCm: payload.waterLevel ?? currentSensor.lastLevelCm,
+          status: payload.status ? mapStatus(payload.status) : currentSensor.status,
+          updatedAt: timestamp,
+        };
+
+        return next;
+      });
+
+      setLatestBySensor((prev) => {
+        const currentLive = prev[payload.sensorId];
+
+        if (!currentLive) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [payload.sensorId]: {
+            sensorId: payload.sensorId,
+            sensorName: payload.sensorName ?? currentLive.sensorName,
+            levelCm: payload.waterLevel ?? currentLive.levelCm,
+            rainfallMm: payload.rainfall ?? currentLive.rainfallMm,
+            status: payload.status ? mapStatus(payload.status) : currentLive.status,
+            updatedAt: timestamp,
+          },
+        };
+      });
+    };
+
+    socket.on("sensorUpdate", applyRealtimeUpdate);
+    socket.on("statusChange", applyRealtimeUpdate);
 
     void loadCurrent();
     const timer = window.setInterval(() => {
@@ -130,10 +221,12 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     }, refreshMs);
 
     return () => {
-      cancelled = true;
       window.clearInterval(timer);
+      socket.off("sensorUpdate", applyRealtimeUpdate);
+      socket.off("statusChange", applyRealtimeUpdate);
+      socket.disconnect();
     };
-  }, [refreshMs]);
+  }, [loadCurrent, refreshMs]);
 
   useEffect(() => {
     const activeId = sensorId && latestBySensor[sensorId] ? sensorId : sensorsSnapshot[0]?.id;
