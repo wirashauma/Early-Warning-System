@@ -12,6 +12,15 @@ interface ScriptState {
   error: string | null;
 }
 
+interface GoogleMapsMarkerIcon {
+  path: string;
+  fillColor: string;
+  fillOpacity: number;
+  strokeColor: string;
+  strokeWeight: number;
+  scale: number;
+}
+
 declare global {
   interface Window {
     google?: {
@@ -47,12 +56,50 @@ function getStatusBadge(status: Sensor["status"]) {
   return { label: "Normal", color: "#10b981" };
 }
 
+/**
+ * Creates a custom SVG marker icon for a sensor status
+ * Uses a pin-shaped SVG path with color-coding
+ */
+function createMarkerIcon(status: Sensor["status"]): GoogleMapsMarkerIcon {
+  const statusColors: Record<Sensor["status"], { fill: string; stroke: string }> = {
+    danger: { fill: "#e11d48", stroke: "#be0027" },
+    alert: { fill: "#f97316", stroke: "#d97706" },
+    warning: { fill: "#f59e0b", stroke: "#d97706" },
+    safe: { fill: "#10b981", stroke: "#059669" },
+  };
+
+  const colors = statusColors[status];
+
+  // SVG path for a pin/marker shape
+  const pinPath =
+    "M 0,-52 C -28.627,-52 -52,-28.627 -52,0 C -52,35.797 0,52 0,52 C 0,52 52,35.797 52,0 C 52,-28.627 28.627,-52 0,-52 Z M 0,-20 C 13.807,-20 25,-8.807 25,5 C 25,18.807 13.807,30 0,30 C -13.807,30 -25,18.807 -25,5 C -25,-8.807 -13.807,-20 0,-20 Z";
+
+  return {
+    path: pinPath,
+    fillColor: colors.fill,
+    fillOpacity: 1,
+    strokeColor: colors.stroke,
+    strokeWeight: 2,
+    scale: 0.5,
+  };
+}
+
 export function AdminGoogleSensorMap({ sensors }: AdminGoogleSensorMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [scriptState, setScriptState] = useState<ScriptState>({ ready: false, error: null });
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isKeyInvalid = !apiKey || apiKey === "your_google_maps_api_key";
+
+  // Debug logging for API key
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AdminGoogleSensorMap] API Key loaded:", apiKey ? "✓ Present" : "✗ Missing", {
+        keyPresent: !!apiKey,
+        currentHost: typeof window !== "undefined" ? window.location.origin : "N/A",
+      });
+    }
+  }, [apiKey]);
 
   const center = useMemo(() => {
     if (sensors.length === 0) {
@@ -119,51 +166,80 @@ export function AdminGoogleSensorMap({ sensors }: AdminGoogleSensorMapProps) {
 
   useEffect(() => {
     if (!scriptState.ready || !window.google?.maps || !mapRef.current) {
+      console.log("[AdminGoogleSensorMap] Map init blocked:", {
+        scriptReady: scriptState.ready,
+        googleMapsExists: !!window.google?.maps,
+        mapRefExists: !!mapRef.current,
+        sensorsCount: sensors.length,
+      });
       return;
     }
 
-    const map = new window.google.maps.Map(mapRef.current, {
-      center,
-      zoom: 12,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
-
-    const infoWindow = new window.google.maps.InfoWindow();
-
-    sensors.forEach((sensor) => {
-      const status = getStatusBadge(sensor.status);
-      const marker = new window.google!.maps!.Marker({
-        map,
-        position: { lat: sensor.latitude, lng: sensor.longitude },
-        title: sensor.name,
+    try {
+      console.log("[AdminGoogleSensorMap] Initializing map with", sensors.length, "sensors");
+      
+      const map = new window.google.maps.Map(mapRef.current, {
+        center,
+        zoom: 12,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
       });
 
-      marker.addListener("click", () => {
-        infoWindow.setContent(
-          `
-            <div style="min-width:180px;font-family:Inter,Arial,sans-serif;padding:2px 0;">
-              <p style="font-size:13px;font-weight:700;margin:0 0 6px;color:#0f172a;">${sensor.name}</p>
-              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Ketinggian Air: <strong>${sensor.lastLevelCm} cm</strong></p>
-              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Status: <strong style=\"color:${status.color};\">${status.label}</strong></p>
-              <p style="font-size:12px;margin:0;color:#334155;">Status Baterai: <strong>${sensor.batteryPercent}%</strong></p>
-            </div>
-          `,
-        );
-        infoWindow.open(map, marker);
+      console.log("[AdminGoogleSensorMap] Map created successfully");
+
+      const infoWindow = new window.google.maps.InfoWindow();
+
+      sensors.forEach((sensor) => {
+        const status = getStatusBadge(sensor.status);
+        const marker = new window.google!.maps!.Marker({
+          map,
+          position: { lat: sensor.latitude, lng: sensor.longitude },
+          title: sensor.name,
+          icon: createMarkerIcon(sensor.status),
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.setContent(
+            `
+              <div style="min-width:180px;font-family:Inter,Arial,sans-serif;padding:2px 0;">
+                <p style="font-size:13px;font-weight:700;margin:0 0 6px;color:#0f172a;">${sensor.name}</p>
+                <p style="font-size:12px;margin:0 0 4px;color:#334155;">Ketinggian Air: <strong>${sensor.lastLevelCm} cm</strong></p>
+                <p style="font-size:12px;margin:0 0 4px;color:#334155;">Status: <strong style=\"color:${status.color};\">${status.label}</strong></p>
+                <p style="font-size:12px;margin:0;color:#334155;">Status Baterai: <strong>${sensor.batteryPercent}%</strong></p>
+              </div>
+            `,
+          );
+          infoWindow.open(map, marker);
+        });
       });
-    });
+
+      console.log("[AdminGoogleSensorMap] Map markers created:", sensors.length);
+    } catch (error) {
+      console.error("[AdminGoogleSensorMap] Error initializing map:", error);
+      setScriptState({ ready: false, error: "Error: " + (error instanceof Error ? error.message : String(error)) });
+    }
   }, [center, scriptState.ready, sensors]);
 
   if (isKeyInvalid || scriptState.error) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
-        <p className="font-semibold">Peta Google belum aktif</p>
-        <p className="mt-1 text-xs text-amber-700">Isi nilai `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` pada `frontend/.env` atau `frontend/.env.local`.</p>
+        <p className="font-semibold">{scriptState.error || "Peta Google belum aktif"}</p>
+        {!scriptState.error && (
+          <p className="mt-1 text-xs text-amber-700">Isi nilai `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` pada `frontend/.env` atau `frontend/.env.local`.</p>
+        )}
       </div>
     );
   }
 
-  return <div ref={mapRef} className="h-90 w-full rounded-xl border border-slate-200" aria-label="Peta interaktif sensor" />;
+  return (
+    <div className="relative h-96 w-full overflow-hidden rounded-xl border border-slate-200">
+      {!scriptState.ready && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-100/70 backdrop-blur-[1px]">
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">Memuat peta sensor...</span>
+        </div>
+      )}
+      <div ref={mapRef} className="h-full w-full bg-slate-50" aria-label="Peta interaktif sensor" />
+    </div>
+  );
 }
