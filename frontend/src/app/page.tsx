@@ -18,14 +18,6 @@ interface EmergencyContact {
   isActive: boolean; // Ditambahkan agar TypeScript mengenali properti ini saat di-filter
 }
 
-interface ActiveAlert {
-  id: string;
-  title: string;
-  message: string;
-  severity: "INFO" | "WARNING" | "ALERT" | "DANGER";
-  targetArea: string | null;
-}
-
 // --- Konstanta Statis (Untuk Panduan Edukasi) ---
 const statusLegend = [
   {
@@ -123,26 +115,17 @@ const getEmergencyMeta = (category: string) => {
 
 export default function Home() {
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Mengambil data dari database saat halaman pertama kali dimuat
   useEffect(() => {
     const fetchPublicData = async () => {
       try {
-        // Fetch secara paralel agar lebih cepat
-        const [contactsRes, alertsRes] = await Promise.all([
-          api.get("/emergency-contacts"),
-          api.get("/alerts/active").catch(() => ({ data: { data: [] } })) // Fallback jika endpoint alert belum ada
-        ]);
+        const contactsRes = await api.get("/emergency-contacts");
 
         if (contactsRes.data?.data) {
           // Menghapus 'any' dan menggantinya dengan interface EmergencyContact
           setContacts(contactsRes.data.data.filter((c: EmergencyContact) => c.isActive));
-        }
-
-        if (alertsRes.data?.data) {
-          setActiveAlerts(alertsRes.data.data);
         }
       } catch (error) {
         console.error("Gagal mengambil data publik:", error);
@@ -157,16 +140,6 @@ export default function Home() {
   return (
     <AuthRedirectWrapper>
       <main>
-        {/* BANNER PERINGATAN DINI (Dinamic dari Database) */}
-        {activeAlerts.length > 0 && (
-          <div className="bg-rose-600 px-6 py-3 text-center text-white shadow-md animate-in slide-in-from-top">
-            <p className="text-sm font-semibold md:text-base">
-              🚨 PERINGATAN: {activeAlerts[0].title} - {activeAlerts[0].message}{" "}
-              {activeAlerts[0].targetArea && `(Area Terdampak: ${activeAlerts[0].targetArea})`}
-            </p>
-          </div>
-        )}
-
         <section id="home" className="relative isolate overflow-hidden text-white">
           <Image
             src={photoItems[0].src}
