@@ -82,6 +82,11 @@ const quickActions = [
 export default function UserEmergencyPage() {
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContactItem[]>([]);
 
+  function sanitizePhoneForTel(phone: string) {
+    // remove spaces, parentheses, dashes, and dots; keep leading + if present
+    return phone.replace(/[^+\d]/g, "");
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -170,7 +175,9 @@ export default function UserEmergencyPage() {
                 </div>
 
                 <a
-                  href={`tel:${contact.phone}`}
+                  href={`tel:${sanitizePhoneForTel(contact.phone)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={`mt-4 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors ${meta.buttonClass}`}
                 >
                   Hubungi {contact.phone}
