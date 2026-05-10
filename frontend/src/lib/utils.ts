@@ -2,6 +2,7 @@ import type { ThresholdConfig, WaterStatus } from "@/types/water-level";
 
 const defaultThreshold: ThresholdConfig = {
   safeMaxCm: 149,
+  warningMaxCm: 174,
   alertMaxCm: 199,
   dangerMinCm: 200,
 };
