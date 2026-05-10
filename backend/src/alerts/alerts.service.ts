@@ -8,7 +8,18 @@ interface BroadcastPayload {
   message: string;
   severity: AlertSeverity;
   channels: string[];
+  pushEnabled?: boolean;
   targetArea?: string;
+}
+
+interface TopicSubscriptionResult {
+  topic: string;
+  successCount: number;
+  failureCount: number;
+  errors: Array<{
+    index: number;
+    reason: string;
+  }>;
 }
 
 @Injectable()
@@ -148,9 +159,11 @@ export class AlertsService {
       },
     });
 
-    const shouldSendPush = payload.channels.some((channel) =>
-      ['push', 'fcm', 'webpush', 'mobile'].includes(channel.toLowerCase()),
-    );
+    const shouldSendPush =
+      payload.pushEnabled ??
+      payload.channels.some((channel) =>
+        ['push', 'fcm', 'webpush', 'mobile'].includes(channel.toLowerCase()),
+      );
 
     const pushTopic = shouldSendPush
       ? this.buildPushTopic(payload.targetArea)
@@ -176,6 +189,8 @@ export class AlertsService {
           `Failed to send FCM push for alert ${alert.id}: ${pushError}`,
         );
       }
+    } else if (!shouldSendPush) {
+      this.logger.log(`Push delivery skipped for alert ${alert.id} because pushEnabled=false.`);
     }
 
     return {
@@ -212,21 +227,68 @@ export class AlertsService {
       );
     }
 
-    const topic = this.buildPushTopic(targetArea);
-    const response = await this.firebaseService.subscribeTokenToTopic(
-      token.trim(),
-      topic,
+    const tokenValue = token.trim();
+    const topics = this.buildSubscriptionTopics(targetArea);
+
+    const results = await Promise.allSettled(
+      topics.map(async (topic) => {
+        const response = await this.firebaseService.subscribeTokenToTopic(
+          tokenValue,
+          topic,
+        );
+
+        if (!response) {
+          throw new Error(`Firebase Admin tidak aktif untuk topic ${topic}.`);
+        }
+
+        const subscriptionResult: TopicSubscriptionResult = {
+          topic,
+          successCount: response.successCount,
+          failureCount: response.failureCount,
+          errors: response.errors.map((item) => ({
+            index: item.index,
+            reason: item.error.message,
+          })),
+        };
+
+        if (response.failureCount > 0) {
+          this.logger.warn(
+            `FCM subscription completed with failures for token ${tokenValue} on topic ${topic}: ${JSON.stringify(subscriptionResult.errors)}`,
+          );
+        } else {
+          this.logger.log(
+            `FCM token ${tokenValue} subscribed successfully to topic ${topic}.`,
+          );
+        }
+
+        return subscriptionResult;
+      }),
     );
 
+    const succeeded = results
+      .filter(
+        (result): result is PromiseFulfilledResult<TopicSubscriptionResult> =>
+          result.status === 'fulfilled',
+      )
+      .map((result) => result.value);
+
+    const failed = results
+      .filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
+      )
+      .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
+
+    if (failed.length > 0) {
+      this.logger.error(
+        `FCM subscription failed for token ${tokenValue} on ${failed.length} topic(s): ${failed.join(' | ')}`,
+      );
+    }
+
     return {
-      topic,
-      successCount: response?.successCount ?? 0,
-      failureCount: response?.failureCount ?? 0,
-      errors:
-        response?.errors.map((item) => ({
-          index: item.index,
-          reason: item.error.message,
-        })) ?? [],
+      token: tokenValue,
+      topics: succeeded,
+      failed,
     };
   }
 
@@ -247,5 +309,12 @@ export class AlertsService {
     }
 
     return `${baseTopic}-${areaSlug}`;
+  }
+
+  private buildSubscriptionTopics(targetArea?: string): string[] {
+    const baseTopic = process.env.FCM_DEFAULT_TOPIC?.trim() || 'ews-alerts';
+    const areaTopic = this.buildPushTopic(targetArea);
+
+    return areaTopic === baseTopic ? [baseTopic] : [baseTopic, areaTopic];
   }
 }
