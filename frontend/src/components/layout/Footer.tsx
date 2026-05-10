@@ -16,7 +16,7 @@ const companyLinks = [
 
 export function Footer() {
   return (
-    <footer className="bg-linear-to-br from-blue-950 via-blue-900 to-blue-800 text-blue-100">
+    <footer id="contact" className="bg-linear-to-br from-blue-950 via-blue-900 to-blue-800 text-blue-100">
       <div className="mx-auto w-full max-w-6xl px-6 py-10 md:py-12">
         <div className="grid gap-7 lg:grid-cols-[1.25fr_1fr_1fr_1fr]">
           <div>
