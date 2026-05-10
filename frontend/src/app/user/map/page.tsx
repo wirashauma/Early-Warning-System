@@ -21,8 +21,13 @@ const statusMeta: Record<
     badgeClass: "bg-emerald-100 text-emerald-700",
     dotClass: "bg-emerald-500",
   },
-  alert: {
+  warning: {
     label: "Waspada",
+    badgeClass: "bg-yellow-100 text-yellow-700",
+    dotClass: "bg-yellow-500",
+  },
+  alert: {
+    label: "Siaga",
     badgeClass: "bg-amber-100 text-amber-700",
     dotClass: "bg-amber-500",
   },
@@ -35,8 +40,9 @@ const statusMeta: Record<
 
 const statusRank: Record<WaterStatus, number> = {
   safe: 0,
-  alert: 1,
-  danger: 2,
+  warning: 1,
+  alert: 2,
+  danger: 3,
 };
 
 type StatusFilter = "all" | WaterStatus;
