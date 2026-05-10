@@ -14,6 +14,7 @@ interface UseWaterLevelOptions {
 
 const DEFAULT_REFRESH_MS = 15_000;
 const HISTORY_HOURS = 7 * 24;
+const STABLE_FALLBACK_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 interface ApiSensor {
   sensorId: string;
@@ -294,7 +295,7 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     levelCm: 0,
     rainfallMm: 0,
     status: "safe",
-    updatedAt: new Date().toISOString(),
+    updatedAt: STABLE_FALLBACK_TIMESTAMP,
   };
 
   const history = historyBySensor[activeSensorId] ?? [];
