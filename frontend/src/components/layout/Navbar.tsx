@@ -219,11 +219,14 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => setProfileOpen((prev) => !prev)}
-                  className="inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-blue-600 font-bold text-white shadow-sm ring-2 ring-white transition-all hover:bg-blue-700 focus:outline-none focus:ring-blue-300"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 font-bold text-white shadow-sm ring-2 ring-white transition-all hover:bg-blue-700 focus:outline-none focus:ring-blue-300"
                   aria-label="Buka menu profil"
                 >
                   {user?.avatar ? (
-                    <Image src={user.avatar} alt="Avatar pengguna" fill unoptimized className="object-cover" />
+                    <span className="relative block h-full w-full overflow-hidden rounded-full">
+                      {/* Avatar image now fills a circular, clipped wrapper so it cannot overflow or appear square. */}
+                      <Image src={user.avatar} alt="Avatar pengguna" fill unoptimized className="object-cover" />
+                    </span>
                   ) : (
                     userInitial
                   )}
