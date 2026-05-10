@@ -12,7 +12,7 @@ interface BroadcastPayload {
   targetArea?: string;
 }
 
-interface TopicSubscriptionResult {
+export interface TopicSubscriptionResult {
   topic: string;
   successCount: number;
   failureCount: number;
