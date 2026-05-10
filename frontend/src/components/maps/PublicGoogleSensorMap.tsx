@@ -16,6 +16,15 @@ interface ScriptState {
   error: string | null;
 }
 
+interface GoogleMapsMarkerIcon {
+  path: string;
+  fillColor: string;
+  fillOpacity: number;
+  strokeColor: string;
+  strokeWeight: number;
+  scale: number;
+}
+
 declare global {
   interface Window {
     google?: {
@@ -51,6 +60,34 @@ function getStatusBadge(status: Sensor["status"]) {
   return { label: "Normal", color: "#10b981" };
 }
 
+/**
+ * Creates a custom SVG marker icon for a sensor status
+ * Uses a pin-shaped SVG path with color-coding
+ */
+function createMarkerIcon(status: Sensor["status"]): GoogleMapsMarkerIcon {
+  const statusColors: Record<Sensor["status"], { fill: string; stroke: string }> = {
+    danger: { fill: "#e11d48", stroke: "#be0027" },
+    alert: { fill: "#f97316", stroke: "#d97706" },
+    warning: { fill: "#f59e0b", stroke: "#d97706" },
+    safe: { fill: "#10b981", stroke: "#059669" },
+  };
+
+  const colors = statusColors[status];
+
+  // SVG path for a pin/marker shape
+  const pinPath =
+    "M 0,-52 C -28.627,-52 -52,-28.627 -52,0 C -52,35.797 0,52 0,52 C 0,52 52,35.797 52,0 C 52,-28.627 28.627,-52 0,-52 Z M 0,-20 C 13.807,-20 25,-8.807 25,5 C 25,18.807 13.807,30 0,30 C -13.807,30 -25,18.807 -25,5 C -25,-8.807 -13.807,-20 0,-20 Z";
+
+  return {
+    path: pinPath,
+    fillColor: colors.fill,
+    fillOpacity: 1,
+    strokeColor: colors.stroke,
+    strokeWeight: 2,
+    scale: 0.5,
+  };
+}
+
 export function PublicGoogleSensorMap({
   sensors,
   selectedSensorId,
@@ -62,6 +99,16 @@ export function PublicGoogleSensorMap({
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isKeyInvalid = !apiKey || apiKey === "your_google_maps_api_key";
+
+  // Debug logging for API key
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[PublicGoogleSensorMap] API Key loaded:", apiKey ? "✓ Present" : "✗ Missing", {
+        keyPresent: !!apiKey,
+        currentHost: typeof window !== "undefined" ? window.location.origin : "N/A",
+      });
+    }
+  }, [apiKey]);
 
   const center = useMemo(() => {
     if (sensors.length === 0) {
@@ -128,44 +175,62 @@ export function PublicGoogleSensorMap({
 
   useEffect(() => {
     if (!scriptState.ready || !window.google?.maps || !mapRef.current) {
+      console.log("[PublicGoogleSensorMap] Map init blocked:", {
+        scriptReady: scriptState.ready,
+        googleMapsExists: !!window.google?.maps,
+        mapRefExists: !!mapRef.current,
+        sensorsCount: sensors.length,
+      });
       return;
     }
 
-    const selectedSensor = sensors.find((sensor) => sensor.id === selectedSensorId) ?? sensors[0];
+    try {
+      console.log("[PublicGoogleSensorMap] Initializing map with", sensors.length, "sensors");
+      
+      const selectedSensor = sensors.find((sensor) => sensor.id === selectedSensorId) ?? sensors[0];
 
-    const map = new window.google.maps.Map(mapRef.current, {
-      center: selectedSensor ? { lat: selectedSensor.latitude, lng: selectedSensor.longitude } : center,
-      zoom: 13,
-      mapTypeId: "hybrid",
-      mapTypeControl: true,
-      streetViewControl: false,
-      fullscreenControl: false,
-      gestureHandling: "cooperative",
-    });
-
-    const infoWindow = new window.google.maps.InfoWindow();
-
-    sensors.forEach((sensor) => {
-      const status = getStatusBadge(sensor.status);
-      const marker = new window.google!.maps!.Marker({
-        map,
-        position: { lat: sensor.latitude, lng: sensor.longitude },
-        title: sensor.name,
+      const map = new window.google.maps.Map(mapRef.current, {
+        center: selectedSensor ? { lat: selectedSensor.latitude, lng: selectedSensor.longitude } : center,
+        zoom: 13,
+        mapTypeId: "hybrid",
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: false,
+        gestureHandling: "cooperative",
       });
 
-      marker.addListener("click", () => {
-        onMarkerSelect?.(sensor.id);
-        infoWindow.setContent(`
-          <div style="min-width:190px;font-family:Inter,Arial,sans-serif;padding:2px 0;">
-            <p style="font-size:13px;font-weight:700;margin:0 0 6px;color:#0f172a;">${sensor.name}</p>
-            <p style="font-size:12px;margin:0 0 4px;color:#334155;">Sungai: <strong>${sensor.riverName}</strong></p>
-            <p style="font-size:12px;margin:0 0 4px;color:#334155;">Tinggi Air: <strong>${sensor.lastLevelCm} cm</strong></p>
-            <p style="font-size:12px;margin:0;color:#334155;">Status: <strong style=\"color:${status.color};\">${status.label}</strong></p>
-          </div>
-        `);
-        infoWindow.open(map, marker);
+      console.log("[PublicGoogleSensorMap] Map created successfully");
+
+      const infoWindow = new window.google.maps.InfoWindow();
+
+      sensors.forEach((sensor) => {
+        const status = getStatusBadge(sensor.status);
+        const marker = new window.google!.maps!.Marker({
+          map,
+          position: { lat: sensor.latitude, lng: sensor.longitude },
+          title: sensor.name,
+          icon: createMarkerIcon(sensor.status),
+        });
+
+        marker.addListener("click", () => {
+          onMarkerSelect?.(sensor.id);
+          infoWindow.setContent(`
+            <div style="min-width:190px;font-family:Inter,Arial,sans-serif;padding:2px 0;">
+              <p style="font-size:13px;font-weight:700;margin:0 0 6px;color:#0f172a;">${sensor.name}</p>
+              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Sungai: <strong>${sensor.riverName}</strong></p>
+              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Tinggi Air: <strong>${sensor.lastLevelCm} cm</strong></p>
+              <p style="font-size:12px;margin:0;color:#334155;">Status: <strong style=\"color:${status.color};\">${status.label}</strong></p>
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
       });
-    });
+
+      console.log("[PublicGoogleSensorMap] Map markers created:", sensors.length);
+    } catch (error) {
+      console.error("[PublicGoogleSensorMap] Error initializing map:", error);
+      setScriptState({ ready: false, error: "Error: " + (error instanceof Error ? error.message : String(error)) });
+    }
   }, [center, onMarkerSelect, scriptState.ready, selectedSensorId, sensors]);
 
   if (isKeyInvalid || scriptState.error) {
@@ -184,7 +249,12 @@ export function PublicGoogleSensorMap({
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">Memuat peta sensor...</span>
         </div>
       )}
-      <div ref={mapRef} className="h-full w-full" aria-label="Peta publik sensor banjir" />
+      {scriptState.error && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-rose-100/80">
+          <span className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-rose-700">{scriptState.error}</span>
+        </div>
+      )}
+      <div ref={mapRef} className="h-full w-full bg-slate-50" aria-label="Peta publik sensor banjir" />
     </div>
   );
 }
