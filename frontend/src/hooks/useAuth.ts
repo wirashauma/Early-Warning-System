@@ -72,6 +72,7 @@ export function useAuth() {
       const fcmToken = await requestForToken();
       
       if (fcmToken) {
+        console.info('[Push] FCM token:', fcmToken);
         // Mengirim token ke endpoint yang sudah disiapkan di alerts.controller.ts
         await api.post("/alerts/subscribe", { token: fcmToken });
         console.log("Berhasil mendaftarkan perangkat ke layanan Push Notification EWS.");
