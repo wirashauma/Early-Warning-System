@@ -28,9 +28,11 @@ export const requestForToken = async () => {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
+        const serviceWorkerRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         const currentToken = await getToken(messaging, {
-          // WAJIB: Anda harus menambahkan VAPID KEY dari Firebase Console ke file .env.local
-          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY, 
+          // VAPID public key dipakai oleh browser saat meminta token FCM web.
+          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration,
         });
         
         if (currentToken) {
