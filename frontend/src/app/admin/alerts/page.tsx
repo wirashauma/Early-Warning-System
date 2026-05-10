@@ -113,6 +113,7 @@ export default function AdminAlertsPage() {
         message,
         severity: level === "Bahaya" ? "DANGER" : level === "Waspada" ? "WARNING" : "INFO",
         channels: usedChannels,
+        pushEnabled: channels.push,
         targetArea: target === "Semua Wilayah" ? null : target,
       });
 
