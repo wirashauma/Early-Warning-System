@@ -86,8 +86,15 @@ export function Navbar() {
     if (!isHomePage) return;
 
     const navbarOffset = 92;
+    const lastSectionId = links[links.length - 1]?.id ?? "home";
 
     const updateActiveSection = () => {
+      const isBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 10;
+      if (isBottom) {
+        setActiveSection(lastSectionId);
+        return;
+      }
+
       const currentPosition = window.scrollY + navbarOffset;
       let currentSection = links[0]?.id ?? "home";
 
