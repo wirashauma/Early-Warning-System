@@ -9,6 +9,12 @@ interface PushMessageInput {
   data?: Record<string, string | number | boolean | null | undefined>;
 }
 
+interface PushTokenResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
 @Injectable()
 export class FirebaseService implements OnModuleInit {
   private readonly logger = new Logger(FirebaseService.name);
@@ -91,6 +97,52 @@ export class FirebaseService implements OnModuleInit {
     };
 
     return this.app.messaging().send(message);
+  }
+
+  async sendToToken(
+    token: string,
+    payload: PushMessageInput,
+  ): Promise<PushTokenResult> {
+    if (!this.app) {
+      return { success: false, error: 'Firebase Admin is not initialized.' };
+    }
+
+    const data = Object.fromEntries(
+      Object.entries(payload.data ?? {}).map(([key, value]) => [
+        key,
+        value == null ? '' : String(value),
+      ]),
+    );
+
+    const message: admin.messaging.Message = {
+      token,
+      notification: {
+        title: payload.title,
+        body: payload.body,
+      },
+      data,
+      android: {
+        priority: 'high',
+      },
+      apns: {
+        headers: {
+          'apns-priority': '10',
+        },
+      },
+      webpush: {
+        headers: {
+          Urgency: 'high',
+        },
+      },
+    };
+
+    try {
+      const messageId = await this.app.messaging().send(message);
+      return { success: true, messageId };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { success: false, error: errorMessage };
+    }
   }
 
   async subscribeTokenToTopic(token: string, topic: string) {
