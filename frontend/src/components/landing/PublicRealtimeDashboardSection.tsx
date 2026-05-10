@@ -28,7 +28,7 @@ const fallbackSensor: Sensor = {
   batteryPercent: 80,
   lastLevelCm: 120,
   status: "safe" as const,
-  updatedAt: new Date().toISOString(),
+  updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
 const sideIndicators = [
