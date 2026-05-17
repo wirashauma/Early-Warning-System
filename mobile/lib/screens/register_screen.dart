@@ -65,9 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final ok = await _auth.register(
       name: _nameCtrl.text,
       email: _emailCtrl.text,
-      phone: _phoneCtrl.text,
       password: _passCtrl.text,
-      address: _addressCtrl.text,
+      institution: _addressCtrl.text.isNotEmpty ? _addressCtrl.text : null,
     );
 
     if (!mounted) return;

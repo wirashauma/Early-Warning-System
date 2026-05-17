@@ -95,9 +95,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             clipBehavior: Clip.hardEdge,
             child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: LatLng(-0.9490, 100.3610),
-                initialZoom: 14.5,
+              options: MapOptions(
+                center: LatLng(-0.9490, 100.3610),
+                zoom: 14.5,
               ),
               children: [
                 TileLayer(
@@ -114,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       point: LatLng(s['lat'] as double, s['lng'] as double),
                       width: 44,
                       height: 44,
-                      child: GestureDetector(
+                      builder: (context) => GestureDetector(
                         onTap: () => setState(() => _selectedSensorIndex = i),
                         child: Tooltip(
                           message: s['name'] as String,

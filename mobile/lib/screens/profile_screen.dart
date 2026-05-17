@@ -195,8 +195,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _InfoRow(Icons.person, 'Nama Lengkap', user.name),
           _InfoRow(Icons.email_outlined, 'Email', user.email),
-          _InfoRow(Icons.phone_outlined, 'Telepon', user.phone.isNotEmpty ? user.phone : '-'),
-          _InfoRow(Icons.location_on_outlined, 'Alamat', user.address.isNotEmpty ? user.address : '-'),
+          _InfoRow(Icons.phone_outlined, 'Telepon', user.phone?.isNotEmpty == true ? user.phone! : '-'),
+          _InfoRow(Icons.location_on_outlined, 'Alamat', user.address?.isNotEmpty == true ? user.address! : '-'),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
