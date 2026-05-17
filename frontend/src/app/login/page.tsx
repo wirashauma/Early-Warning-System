@@ -90,23 +90,13 @@ export default function LoginPage() {
     }, 700);
   };
 
-  const onQuickLoginAdmin = async () => {
-    setEmail("admin@ews.com");
-    setPassword("Admin123!");
+  const onQuickLogin = async (quickEmail: string, quickPass: string) => {
+    setEmail(quickEmail);
+    setPassword(quickPass);
     await loginAndRedirect(
-      "admin@ews.com",
-      "Admin123!",
-      "Login cepat Admin berhasil. Mengalihkan ke dashboard...",
-    );
-  };
-
-  const onQuickLoginUser = async () => {
-    setEmail("user1@ews.com");
-    setPassword("User12345!");
-    await loginAndRedirect(
-      "user1@ews.com",
-      "User12345!",
-      "Login cepat User berhasil. Mengalihkan ke dashboard...",
+      quickEmail,
+      quickPass,
+      "Login cepat berhasil. Mengalihkan ke dashboard...",
     );
   };
 
@@ -162,28 +152,7 @@ export default function LoginPage() {
             Login dengan Google
           </button>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => {
-                void onQuickLoginAdmin();
-              }}
-              disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-50"
-            >
-              Login Cepat Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void onQuickLoginUser();
-              }}
-              disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-blue-200 bg-white px-4 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-50"
-            >
-              Login Cepat User
-            </button>
-          </div>
+
 
           <div className="my-4 flex items-center gap-3">
             <span className="h-px flex-1 bg-slate-200" />
@@ -236,6 +205,52 @@ export default function LoginPage() {
               Daftar sekarang
             </Link>
           </p>
+
+          <div className="mt-6 border-t border-slate-100 pt-4 text-center">
+            <span className="text-[10px] uppercase tracking-wider text-slate-400">Quick Login (Dev):</span>
+            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-2">
+              <button
+                type="button"
+                onClick={() => void onQuickLogin("admin@ews.com", "Admin123!")}
+                disabled={isSubmitting}
+                className="text-[11px] text-slate-500 transition-colors hover:text-blue-600 hover:underline disabled:opacity-50"
+              >
+                Admin 1
+              </button>
+              <button
+                type="button"
+                onClick={() => void onQuickLogin("admin2@ews.com", "AdminOps123!")}
+                disabled={isSubmitting}
+                className="text-[11px] text-slate-500 transition-colors hover:text-blue-600 hover:underline disabled:opacity-50"
+              >
+                Admin 2
+              </button>
+              <button
+                type="button"
+                onClick={() => void onQuickLogin("user1@ews.com", "User12345!")}
+                disabled={isSubmitting}
+                className="text-[11px] text-slate-500 transition-colors hover:text-blue-600 hover:underline disabled:opacity-50"
+              >
+                User 1
+              </button>
+              <button
+                type="button"
+                onClick={() => void onQuickLogin("user2@ews.com", "User12345!")}
+                disabled={isSubmitting}
+                className="text-[11px] text-slate-500 transition-colors hover:text-blue-600 hover:underline disabled:opacity-50"
+              >
+                User 2
+              </button>
+              <button
+                type="button"
+                onClick={() => void onQuickLogin("user3@ews.com", "User12345!")}
+                disabled={isSubmitting}
+                className="text-[11px] text-slate-500 transition-colors hover:text-blue-600 hover:underline disabled:opacity-50"
+              >
+                User 3
+              </button>
+            </div>
+          </div>
         </Card>
       </div>
     </main>
