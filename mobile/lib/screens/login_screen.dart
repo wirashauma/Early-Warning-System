@@ -118,6 +118,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: globalAuth.isLoading,
                       ),
                       const SizedBox(height: 24),
+                      _buildQuickLogin(),
+                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -146,6 +148,95 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildQuickLogin() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.lightBlue.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.accentBlue.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.bolt_outlined, color: AppTheme.accentBlue, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'DEMO LOGIN CEPAT',
+                style: TextStyle(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.95),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickLoginChip(
+                  label: 'Admin BPBD',
+                  icon: Icons.admin_panel_settings_outlined,
+                  color: AppTheme.primaryBlue,
+                  email: 'admin@ews.com',
+                  pass: 'Admin123!',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickLoginChip(
+                  label: 'User Warga',
+                  icon: Icons.person_outline_outlined,
+                  color: AppTheme.accentBlue,
+                  email: 'user1@ews.com',
+                  pass: 'User12345!',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickLoginChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required String email,
+    required String pass,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: () async {
+        setState(() {
+          _emailCtrl.text = email;
+          _passCtrl.text = pass;
+        });
+        await _handleLogin();
+      },
+      icon: Icon(icon, size: 15, color: color),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 11.5,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        side: BorderSide(color: color.withValues(alpha: 0.25)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.white,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
