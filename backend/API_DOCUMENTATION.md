@@ -76,23 +76,96 @@ Gunakan saat aplikasi Cold Start untuk validasi session.
 
 ## 2.1 IoT Ingest Module
 
-### Ingest Sensor Data
+### Ingest Sensor Data (ESP8266 / IoT Devices)
 *   **Method:** `POST`
 *   **URL:** `/iot/ingest`
-*   **Body:**
+*   **Authentication:** None (public endpoint for IoT devices)
+*   **Body (All Sensors):**
     ```json
     {
-      "sensorId": "EWS-WL-001",
-      "waterLevel": 120.5,
-      "rainfall": 3.2,
-      "recordedAt": "2026-05-11T12:00:00Z",
-      "batteryLevel": 78,
-      "connectivity": "ONLINE"
+      "waterSensorId": "EWS-US-001",
+      "waterLevel": 12.30,
+      "rainSensorId": "EWS-RF-002",
+      "rainfall": 25.50,
+      "flowSensorId": "EWS-FL-001",
+      "flowRate": 5.20,
+      "batteryLevel": 85,
+      "connectivity": "ONLINE",
+      "recordedAt": "2026-05-17T10:30:00Z"
     }
     ```
 *   **Notes:**
-    * `waterLevel` dalam cm, `rainfall` dalam mm/hour.
-    * Jika memakai sensor terpisah, gunakan `waterSensorId` dan `rainSensorId`.
+    * `waterLevel` dalam cm, `rainfall` dalam mm/hour, `flowRate` dalam l/min.
+    * Gunakan specific sensor IDs (`waterSensorId`, `rainSensorId`, `flowSensorId`) instead of generic `sensorId`.
+    * Minimal satu dari: `waterLevel`, `rainfall`, atau `flowRate` harus ada.
+    * `recordedAt` optional; server gunakan current time jika omitted.
+    * `batteryLevel` range 0-100%.
+    * Response mencakup calculated `status` (water) dan `intensity` (rainfall) based on thresholds.
+    * Semua sensor readings dalam satu request di-process secara atomik.
+
+*   **Response Success (201):**
+    ```json
+    {
+      "status": "success",
+      "message": "Ingest accepted",
+      "data": {
+        "recordedAt": "2026-05-17T10:30:00Z",
+        "water": {
+          "sensorId": "EWS-US-001",
+          "waterLevel": 12.30,
+          "status": "NORMAL"
+        },
+        "rainfall": {
+          "sensorId": "EWS-RF-002",
+          "rainfall": 25.50,
+          "intensity": "HEAVY"
+        },
+        "flowRate": {
+          "sensorId": "EWS-FL-001",
+          "flowRate": 5.20,
+          "unit": "l/min"
+        }
+      }
+    }
+    ```
+
+*   **Validation Rules:**
+    * `waterLevel`, `rainfall`, `flowRate` must be >= 0
+    * `batteryLevel` must be 0-100
+    * `connectivity` must be: ONLINE, OFFLINE, or MAINTENANCE
+    * At least one sensor reading must be provided
+    * Sensor ID must exist in database with correct type (WATER_LEVEL, RAINFALL, FLOW_RATE)
+
+*   **Common Errors:**
+    * 400 - "At least one of: waterLevel, rainfall, or flowRate must be provided"
+    * 400 - "waterLevel must be >= 0"
+    * 400 - "batteryLevel must be <= 100"
+    * 404 - "Sensor water level tidak ditemukan" (sensor doesn't exist)
+
+*   **Setup Required:**
+    1. Create sensors in Admin → Manajemen Sensor IoT with exact IDs matching device
+    2. Set sensor type: WATER_LEVEL, RAINFALL, or FLOW_RATE
+    3. Ensure "Aktif" checkbox is checked
+    4. Update device `waterSensorId`, `rainSensorId`, `flowSensorId` constants to match
+
+*   **Example ESP8266 Code:**
+    * See `ESP8266_IOT_EXAMPLE.ino` in backend directory
+    * Full documentation: `IOT_INGEST_GUIDE.md`
+
+*   **Testing with cURL:**
+    ```bash
+    curl -X POST http://localhost:3001/api/iot/ingest \
+      -H "Content-Type: application/json" \
+      -d '{
+        "waterSensorId": "EWS-US-001",
+        "waterLevel": 12.30,
+        "rainSensorId": "EWS-RF-002",
+        "rainfall": 25.50,
+        "flowSensorId": "EWS-FL-001",
+        "flowRate": 5.20,
+        "batteryLevel": 85
+      }'
+    ```
 
 ---
 
