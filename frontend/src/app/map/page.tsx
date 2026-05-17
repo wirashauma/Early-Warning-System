@@ -7,7 +7,7 @@ import { useWaterLevel } from "@/hooks/useWaterLevel";
 import { cn, formatRelativeTime, formatTimestamp, isSensorOnline } from "@/lib/utils";
 
 export default function MapPage() {
-  const { sensorsSnapshot } = useWaterLevel();
+  const { sensorsSnapshot } = useWaterLevel({ showAll: true });
   const sensors = useMemo(
     () =>
       sensorsSnapshot.map((sensor) => ({

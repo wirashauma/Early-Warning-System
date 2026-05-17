@@ -47,7 +47,7 @@ const sideIndicators = [
 
 export function PublicRealtimeDashboardSection() {
   const [selectedSensorId, setSelectedSensorId] = useState("SEN-01");
-  const { latest, history, sensorsSnapshot } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000 });
+  const { latest, history, sensorsSnapshot } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000, showAll: true });
   const { history: flowHistory } = useFlowRate();
 
   const sensorState = useMemo(

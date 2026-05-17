@@ -10,6 +10,7 @@ import type { LiveWaterLevel, WaterLevelPoint } from "@/types/water-level";
 interface UseWaterLevelOptions {
   sensorId?: string;
   refreshMs?: number;
+  showAll?: boolean;
 }
 
 const DEFAULT_REFRESH_MS = 5_000;
@@ -98,7 +99,7 @@ function toIsoNow() {
 }
 
 export function useWaterLevel(options: UseWaterLevelOptions = {}) {
-  const { sensorId, refreshMs = DEFAULT_REFRESH_MS } = options;
+  const { sensorId, refreshMs = DEFAULT_REFRESH_MS, showAll = false } = options;
   const [historyBySensor, setHistoryBySensor] = useState<Record<string, WaterLevelPoint[]>>({});
   const [latestBySensor, setLatestBySensor] = useState<Record<string, LiveWaterLevel>>({});
   const [sensorsSnapshot, setSensorsSnapshot] = useState<Sensor[]>([]);
@@ -141,7 +142,7 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       const rainfallBySensorId = new Map(rainfallRows.map((row) => [row.sensorId, row]));
       const flowBySensorId = new Map(flowRows.map((row) => [row.sensorId, row]));
 
-      const normalizedPrimaryId = PRIMARY_SENSOR_ID.trim();
+      const normalizedPrimaryId = showAll ? "" : PRIMARY_SENSOR_ID.trim();
       const primaryFiltered = normalizedPrimaryId
         ? sensors.filter((sensor) => sensor.sensorId === normalizedPrimaryId)
         : sensors;

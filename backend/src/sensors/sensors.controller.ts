@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -43,6 +44,15 @@ export class SensorsController {
 
   @Put(':id')
   async update(
+    @Param('id') id: string,
+    @Body() body: Partial<UpsertSensorRequest>,
+  ) {
+    const data = await this.sensorsService.update(id, body);
+    return ok(data);
+  }
+
+  @Patch(':id')
+  async updatePatch(
     @Param('id') id: string,
     @Body() body: Partial<UpsertSensorRequest>,
   ) {

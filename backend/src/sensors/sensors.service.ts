@@ -80,8 +80,11 @@ export class SensorsService {
   }
 
   async update(id: string, payload: Partial<UpsertSensorPayload>) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const where = isUuid ? { id } : { sensorId: id };
+
     return this.prisma.sensor.update({
-      where: { id },
+      where,
       data: {
         sensorId: payload.sensorId,
         name: payload.name,
@@ -108,8 +111,11 @@ export class SensorsService {
   }
 
   async remove(id: string) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const where = isUuid ? { id } : { sensorId: id };
+
     await this.prisma.sensor.update({
-      where: { id },
+      where,
       data: { isActive: false },
     });
 

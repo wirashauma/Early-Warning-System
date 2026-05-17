@@ -18,7 +18,7 @@ function CardTitleIcon({ children }: { children: ReactNode }) {
 }
 
 export default function AdminDashboardPage() {
-  const { sensorsSnapshot, liveBySensor, isLoading, error, reload } = useWaterLevel({ refreshMs: 12_000 });
+  const { sensorsSnapshot, liveBySensor, isLoading, error, reload } = useWaterLevel({ refreshMs: 12_000, showAll: true });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activityLogs, setActivityLogs] = useState<Array<{ id: string; time: string; event: string; severity: "info" | "warning" | "critical" }>>([]);
   const [nowMs, setNowMs] = useState(() => Date.now());

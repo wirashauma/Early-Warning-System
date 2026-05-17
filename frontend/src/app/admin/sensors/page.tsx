@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import type { Sensor, SensorConnectivity } from "@/types/sensor";
+import type { Sensor, SensorConnectivity, SensorType } from "@/types/sensor";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -21,6 +21,7 @@ interface SensorFormState {
   batteryPercent: number;
   connectivity: SensorConnectivity;
   lastLevelCm: number;
+  type: SensorType;
 }
 
 const emptyForm: SensorFormState = {
@@ -33,6 +34,7 @@ const emptyForm: SensorFormState = {
   batteryPercent: 100,
   connectivity: "online",
   lastLevelCm: 0,
+  type: "WATER_LEVEL",
 };
 
 const POLL_REFRESH_MS = 12_000;
@@ -119,7 +121,7 @@ function StatIcon({ kind }: { kind: "total" | "conn" | "risk" | "battery" }) {
 }
 
 export default function AdminSensorsPage() {
-  const { sensorsSnapshot: sensors, isLoading, error, reload } = useWaterLevel({ refreshMs: POLL_REFRESH_MS });
+  const { sensorsSnapshot: sensors, isLoading, error, reload } = useWaterLevel({ refreshMs: POLL_REFRESH_MS, showAll: true });
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -163,6 +165,21 @@ export default function AdminSensorsPage() {
     [form.latitude, form.longitude],
   );
 
+  // Auto-dismiss success and error alerts after 5 seconds for a premium feel
+  useEffect(() => {
+    if (savedMessage) {
+      const timer = setTimeout(() => setSavedMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [savedMessage]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => setErrorMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
+
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
@@ -175,19 +192,46 @@ export default function AdminSensorsPage() {
     setForm({
       id: sensor.id,
       name: sensor.name,
-      riverName: sensor.riverName,
+      riverName: sensor.riverName || sensor.name,
       latitude: sensor.latitude,
       longitude: sensor.longitude,
       zeroCalibrationCm: 200,
       batteryPercent: sensor.batteryPercent,
       connectivity: sensor.connectivity,
       lastLevelCm: sensor.lastLevelCm,
+      type: sensor.type || "WATER_LEVEL",
     });
     setSavedMessage(null);
     setOpen(true);
   };
 
-  const deleteSensor = async (id: string) => {
+  const handleAddSubmit = async (payload: any) => {
+    setSavedMessage(null);
+    setErrorMessage(null);
+    try {
+      await api.post("/sensors", payload);
+      setSavedMessage("Sensor baru berhasil ditambahkan.");
+      setOpen(false);
+      reload();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Gagal menambahkan sensor baru.");
+    }
+  };
+
+  const handleEditSubmit = async (id: string, payload: any) => {
+    setSavedMessage(null);
+    setErrorMessage(null);
+    try {
+      await api.patch(`/sensors/${id}`, payload);
+      setSavedMessage("Data sensor berhasil diperbarui.");
+      setOpen(false);
+      reload();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Gagal memperbarui sensor.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
     setSavedMessage(null);
     setErrorMessage(null);
     try {
@@ -201,31 +245,20 @@ export default function AdminSensorsPage() {
 
   const submitForm = async (event: FormEvent) => {
     event.preventDefault();
-    setSavedMessage(null);
-    setErrorMessage(null);
+    const payload = {
+      sensorId: form.id,
+      name: form.name,
+      type: form.type,
+      latitude: form.latitude,
+      longitude: form.longitude,
+      batteryLevel: form.batteryPercent,
+      connectivity: form.connectivity === "online" ? "ONLINE" : "OFFLINE",
+    };
 
-    try {
-      const payload = {
-        sensorId: form.id,
-        name: form.name,
-        latitude: form.latitude,
-        longitude: form.longitude,
-        batteryLevel: form.batteryPercent,
-        connectivity: form.connectivity === "online" ? "ONLINE" : "OFFLINE",
-      };
-
-      if (editingId) {
-        await api.put(`/sensors/${editingId}`, payload);
-        setSavedMessage("Data sensor berhasil diperbarui.");
-      } else {
-        await api.post("/sensors", payload);
-        setSavedMessage("Sensor baru berhasil ditambahkan.");
-      }
-
-      setOpen(false);
-      reload();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Gagal menyimpan sensor.");
+    if (editingId) {
+      await handleEditSubmit(editingId, payload);
+    } else {
+      await handleAddSubmit(payload);
     }
   };
 
@@ -521,87 +554,104 @@ export default function AdminSensorsPage() {
       )}
 
       <Modal open={open} title={modalTitle} onClose={() => setOpen(false)}>
-        <form onSubmit={submitForm} className="space-y-3">
-          <label className="block text-sm text-slate-700">
+        <form onSubmit={submitForm} className="space-y-4">
+          <label className="block text-sm font-medium text-slate-700">
             ID Perangkat (MAC Address/UUID)
             <input
               required
               value={form.id}
+              disabled={Boolean(editingId)}
               onChange={(event) => setForm((prev) => ({ ...prev, id: event.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm transition-all focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
               placeholder="ESP32-UUID-001"
             />
           </label>
 
-          <label className="block text-sm text-slate-700">
+          <label className="block text-sm font-medium text-slate-700">
             Nama Lokasi
             <input
               required
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm transition-all focus:border-blue-500 focus:outline-none"
               placeholder="Hulu Sungai Jembatan X"
             />
           </label>
 
-          <label className="block text-sm text-slate-700">
-            Nama Sungai/Area
-            <input
-              required
-              value={form.riverName}
-              onChange={(event) => setForm((prev) => ({ ...prev, riverName: event.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            />
-          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">
+              Tipe Sensor
+              <select
+                value={form.type}
+                onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as SensorType }))}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm bg-white text-slate-900 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="WATER_LEVEL">Water Level (Tinggi Air)</option>
+                <option value="RAINFALL">Rainfall (Curah Hujan)</option>
+                <option value="FLOW_RATE">Flow Rate (Debit Aliran)</option>
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-slate-700">
+              Nama Sungai/Area
+              <input
+                required
+                value={form.riverName}
+                onChange={(event) => setForm((prev) => ({ ...prev, riverName: event.target.value }))}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                placeholder="Batang Arau"
+              />
+            </label>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm text-slate-700">
+            <label className="text-sm font-medium text-slate-700">
               Latitude
               <input
                 type="number"
-                step="0.0001"
+                step="0.000001"
                 required
                 value={form.latitude}
                 onChange={(event) => setForm((prev) => ({ ...prev, latitude: Number(event.target.value) }))}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
               />
             </label>
-            <label className="text-sm text-slate-700">
+            <label className="text-sm font-medium text-slate-700">
               Longitude
               <input
                 type="number"
-                step="0.0001"
+                step="0.000001"
                 required
                 value={form.longitude}
                 onChange={(event) => setForm((prev) => ({ ...prev, longitude: Number(event.target.value) }))}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
               />
             </label>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="text-sm text-slate-700">
-              Kalibrasi Titik Nol (cm)
+            <label className="text-sm font-medium text-slate-700">
+              Kalibrasi Nol (cm)
               <input
                 type="number"
                 required
                 value={form.zeroCalibrationCm}
                 onChange={(event) => setForm((prev) => ({ ...prev, zeroCalibrationCm: Number(event.target.value) }))}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
               />
             </label>
-            <label className="text-sm text-slate-700">
-              Ketinggian Air Saat Ini (cm)
+            <label className="text-sm font-medium text-slate-700">
+              Air Saat Ini (cm)
               <input
                 type="number"
                 required
                 value={form.lastLevelCm}
                 onChange={(event) => setForm((prev) => ({ ...prev, lastLevelCm: Number(event.target.value) }))}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
               />
             </label>
-            <label className="text-sm text-slate-700">
-              Sisa Baterai (%)
+            <label className="text-sm font-medium text-slate-700">
+              Baterai (%)
               <input
                 type="number"
                 required
@@ -609,17 +659,17 @@ export default function AdminSensorsPage() {
                 max={100}
                 value={form.batteryPercent}
                 onChange={(event) => setForm((prev) => ({ ...prev, batteryPercent: Number(event.target.value) }))}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
               />
             </label>
           </div>
 
-          <label className="block text-sm text-slate-700">
+          <label className="block text-sm font-medium text-slate-700">
             Status Koneksi
             <select
               value={form.connectivity}
               onChange={(event) => setForm((prev) => ({ ...prev, connectivity: event.target.value as SensorConnectivity }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm bg-white text-slate-900 focus:border-blue-500 focus:outline-none"
             >
               <option value="online">Online</option>
               <option value="offline">Offline</option>
@@ -632,7 +682,7 @@ export default function AdminSensorsPage() {
               title="Mini map koordinat sensor"
               src={mapPreviewUrl}
               loading="lazy"
-              className="h-38 w-full rounded-lg border border-slate-200"
+              className="h-38 w-full rounded-xl border border-slate-200"
             />
           </div>
 
@@ -648,7 +698,7 @@ export default function AdminSensorsPage() {
       <ConfirmDialog
         open={Boolean(deleteConfirm)}
         title="Hapus sensor ini?"
-        description={`Sensor ${deleteConfirm?.name ?? "terpilih"} akan dihapus dari monitoring.`}
+        description={`Apakah Anda yakin ingin menghapus sensor ${deleteConfirm?.name ?? "terpilih"}? Data histori dari sensor ini mungkin akan ikut terhapus.`}
         confirmText="Ya, hapus"
         cancelText="Batal"
         onCancel={() => setDeleteConfirm(null)}
@@ -656,7 +706,7 @@ export default function AdminSensorsPage() {
           const selected = deleteConfirm;
           setDeleteConfirm(null);
           if (selected) {
-            void deleteSensor(selected.id);
+            void handleDelete(selected.id);
           }
         }}
       />

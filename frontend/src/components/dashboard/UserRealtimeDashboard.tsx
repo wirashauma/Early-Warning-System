@@ -92,7 +92,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const pathname = usePathname();
   const isUserRoute = pathname.startsWith("/user");
   const [selectedSensorId, setSelectedSensorId] = useState("");
-  const { latest, history, sensorsSnapshot, liveBySensor } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000 });
+  const { latest, history, sensorsSnapshot, liveBySensor } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000, showAll: true });
   const { history: flowHistory } = useFlowRate();
   const [nowMs, setNowMs] = useState(() => Date.now());
 

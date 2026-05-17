@@ -47,7 +47,7 @@ const statusRank: Record<WaterStatus, number> = {
 type StatusFilter = "all" | WaterStatus;
 
 export default function UserMapPage() {
-  const { sensorsSnapshot } = useWaterLevel();
+  const { sensorsSnapshot } = useWaterLevel({ showAll: true });
   const isHydrated = useSyncExternalStore(
     () => () => {},
     () => true,
