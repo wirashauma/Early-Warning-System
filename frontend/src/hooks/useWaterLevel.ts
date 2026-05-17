@@ -108,6 +108,7 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   const waterSensorIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -194,7 +195,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
 
       setLatestBySensor(nextLiveBySensor);
       setIsLoading(false);
-    } catch {
+    } catch (e) {
+      console.error("Gagal memuat data sensor saat polling:", e);
       if (isMountedRef.current) {
         setSensorsSnapshot([]);
         setLatestBySensor({});
