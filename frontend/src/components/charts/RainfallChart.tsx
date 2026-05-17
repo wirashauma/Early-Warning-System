@@ -111,7 +111,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
       <div className="rounded-xl border border-cyan-100 bg-cyan-50/40 p-3">
         <div className="flex h-24 items-end gap-1.5">
           {chartPoints.map((point, index) => (
-            <div key={`${point.timestamp}-${index}`} className="flex min-w-0 flex-1 flex-col items-center">
+            <div key={`${point.timestamp}-${index}`} className="flex h-full min-w-0 flex-1 flex-col items-center">
               <div
                 className="w-full rounded-sm bg-cyan-500"
                 style={{ height: `${Math.max(6, (point.value / max) * 100)}%` }}

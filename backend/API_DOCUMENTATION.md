@@ -74,6 +74,28 @@ Gunakan saat aplikasi Cold Start untuk validasi session.
 
 ---
 
+## 2.1 IoT Ingest Module
+
+### Ingest Sensor Data
+*   **Method:** `POST`
+*   **URL:** `/iot/ingest`
+*   **Body:**
+    ```json
+    {
+      "sensorId": "EWS-WL-001",
+      "waterLevel": 120.5,
+      "rainfall": 3.2,
+      "recordedAt": "2026-05-11T12:00:00Z",
+      "batteryLevel": 78,
+      "connectivity": "ONLINE"
+    }
+    ```
+*   **Notes:**
+    * `waterLevel` dalam cm, `rainfall` dalam mm/hour.
+    * Jika memakai sensor terpisah, gunakan `waterSensorId` dan `rainSensorId`.
+
+---
+
 ## 3. Alerts & FCM Module
 
 ### Subscribe FCM Token (IDEMPOTENT)

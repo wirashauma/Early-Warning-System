@@ -4,18 +4,20 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // Menambahkan kembali FIELD_OFFICER atau menyamakan dengan backend
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
+  FIELD_OFFICER
   USER
 }
 
 enum SensorType {
   WATER_LEVEL
   RAINFALL
+  FLOW_RATE
 }
 
 enum SensorConnectivity {
@@ -89,6 +91,7 @@ model Sensor {
 
   waterLevelLogs WaterLevelLog[]
   rainfallLogs   RainfallLog[]
+  flowRateLogs   FlowRateLog[]
 
   @@index([type])
   @@index([isActive])
@@ -176,4 +179,19 @@ model EmergencyContact {
 
   @@index([category])
   @@map("emergency_contacts")
+}
+
+model FlowRateLog {
+  id         String   @id @default(uuid())
+  sensorId   String   @map("sensor_id")
+  flowRate   Float    @map("flow_rate")
+  unit       String   @default("l/min")
+  recordedAt DateTime @map("recorded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId, recordedAt])
+  @@index([recordedAt])
+  @@map("flow_rate_logs")
 }

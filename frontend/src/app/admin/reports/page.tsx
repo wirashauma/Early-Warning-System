@@ -39,7 +39,7 @@ export default function AdminReportsPage() {
   const loadSensors = async () => {
     const response = await api.get("/sensors");
     const data = response.data?.data;
-    const rows = Array.isArray(data) ? data : [];
+    const rows = Array.isArray(data) ? data : data?.items ?? [];
     setSensorOptions(rows);
     return rows;
   };

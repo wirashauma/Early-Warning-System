@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ok } from '../common/api-response';
-import { RainfallService } from './rainfall.service';
+import { FlowRateService } from './flow-rate.service';
 
 interface HistoryQuery {
   sensorId?: string;
@@ -11,19 +11,19 @@ interface HistoryQuery {
   limit?: string;
 }
 
-@Controller('rainfall')
-export class RainfallController {
-  constructor(private readonly rainfallService: RainfallService) {}
+@Controller('flow-rate')
+export class FlowRateController {
+  constructor(private readonly flowRateService: FlowRateService) {}
 
   @Get('current')
   async getCurrent() {
-    const data = await this.rainfallService.getCurrent();
+    const data = await this.flowRateService.getCurrent();
     return ok(data);
   }
 
   @Get('history')
   async getHistory(@Query() query: HistoryQuery) {
-    const data = await this.rainfallService.getHistory(query);
+    const data = await this.flowRateService.getHistory(query);
     return ok(data);
   }
 }

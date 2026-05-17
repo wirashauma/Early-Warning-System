@@ -10,6 +10,7 @@ import { RainfallChart } from "@/components/charts/RainfallChart";
 import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
+import { useFlowRate } from "@/hooks/useFlowRate";
 import { cn, getRainfallCategory, formatTimestamp } from "@/lib/utils";
 import type { WaterStatus } from "@/types/water-level";
 
@@ -92,6 +93,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const isUserRoute = pathname.startsWith("/user");
   const [selectedSensorId, setSelectedSensorId] = useState("");
   const { latest, history, sensorsSnapshot, liveBySensor } = useWaterLevel({ sensorId: selectedSensorId });
+  const { history: flowHistory } = useFlowRate();
 
   const sortedSensors = useMemo(
     () => [...liveBySensor].sort((a, b) => statusRank[b.status] - statusRank[a.status] || b.levelCm - a.levelCm),
@@ -103,9 +105,14 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const alertCount = liveBySensor.filter((sensor) => sensor.status === "alert").length;
   const warningCount = liveBySensor.filter((sensor) => sensor.status === "warning").length;
 
+  const selectableSensors = useMemo(
+    () => sensorsSnapshot.filter((sensor) => sensor.type !== "FLOW_RATE"),
+    [sensorsSnapshot],
+  );
+
   const selectedSensor = useMemo(
-    () => sensorsSnapshot.find((sensor) => sensor.id === latest.sensorId) ?? sensorsSnapshot[0],
-    [latest.sensorId, sensorsSnapshot],
+    () => selectableSensors.find((sensor) => sensor.id === latest.sensorId) ?? selectableSensors[0],
+    [latest.sensorId, selectableSensors],
   );
 
   const rainfallCategory = getRainfallCategory(latest.rainfallMm);
@@ -202,7 +209,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
                     onChange={(event) => setSelectedSensorId(event.target.value)}
                     className="w-full appearance-none rounded-xl border-0 bg-slate-100 py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-inset focus:ring-blue-600 md:w-64"
                   >
-                    {sensorsSnapshot.map((sensor) => (
+                    {selectableSensors.map((sensor) => (
                       <option key={sensor.id} value={sensor.id}>
                         {sensor.name} ({sensor.riverName})
                       </option>
@@ -368,7 +375,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
               <WaterLevelChart points={history} />
             </div>
             <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
-              <FlowSpeedChart points={history} />
+              <FlowSpeedChart points={flowHistory} />
             </div>
 
             {/* Chart Row 2 */}

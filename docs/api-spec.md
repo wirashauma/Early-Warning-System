@@ -137,6 +137,29 @@ Data curah hujan terkini dari semua sensor. *(Public)*
 
 ---
 
+### 3.1 IoT Ingest Module
+
+#### POST `/api/iot/ingest`
+Terima data sensor dari perangkat IoT. *(Public)*
+
+**Request Body:**
+```json
+{
+  "sensorId": "EWS-WL-001",
+  "waterLevel": 120.5,
+  "rainfall": 3.2,
+  "recordedAt": "2026-05-11T12:00:00Z",
+  "batteryLevel": 78,
+  "connectivity": "ONLINE"
+}
+```
+
+**Notes:**
+- `waterLevel` dalam cm, `rainfall` dalam mm/hour.
+- Untuk sensor terpisah gunakan `waterSensorId` dan `rainSensorId`.
+
+---
+
 ### 4. Sensor Management Module 🔒
 
 #### GET `/api/sensors`

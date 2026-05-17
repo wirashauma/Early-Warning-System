@@ -33,7 +33,7 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
       return source
         .map((point) => ({
           label: new Date(point.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
-          value: point.flowSpeedMs ?? Number((point.levelCm / 260 + point.rainfallMm / 40).toFixed(2)),
+          value: point.flowRateLpm ?? Number((point.levelCm / 260 + point.rainfallMm / 40).toFixed(2)),
           timestamp: new Date(point.timestamp).getTime(),
         }))
         .slice(-12);
@@ -46,7 +46,7 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
     source.forEach((point) => {
       const date = new Date(point.timestamp);
       const key = date.toISOString().slice(0, 10);
-      const value = point.flowSpeedMs ?? Number((point.levelCm / 260 + point.rainfallMm / 40).toFixed(2));
+      const value = point.flowRateLpm ?? Number((point.levelCm / 260 + point.rainfallMm / 40).toFixed(2));
       const current = grouped.get(key) ?? { sum: 0, count: 0, ts: date.getTime() };
       grouped.set(key, {
         sum: current.sum + value,
@@ -71,8 +71,8 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
   const average = values.length > 0 ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : 0;
   const min = values.length > 0 ? Math.min(...values) : 0;
 
-  const trendClass = latest >= 2 ? "bg-rose-100 text-rose-700" : latest >= 1.2 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
-  const trendLabel = latest >= 2 ? "Arus Kuat" : latest >= 1.2 ? "Arus Sedang" : "Arus Ringan";
+  const trendClass = latest >= 20 ? "bg-rose-100 text-rose-700" : latest >= 10 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
+  const trendLabel = latest >= 20 ? "Debit Tinggi" : latest >= 10 ? "Debit Sedang" : "Debit Rendah";
 
   const axisTickIndexes = (() => {
     const total = chartPoints.length;
@@ -84,7 +84,7 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
   return (
     <div className="space-y-3.5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-base font-semibold leading-tight text-slate-800">Grafik Kecepatan Arus Sungai</h3>
+        <h3 className="text-base font-semibold leading-tight text-slate-800">Grafik Debit Air</h3>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <div className="rounded-full border border-slate-200 p-0.5 text-xs">
             <button
@@ -103,7 +103,7 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
             </button>
           </div>
           <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${trendClass}`}>
-            {trendLabel} ({latest} m/s)
+            {trendLabel} ({latest} L/min)
           </span>
         </div>
       </div>
@@ -111,11 +111,11 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
       <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
         <div className="flex h-24 items-end gap-1.5">
           {chartPoints.map((point, index) => (
-            <div key={`${point.timestamp}-${index}`} className="flex min-w-0 flex-1 flex-col items-center">
+            <div key={`${point.timestamp}-${index}`} className="flex h-full min-w-0 flex-1 flex-col items-center">
               <div
                 className="w-full rounded-sm bg-indigo-500"
                 style={{ height: `${Math.max(6, (point.value / max) * 100)}%` }}
-                title={`${point.value} m/s`}
+                title={`${point.value} L/min`}
               />
             </div>
           ))}
@@ -136,19 +136,19 @@ export function FlowSpeedChart({ points }: FlowSpeedChartProps) {
       <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
           <p className="text-slate-500">Saat ini</p>
-          <p className="font-semibold text-slate-800">{latest} m/s</p>
+          <p className="font-semibold text-slate-800">{latest} L/min</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
           <p className="text-slate-500">Rata-rata</p>
-          <p className="font-semibold text-slate-800">{average} m/s</p>
+          <p className="font-semibold text-slate-800">{average} L/min</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
           <p className="text-slate-500">Minimum</p>
-          <p className="font-semibold text-slate-800">{min} m/s</p>
+          <p className="font-semibold text-slate-800">{min} L/min</p>
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">Rentang {range === "day" ? "harian" : "mingguan"} untuk membaca perubahan arus sungai.</p>
+      <p className="text-xs text-slate-500">Rentang {range === "day" ? "harian" : "mingguan"} untuk membaca perubahan debit air.</p>
     </div>
   );
 }

@@ -4,7 +4,7 @@ export interface WaterLevelPoint {
   timestamp: string;
   levelCm: number;
   rainfallMm: number;
-  flowSpeedMs?: number;
+  flowRateLpm?: number;
   sensorId: string;
 }
 
@@ -20,6 +20,14 @@ export interface LiveWaterLevel {
   sensorName: string;
   levelCm: number;
   rainfallMm: number;
+  flowRateLpm?: number;
   status: WaterStatus;
+  updatedAt: string;
+}
+
+export interface LiveFlowRate {
+  sensorId: string;
+  sensorName: string;
+  flowRateLpm: number;
   updatedAt: string;
 }
