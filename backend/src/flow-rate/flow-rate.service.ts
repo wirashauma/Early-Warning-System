@@ -16,18 +16,18 @@ interface HistoryQuery {
 }
 
 @Injectable()
-export class RainfallService {
+export class FlowRateService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getCurrent() {
     const sensors = await this.prisma.sensor.findMany({
-      where: { type: SensorType.RAINFALL, isActive: true },
+      where: { type: SensorType.FLOW_RATE, isActive: true },
       orderBy: { sensorId: 'asc' },
     });
 
     const currentData = await Promise.all(
       sensors.map(async (sensor) => {
-        const latest = await this.prisma.rainfallLog.findFirst({
+        const latest = await this.prisma.flowRateLog.findFirst({
           where: { sensorId: sensor.id },
           orderBy: { recordedAt: 'desc' },
         });
@@ -40,9 +40,8 @@ export class RainfallService {
           id: latest.id,
           sensorId: sensor.sensorId,
           sensorName: sensor.name,
-          rainfall: latest.rainfall,
+          flowRate: latest.flowRate,
           unit: latest.unit,
-          intensity: latest.intensity,
           latitude: sensor.latitude,
           longitude: sensor.longitude,
           recordedAt: latest.recordedAt,
@@ -72,7 +71,7 @@ export class RainfallService {
     const sensor = await this.prisma.sensor.findFirst({
       where: {
         sensorId: query.sensorId,
-        type: SensorType.RAINFALL,
+        type: SensorType.FLOW_RATE,
         isActive: true,
       },
     });
@@ -86,7 +85,7 @@ export class RainfallService {
     const skip = (page - 1) * limit;
 
     const [logs, total] = await this.prisma.$transaction([
-      this.prisma.rainfallLog.findMany({
+      this.prisma.flowRateLog.findMany({
         where: {
           sensorId: sensor.id,
           recordedAt: {
@@ -98,7 +97,7 @@ export class RainfallService {
         skip,
         take: limit,
       }),
-      this.prisma.rainfallLog.count({
+      this.prisma.flowRateLog.count({
         where: {
           sensorId: sensor.id,
           recordedAt: {
@@ -113,9 +112,8 @@ export class RainfallService {
       id: item.id,
       sensorId: sensor.sensorId,
       sensorName: sensor.name,
-      rainfall: item.rainfall,
+      flowRate: item.flowRate,
       unit: item.unit,
-      intensity: item.intensity,
       latitude: sensor.latitude,
       longitude: sensor.longitude,
       recordedAt: item.recordedAt,

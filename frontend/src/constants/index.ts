@@ -1,6 +1,8 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001";
+export const PRIMARY_SENSOR_ID = process.env.NEXT_PUBLIC_PRIMARY_SENSOR_ID ?? "";
+export const FLOW_SENSOR_ID = process.env.NEXT_PUBLIC_FLOW_SENSOR_ID ?? "";
 
 export const statusColor: Record<"safe" | "warning" | "alert" | "danger", string> = {
   safe: "bg-emerald-100 text-emerald-700",

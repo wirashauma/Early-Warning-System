@@ -55,7 +55,10 @@ export default function AdminThresholdsPage() {
         } | null;
       };
 
-      const sensors = (sensorResp.data?.data ?? []) as Array<{ id: string }>;
+      const sensorPayload = sensorResp.data?.data;
+      const sensors = (Array.isArray(sensorPayload)
+        ? sensorPayload
+        : sensorPayload?.items ?? []) as Array<{ id: string }>;
       setSensorCount(sensors.length);
 
       const waterLevel = thresholdData?.waterLevel;

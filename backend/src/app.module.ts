@@ -8,10 +8,12 @@ import { HealthController } from './health/health.controller';
 import { FirebaseModule } from './common/firebase/firebase.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RainfallModule } from './rainfall/rainfall.module';
+import { FlowRateModule } from './flow-rate/flow-rate.module';
 import { SensorsModule } from './sensors/sensors.module';
 import { ThresholdsModule } from './thresholds/thresholds.module';
 import { UsersModule } from './users/users.module';
 import { WaterLevelsModule } from './water-levels/water-levels.module';
+import { IotModule } from './iot/iot.module';
 
 @Module({
   imports: [
@@ -20,7 +22,9 @@ import { WaterLevelsModule } from './water-levels/water-levels.module';
     AuthModule,
     WaterLevelsModule,
     RainfallModule,
+    FlowRateModule,
     SensorsModule,
+    IotModule,
     AlertsModule,
     ThresholdsModule,
     UsersModule,

@@ -40,7 +40,10 @@ export default function AdminDashboardPage() {
           return;
         }
 
-        const sensorRows = (sensorResp.data?.data ?? []) as Array<{
+        const sensorPayload = sensorResp.data?.data;
+        const sensorRows = (Array.isArray(sensorPayload)
+          ? sensorPayload
+          : sensorPayload?.items ?? []) as Array<{
           id: string;
           sensorId: string;
           name: string;

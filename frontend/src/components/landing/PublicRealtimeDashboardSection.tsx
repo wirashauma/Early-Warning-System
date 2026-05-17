@@ -7,6 +7,7 @@ import { WaterLevelChart } from "@/components/charts/WaterLevelChart";
 import { RainfallChart } from "@/components/charts/RainfallChart";
 import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
+import { useFlowRate } from "@/hooks/useFlowRate";
 import { formatTimestamp, getRainfallCategory } from "@/lib/utils";
 import type { Sensor } from "@/types/sensor";
 import type { WaterStatus } from "@/types/water-level";
@@ -41,10 +42,16 @@ const sideIndicators = [
 export function PublicRealtimeDashboardSection() {
   const [selectedSensorId, setSelectedSensorId] = useState("SEN-01");
   const { latest, history, sensorsSnapshot } = useWaterLevel({ sensorId: selectedSensorId });
+  const { history: flowHistory } = useFlowRate();
+
+  const selectableSensors = useMemo(
+    () => sensorsSnapshot.filter((sensor) => sensor.type !== "FLOW_RATE"),
+    [sensorsSnapshot],
+  );
 
   const selectedSensor = useMemo(
-    () => sensorsSnapshot.find((sensor) => sensor.id === latest.sensorId) ?? sensorsSnapshot[0] ?? fallbackSensor,
-    [latest.sensorId, sensorsSnapshot],
+    () => selectableSensors.find((sensor) => sensor.id === latest.sensorId) ?? selectableSensors[0] ?? fallbackSensor,
+    [latest.sensorId, selectableSensors],
   );
   const rainfallCategory = getRainfallCategory(latest.rainfallMm);
   const thermometerPercent = Math.min(100, Math.round((latest.levelCm / 250) * 100));
@@ -79,7 +86,7 @@ export function PublicRealtimeDashboardSection() {
             </div>
 
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              {sensorsSnapshot.map((sensor) => (
+              {selectableSensors.map((sensor) => (
                 <button
                   key={sensor.id}
                   type="button"
@@ -158,7 +165,7 @@ export function PublicRealtimeDashboardSection() {
             <RainfallChart points={history} />
           </Card>
           <Card>
-            <FlowSpeedChart points={history} />
+            <FlowSpeedChart points={flowHistory} />
           </Card>
         </div>
       </div>
