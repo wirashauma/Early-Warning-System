@@ -121,7 +121,7 @@ function StatIcon({ kind }: { kind: "total" | "conn" | "risk" | "battery" }) {
 }
 
 export default function AdminSensorsPage() {
-  const { sensorsSnapshot: sensors, isLoading, error, reload } = useWaterLevel({ refreshMs: POLL_REFRESH_MS, showAll: true });
+  const { sensorsSnapshot: sensors, liveBySensor, isLoading, error, reload } = useWaterLevel({ refreshMs: POLL_REFRESH_MS, showAll: true });
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -129,6 +129,10 @@ export default function AdminSensorsPage() {
   const [form, setForm] = useState<SensorFormState>(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const liveDataMap = useMemo(() => {
+    return new Map((liveBySensor || []).map((item) => [item.sensorId, item]));
+  }, [liveBySensor]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
@@ -148,9 +152,10 @@ export default function AdminSensorsPage() {
   const offlineCount = sensorHealth.length - onlineCount;
   const alertCount = sensorHealth.filter((sensor) => sensor.status === "alert").length;
   const dangerCount = sensorHealth.filter((sensor) => sensor.status === "danger").length;
-  const avgBattery = Math.round(
-    sensorHealth.reduce((sum, sensor) => sum + sensor.batteryPercent, 0) / Math.max(sensorHealth.length, 1),
-  );
+  const validBatterySensors = sensorHealth.filter((s) => s.batteryPercent > 0);
+  const avgBattery = validBatterySensors.length > 0
+    ? Math.round(validBatterySensors.reduce((sum, s) => sum + s.batteryPercent, 0) / validBatterySensors.length)
+    : 0;
   const allOnline = sensorHealth.length > 0 && offlineCount === 0;
   const connectionToneClass = allOnline ? "text-emerald-700" : offlineCount > Math.ceil(sensorHealth.length / 2) ? "text-rose-700" : "text-amber-700";
   const riskToneClass = dangerCount > 0 ? "text-rose-700" : alertCount > 0 ? "text-amber-700" : "text-emerald-700";
@@ -158,7 +163,7 @@ export default function AdminSensorsPage() {
   const connectionDescription = allOnline ? "Semua sensor aktif" : `${offlineCount} sensor offline`;
   const riskDescription = dangerCount > 0 ? `${dangerCount} sensor bahaya` : alertCount > 0 ? `${alertCount} sensor waspada` : "Semua sensor aman";
   const batteryDescription = avgBattery > 50 ? "Daya masih aman" : avgBattery > 20 ? "Perlu perhatian" : "Wajib cek baterai";
-  const hasError = Boolean(error) || Boolean(errorMessage);
+  const hasError = Boolean(error);
 
   const mapPreviewUrl = useMemo(
     () => `https://maps.google.com/maps?q=${form.latitude},${form.longitude}&z=14&output=embed`,
@@ -213,8 +218,15 @@ export default function AdminSensorsPage() {
       setSavedMessage("Sensor baru berhasil ditambahkan.");
       setOpen(false);
       reload();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Gagal menambahkan sensor baru.");
+    } catch (err: any) {
+      const rawMsg = err?.response?.data?.message || err?.message || "";
+      let friendlyMsg = "Gagal menambahkan sensor baru.";
+      if (rawMsg.includes("Unique constraint failed") || rawMsg.includes("sensor_id")) {
+        friendlyMsg = "ID Perangkat (MAC Address/UUID) sudah terdaftar. Silakan gunakan ID unik yang lain.";
+      } else if (rawMsg) {
+        friendlyMsg = rawMsg;
+      }
+      setErrorMessage(friendlyMsg);
     }
   };
 
@@ -226,8 +238,15 @@ export default function AdminSensorsPage() {
       setSavedMessage("Data sensor berhasil diperbarui.");
       setOpen(false);
       reload();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Gagal memperbarui sensor.");
+    } catch (err: any) {
+      const rawMsg = err?.response?.data?.message || err?.message || "";
+      let friendlyMsg = "Gagal memperbarui sensor.";
+      if (rawMsg.includes("Unique constraint failed") || rawMsg.includes("sensor_id")) {
+        friendlyMsg = "ID Perangkat (MAC Address/UUID) sudah terdaftar. Silakan gunakan ID unik yang lain.";
+      } else if (rawMsg) {
+        friendlyMsg = rawMsg;
+      }
+      setErrorMessage(friendlyMsg);
     }
   };
 
@@ -411,8 +430,12 @@ export default function AdminSensorsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm text-slate-500">Rata-rata Baterai</p>
-                  <p className={cn("mt-1 text-3xl font-bold", batteryToneClass)}>{avgBattery}%</p>
-                  <p className="text-xs text-slate-500">{batteryDescription}</p>
+                  <p className={cn("mt-1 text-3xl font-bold", batteryToneClass)}>
+                    {validBatterySensors.length > 0 ? `${avgBattery}%` : "N/A"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {validBatterySensors.length > 0 ? batteryDescription : "Perangkat tidak mengirim data baterai"}
+                  </p>
                 </div>
                 <div className={cn("rounded-lg bg-slate-50 p-2 shadow-sm", batteryToneClass)}>
                   <StatIcon kind="battery" />
@@ -449,7 +472,7 @@ export default function AdminSensorsPage() {
             <Card className="overflow-hidden border-slate-200/70 bg-white/80 p-0 shadow-sm backdrop-blur-xl">
               <div className="hidden grid-cols-[2.3fr_1.25fr_1.1fr_1.1fr_1.25fr_1fr] gap-4 border-b border-slate-200 px-5 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 lg:grid">
                 <div>Sensor</div>
-                <div>Ketinggian Air Saat Ini</div>
+                <div>Pembacaan Terakhir</div>
                 <div>Status Koneksi</div>
                 <div>Sisa Baterai</div>
                 <div>Terakhir Update</div>
@@ -482,16 +505,36 @@ export default function AdminSensorsPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 lg:hidden">Ketinggian Air</p>
-                        {sensor.hasWaterLevelData ? (
-                          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-900 shadow-sm">
-                            <span>{sensor.lastLevelCm.toFixed(1)} cm</span>
-                          </div>
-                        ) : (
-                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm">
-                            Menunggu Data
-                          </span>
-                        )}
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 lg:hidden">Pembacaan Terakhir</p>
+                        {(() => {
+                          const live = liveDataMap.get(sensor.id);
+                          const hasData = sensor.lastSeenAt !== null;
+                          if (!hasData) {
+                            return (
+                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm animate-pulse">
+                                Menunggu Data
+                              </span>
+                            );
+                          }
+                          
+                          let formattedValue = "";
+                          if (sensor.type === "RAINFALL") {
+                            const val = live?.rainfallMm ?? 0;
+                            formattedValue = `${val.toFixed(1)} mm/jam`;
+                          } else if (sensor.type === "FLOW_RATE") {
+                            const val = live?.flowRateLpm ?? 0;
+                            formattedValue = `${val.toFixed(1)} L/min`;
+                          } else {
+                            const val = live?.levelCm ?? sensor.lastLevelCm;
+                            formattedValue = `${val.toFixed(1)} cm`;
+                          }
+
+                          return (
+                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-900 shadow-sm">
+                              <span>{formattedValue}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       <div className="space-y-2">
@@ -504,18 +547,24 @@ export default function AdminSensorsPage() {
 
                       <div className="space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 lg:hidden">Sisa Baterai</p>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>{sensor.batteryPercent}%</span>
-                            <span className={battery.text}>{sensor.batteryPercent > 50 ? "Aman" : sensor.batteryPercent > 20 ? "Waspada" : "Kritis"}</span>
+                        {sensor.batteryPercent === 0 ? (
+                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-400 shadow-sm">
+                            N/A
+                          </span>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>{sensor.batteryPercent}%</span>
+                              <span className={battery.text}>{sensor.batteryPercent > 50 ? "Aman" : sensor.batteryPercent > 20 ? "Waspada" : "Kritis"}</span>
+                            </div>
+                            <div className="h-2.5 w-full rounded-full bg-slate-100">
+                              <div
+                                className={cn("h-2.5 rounded-full transition-all", battery.fill)}
+                                style={{ width: `${Math.max(0, Math.min(100, sensor.batteryPercent))}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-2.5 w-full rounded-full bg-slate-100">
-                            <div
-                              className={cn("h-2.5 rounded-full transition-all", battery.fill)}
-                              style={{ width: `${Math.max(0, Math.min(100, sensor.batteryPercent))}%` }}
-                            />
-                          </div>
-                        </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -555,6 +604,17 @@ export default function AdminSensorsPage() {
 
       <Modal open={open} title={modalTitle} onClose={() => setOpen(false)}>
         <form onSubmit={submitForm} className="space-y-4">
+          {errorMessage && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700">
+              <p className="font-semibold flex items-center gap-2">
+                <svg className="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Gagal Menyimpan
+              </p>
+              <p className="mt-1 text-xs text-rose-600">{errorMessage}</p>
+            </div>
+          )}
           <label className="block text-sm font-medium text-slate-700">
             ID Perangkat (MAC Address/UUID)
             <input
@@ -629,40 +689,19 @@ export default function AdminSensorsPage() {
             </label>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="text-sm font-medium text-slate-700">
-              Kalibrasi Nol (cm)
+          {form.type === "WATER_LEVEL" && (
+            <label className="block text-sm font-medium text-slate-700">
+              Kalibrasi Nol (Tinggi Tangki/cm)
               <input
                 type="number"
                 required
                 value={form.zeroCalibrationCm}
                 onChange={(event) => setForm((prev) => ({ ...prev, zeroCalibrationCm: Number(event.target.value) }))}
                 className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                placeholder="200"
               />
             </label>
-            <label className="text-sm font-medium text-slate-700">
-              Air Saat Ini (cm)
-              <input
-                type="number"
-                required
-                value={form.lastLevelCm}
-                onChange={(event) => setForm((prev) => ({ ...prev, lastLevelCm: Number(event.target.value) }))}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Baterai (%)
-              <input
-                type="number"
-                required
-                min={0}
-                max={100}
-                value={form.batteryPercent}
-                onChange={(event) => setForm((prev) => ({ ...prev, batteryPercent: Number(event.target.value) }))}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </label>
-          </div>
+          )}
 
           <label className="block text-sm font-medium text-slate-700">
             Status Koneksi

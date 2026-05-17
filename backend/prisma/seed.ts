@@ -90,50 +90,38 @@ async function upsertUsers() {
 }
 
 async function upsertSensors() {
+  // Bersihkan data lama agar hanya berisi 3 sensor baru
+  await prisma.waterLevelLog.deleteMany({});
+  await prisma.rainfallLog.deleteMany({});
+  await prisma.flowRateLog.deleteMany({});
+  await prisma.sensor.deleteMany({});
+
   const sensors = [
     {
-      sensorId: 'EWS-WL-001',
-      name: 'Sensor Hulu Batang Arau',
+      sensorId: 'EWS-US-001',
+      name: 'Node Kost Orange',
       type: SensorType.WATER_LEVEL,
-      latitude: -0.9512,
-      longitude: 100.3608,
-      batteryLevel: 88,
-      connectivity: SensorConnectivity.ONLINE,
-    },
-    {
-      sensorId: 'EWS-WL-002',
-      name: 'Sensor Tengah Batang Arau',
-      type: SensorType.WATER_LEVEL,
-      latitude: -0.9584,
-      longitude: 100.3701,
-      batteryLevel: 76,
-      connectivity: SensorConnectivity.ONLINE,
-    },
-    {
-      sensorId: 'EWS-WL-003',
-      name: 'Sensor Hilir Batang Arau',
-      type: SensorType.WATER_LEVEL,
-      latitude: -0.9688,
-      longitude: 100.3833,
-      batteryLevel: 59,
-      connectivity: SensorConnectivity.ONLINE,
-    },
-    {
-      sensorId: 'EWS-RF-001',
-      name: 'Rain Gauge Padang Barat',
-      type: SensorType.RAINFALL,
-      latitude: -0.9497,
-      longitude: 100.3655,
-      batteryLevel: 83,
+      latitude: -0.95,
+      longitude: 100.37,
+      batteryLevel: 100,
       connectivity: SensorConnectivity.ONLINE,
     },
     {
       sensorId: 'EWS-RF-002',
-      name: 'Rain Gauge Padang Utara',
+      name: 'Rain Gauge Kost Orange',
       type: SensorType.RAINFALL,
-      latitude: -0.9441,
-      longitude: 100.3744,
-      batteryLevel: 71,
+      latitude: -0.95,
+      longitude: 100.37,
+      batteryLevel: 100,
+      connectivity: SensorConnectivity.ONLINE,
+    },
+    {
+      sensorId: 'EWS-FL-001',
+      name: 'Water Flow Kost Orange',
+      type: SensorType.FLOW_RATE,
+      latitude: -0.95,
+      longitude: 100.37,
+      batteryLevel: 100,
       connectivity: SensorConnectivity.ONLINE,
     },
   ];
@@ -279,6 +267,17 @@ async function seedSensorLogs() {
     },
   });
 
+  const flowSensors = await prisma.sensor.findMany({
+    where: {
+      isActive: true,
+      type: SensorType.FLOW_RATE,
+    },
+    select: {
+      id: true,
+      sensorId: true,
+    },
+  });
+
   if (waterSensors.length > 0) {
     await prisma.waterLevelLog.deleteMany({
       where: {
@@ -299,14 +298,25 @@ async function seedSensorLogs() {
     });
   }
 
+  if (flowSensors.length > 0) {
+    await prisma.flowRateLog.deleteMany({
+      where: {
+        sensorId: {
+          in: flowSensors.map((sensor) => sensor.id),
+        },
+      },
+    });
+  }
+
   for (const [sensorIndex, sensor] of waterSensors.entries()) {
     const rows = Array.from({ length: 24 }, (_, idx) => {
-      const baseLevel = 120 + sensorIndex * 20;
-      const waterLevel = baseLevel + ((idx % 6) - 2) * 7;
+      // Menyesuaikan simulasi pembacaan agar mendekati tangki setinggi 17 cm (TANK_HEIGHT_CM)
+      // Nilai waterLevel di database kita simpan dalam cm dari dasar tangki
+      const waterLevel = 12.0 - (idx % 4) * 1.5; // Mengisi antara 7.5 cm s/d 12.0 cm
       const status =
-        waterLevel >= 221
+        waterLevel >= 15.0
           ? WaterLevelStatus.DANGER
-          : waterLevel >= 151
+          : waterLevel >= 12.0
             ? WaterLevelStatus.WARNING
             : WaterLevelStatus.NORMAL;
 
@@ -324,7 +334,7 @@ async function seedSensorLogs() {
 
   for (const [sensorIndex, sensor] of rainfallSensors.entries()) {
     const rows = Array.from({ length: 24 }, (_, idx) => {
-      const rainfall = 2 + sensorIndex * 3 + (idx % 5) * 1.8;
+      const rainfall = 1.2 + sensorIndex * 2 + (idx % 4) * 0.8;
       const intensity =
         rainfall > 20
           ? RainfallIntensity.HEAVY
@@ -343,6 +353,20 @@ async function seedSensorLogs() {
 
     await prisma.rainfallLog.createMany({ data: rows });
   }
+
+  for (const [sensorIndex, sensor] of flowSensors.entries()) {
+    const rows = Array.from({ length: 24 }, (_, idx) => {
+      const flowRate = 8.5 + sensorIndex * 4 + (idx % 5) * 1.2;
+      return {
+        sensorId: sensor.id,
+        flowRate,
+        unit: 'L/min',
+        recordedAt: new Date(Date.now() - (24 - idx) * 60 * 60 * 1000),
+      };
+    });
+
+    await prisma.flowRateLog.createMany({ data: rows });
+  }
 }
 
 async function main() {
@@ -350,10 +374,9 @@ async function main() {
   await upsertSensors();
   await upsertThresholds();
   await upsertEmergencyContacts();
-  await seedSensorLogs();
 
   console.log(
-    'Seed selesai: users, sensors, thresholds, emergency contacts, dan sensor logs berhasil dibuat.',
+    'Seed selesai: users, sensors, thresholds, dan emergency contacts berhasil dibuat (data logs dibiarkan kosong).',
   );
   console.log('Akun cepat login:');
   console.log('- admin@ews.com / Admin123!');

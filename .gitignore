@@ -21,7 +21,6 @@ mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 
 # Environment
-frontend/.env.local
 backend/config/firebase-service-account.json
 backend/config/*firebase*adminsdk*.json
 *firebase-adminsdk*.json
