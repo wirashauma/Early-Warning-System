@@ -8,7 +8,7 @@ import { RainfallChart } from "@/components/charts/RainfallChart";
 import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
 import { useFlowRate } from "@/hooks/useFlowRate";
-import { formatTimestamp, getRainfallCategory } from "@/lib/utils";
+import { cn, formatRelativeTime, formatTimestamp, getRainfallCategory, isSensorOnline } from "@/lib/utils";
 import type { Sensor } from "@/types/sensor";
 import type { WaterStatus } from "@/types/water-level";
 
@@ -19,15 +19,21 @@ function getThermometerColor(status: WaterStatus) {
   return "bg-emerald-500";
 }
 
+function connectionBadgeClass(online: boolean) {
+  return online ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-600";
+}
+
 const fallbackSensor: Sensor = {
   id: "SEN-01",
   name: "Sensor Utama",
   riverName: "Batang Arau",
   latitude: -0.9478,
   longitude: 100.3615,
-  connectivity: "online" as const,
+  connectivity: "offline" as const,
   batteryPercent: 80,
   lastLevelCm: 120,
+  hasWaterLevelData: false,
+  lastSeenAt: null,
   status: "safe" as const,
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
@@ -41,18 +47,30 @@ const sideIndicators = [
 
 export function PublicRealtimeDashboardSection() {
   const [selectedSensorId, setSelectedSensorId] = useState("SEN-01");
-  const { latest, history, sensorsSnapshot } = useWaterLevel({ sensorId: selectedSensorId });
+  const { latest, history, sensorsSnapshot } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000 });
   const { history: flowHistory } = useFlowRate();
 
-  const selectableSensors = useMemo(
-    () => sensorsSnapshot.filter((sensor) => sensor.type !== "FLOW_RATE"),
+  const sensorState = useMemo(
+    () =>
+      sensorsSnapshot.map((sensor) => ({
+        ...sensor,
+        online: isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt),
+      })),
     [sensorsSnapshot],
+  );
+
+  const selectableSensors = useMemo(
+    () => sensorState.filter((sensor) => sensor.type !== "FLOW_RATE"),
+    [sensorState],
   );
 
   const selectedSensor = useMemo(
     () => selectableSensors.find((sensor) => sensor.id === latest.sensorId) ?? selectableSensors[0] ?? fallbackSensor,
     [latest.sensorId, selectableSensors],
   );
+
+  const selectedSensorOnline = isSensorOnline(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt);
+  const selectedSensorHasData = selectedSensor.hasWaterLevelData ?? true;
   const rainfallCategory = getRainfallCategory(latest.rainfallMm);
   const thermometerPercent = Math.min(100, Math.round((latest.levelCm / 250) * 100));
 
@@ -69,10 +87,12 @@ export function PublicRealtimeDashboardSection() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
+          <Card className={cn("lg:col-span-2 transition", selectedSensorOnline ? "" : "opacity-80 grayscale-[0.08]") }>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-base font-semibold text-slate-900">Peta Interaktif Sensor (Google Maps)</h3>
-              <div className="text-xs text-slate-500">Klik marker sensor untuk melihat data</div>
+              <div className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", connectionBadgeClass(selectedSensorOnline))}>
+                {selectedSensorOnline ? "Online" : "Offline"}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-lg border border-slate-200">
@@ -91,21 +111,30 @@ export function PublicRealtimeDashboardSection() {
                   key={sensor.id}
                   type="button"
                   onClick={() => setSelectedSensorId(sensor.id)}
-                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left text-sm transition-all",
                     selectedSensorId === sensor.id
                       ? "border-blue-300 bg-blue-50 text-blue-800"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50"
-                  }`}
+                      : sensor.online
+                        ? "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50"
+                        : "border-slate-200 bg-slate-100 text-slate-500 opacity-80 grayscale-[0.05] hover:border-slate-300",
+                  )}
                 >
-                  <p className="font-semibold">{sensor.name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="relative inline-flex h-3 w-3">
+                      {sensor.online && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />}
+                      <span className={cn("relative inline-flex h-3 w-3 rounded-full", sensor.online ? "bg-emerald-500" : "bg-slate-400")} />
+                    </span>
+                    <p className="font-semibold">{sensor.name}</p>
+                  </div>
                   <p className="text-xs text-slate-500">{sensor.riverName}</p>
                 </button>
               ))}
             </div>
 
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <div className={cn("mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 transition", selectedSensorOnline ? "" : "opacity-80 grayscale-[0.08]") }>
               Lokasi terpilih: <span className="font-semibold">{selectedSensor.name}</span> ({selectedSensor.latitude.toFixed(4)}, {" "}
-              {selectedSensor.longitude.toFixed(4)}) • Update: {formatTimestamp(selectedSensor.updatedAt)} •{" "}
+              {selectedSensor.longitude.toFixed(4)}) • Terakhir Update: {formatRelativeTime(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)} • {" "}
               <a
                 href={`https://www.google.com/maps?q=${selectedSensor.latitude},${selectedSensor.longitude}&t=k`}
                 target="_blank"
@@ -117,7 +146,7 @@ export function PublicRealtimeDashboardSection() {
             </div>
           </Card>
 
-          <Card>
+          <Card className={cn("transition", selectedSensorOnline ? "" : "opacity-80 grayscale-[0.08]") }>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-900">Kondisi Live Sensor</h3>
               <StatusIndicator status={latest.status} />
@@ -133,12 +162,20 @@ export function PublicRealtimeDashboardSection() {
                 />
               </div>
               <div className="space-y-2">
-                <p className="text-3xl font-bold text-slate-900">{latest.levelCm} cm</p>
+                {selectedSensorHasData ? (
+                  <p className="text-3xl font-bold text-slate-900">{latest.levelCm} cm</p>
+                ) : (
+                  <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-500">Menunggu Data</span>
+                )}
                 <p className="text-sm text-slate-600">Ketinggian air saat ini</p>
                 <p className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${rainfallCategory.color}`}>
                   Curah hujan {rainfallCategory.label} ({rainfallCategory.detail})
                 </p>
                 <p className="text-sm text-slate-700">{latest.rainfallMm} mm/jam</p>
+                <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                  Terakhir Update: <span className="font-semibold text-slate-900">{formatRelativeTime(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)}</span>
+                  <div className="text-[11px] text-slate-500">{formatTimestamp(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)}</div>
+                </div>
               </div>
             </div>
 

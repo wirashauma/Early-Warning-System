@@ -56,6 +56,7 @@ export default function AdminUsersPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [form, setForm] = useState<UserFormState>(emptyUserForm);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
 
   const loadUsers = async () => {
     setErrorMessage(null);
@@ -83,8 +84,24 @@ export default function AdminUsersPage() {
     void loadUsers();
   }, []);
 
+  useEffect(() => {
+    if (!savedMessage) {
+      setToastVisible(false);
+      return;
+    }
+
+    setToastVisible(true);
+    const timer = window.setTimeout(() => {
+      setToastVisible(false);
+      window.setTimeout(() => setSavedMessage(null), 180);
+    }, 3200);
+
+    return () => window.clearTimeout(timer);
+  }, [savedMessage]);
+
   const adminCount = useMemo(() => users.filter((user) => user.role === "admin").length, [users]);
   const userCount = useMemo(() => users.filter((user) => user.role === "user").length, [users]);
+  const totalCount = users.length;
 
   const openCreate = () => {
     setEditingId(null);
@@ -154,91 +171,209 @@ export default function AdminUsersPage() {
     }
   };
 
+  const totalLabel = totalCount.toLocaleString("id-ID");
+
   return (
     <main className="space-y-6">
-      <Card className="relative overflow-hidden border-blue-500/30 bg-linear-to-r from-blue-600 via-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-900/20">
-        <div className="absolute -right-2 top-4 h-24 w-24 rounded-3xl border border-white/20 bg-white/10" />
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold tracking-tight">Manajemen Pengguna</h1>
-            <p className="max-w-2xl text-sm text-blue-50/95">Kelola akses akun admin dan user dengan role-based access control (RBAC).</p>
+      <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-linear-to-br from-white via-sky-50/65 to-blue-50/85 p-6 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)] md:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_38%)]" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-56 bg-[linear-gradient(180deg,rgba(59,130,246,0.06),transparent_50%,rgba(14,165,233,0.06))]" />
+
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700 shadow-sm backdrop-blur">
+              <span className="size-2 rounded-full bg-blue-500" />
+              Flood Guard · User Administration
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">Manajemen Pengguna</h1>
+              <p className="max-w-2xl text-sm leading-6 text-slate-600 md:text-[15px]">
+                Kelola akses akun admin dan user dengan role-based access control (RBAC) secara rapi, aman, dan intuitif.
+              </p>
+            </div>
           </div>
-          <Button onClick={openCreate} className="bg-white text-blue-700 hover:bg-blue-50">
+
+          <Button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+          >
+            <span className="text-base leading-none">＋</span>
             Tambah User
           </Button>
         </div>
-      </Card>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
-          <p className="text-sm text-slate-500">Total Pengguna</p>
-          <p className="mt-1 text-3xl font-bold text-slate-900">{users.length}</p>
-          <p className="text-xs text-slate-500">Akun terdaftar dalam sistem</p>
+        <Card className="border border-slate-100 bg-white/95 p-5 shadow-sm shadow-slate-200/60 backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total Users</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{totalCount}</p>
+              <p className="mt-1 text-xs text-slate-500">Akun terdaftar dalam sistem</p>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden="true">
+                <path d="M17 20a4 4 0 0 0-8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            </div>
+          </div>
         </Card>
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
-          <p className="text-sm text-slate-500">Role Admin</p>
-          <p className="mt-1 text-3xl font-bold text-blue-600">{adminCount}</p>
-          <p className="text-xs text-slate-500">Akses penuh sistem</p>
+
+        <Card className="border border-slate-100 bg-white/95 p-5 shadow-sm shadow-slate-200/60 backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Role Admin</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-blue-700">{adminCount}</p>
+              <p className="mt-1 text-xs text-slate-500">Akses penuh sistem</p>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3 5 6v5c0 4.4 3 8.5 7 10 4-1.5 7-5.6 7-10V6l-7-3Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+                <path d="M9.5 12.2 11.2 14l3.4-3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
         </Card>
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
-          <p className="text-sm text-slate-500">Role User</p>
-          <p className="mt-1 text-3xl font-bold text-emerald-600">{userCount}</p>
-          <p className="text-xs text-slate-500">Akses dashboard pengguna</p>
+
+        <Card className="border border-slate-100 bg-white/95 p-5 shadow-sm shadow-slate-200/60 backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Role User</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-emerald-700">{userCount}</p>
+              <p className="mt-1 text-xs text-slate-500">Akses dashboard pengguna</p>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden="true">
+                <path
+                  d="M20 18a6 6 0 0 0-12 0"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                <path d="M14 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3Z" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            </div>
+          </div>
         </Card>
       </div>
 
-      {loading && <p className="text-sm text-slate-500">Memuat data pengguna...</p>}
-      {savedMessage && <p className="text-sm font-medium text-emerald-600">{savedMessage}</p>}
-      {errorMessage && <p className="text-sm font-medium text-rose-600">{errorMessage}</p>}
-
-      <Card className="overflow-x-auto border-slate-200 bg-white/95 shadow-md shadow-slate-200/40">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Daftar Pengguna</h2>
-            <p className="text-sm text-slate-500">Kelola role dan informasi akun petugas.</p>
-          </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Total {users.length} User</span>
+      {errorMessage && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 shadow-sm">
+          {errorMessage}
         </div>
-        <table className="w-full min-w-180 text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-500">
-              <th className="py-2">Nama</th>
-              <th className="py-2">Email</th>
-              <th className="py-2">Nomor WhatsApp</th>
-              <th className="py-2">Role</th>
-              <th className="py-2">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-b border-slate-100">
-                <td className="py-3">{user.name}</td>
-                <td className="py-3">{user.email}</td>
-                <td className="py-3">{user.whatsappNumber ?? "-"}</td>
-                <td className="py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      user.role === "admin" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
-                    }`}
-                  >
-                    {user.role === "admin" ? "Admin" : "User"}
-                  </span>
-                </td>
-                <td className="py-3">
-                  <div className="flex gap-2">
-                    <Button variant="secondary" onClick={() => openEdit(user)}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" onClick={() => setDeleteConfirm({ id: user.id, name: user.name })}>
-                      Hapus
-                    </Button>
-                  </div>
-                </td>
+      )}
+
+      <Card className="overflow-hidden border border-slate-100 bg-white/96 p-0 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.28)] backdrop-blur-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Daftar Pengguna</h2>
+            <p className="mt-1 text-sm text-slate-500">Kelola role dan informasi akun petugas.</p>
+          </div>
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 md:self-auto">
+            <span className="size-2 rounded-full bg-slate-400" />
+            Total {totalLabel} User
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-245 w-full text-left text-sm">
+            <thead className="bg-slate-50/80 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="px-6 py-4 font-semibold">Nama</th>
+                <th className="px-6 py-4 font-semibold">Email</th>
+                <th className="px-6 py-4 font-semibold">Nomor WhatsApp</th>
+                <th className="px-6 py-4 font-semibold">Role</th>
+                <th className="px-6 py-4 font-semibold">Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {users.map((user) => (
+                <tr key={user.id} className="transition-colors hover:bg-slate-50/80">
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-slate-900">{user.name}</div>
+                    <div className="mt-0.5 text-xs text-slate-500">ID {user.id.slice(0, 8)}…</div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">{user.email}</td>
+                  <td className="px-6 py-4 text-slate-600">{user.whatsappNumber ?? "-"}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
+                        user.role === "admin"
+                          ? "bg-blue-50 text-blue-700 ring-blue-100"
+                          : "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                      }`}
+                    >
+                      {user.role === "admin" ? "Admin" : "User"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(user)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                      >
+                        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+                          <path d="M4 20h4l10-10-4-4L4 16v4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                          <path d="m13 7 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                        Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm({ id: user.id, name: user.name })}
+                        className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-3.5 py-2 text-xs font-semibold text-rose-600 shadow-sm transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                      >
+                        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+                          <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                          <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7m-7 0v11a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V7" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                          <path d="M10 11v4M14 11v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                        Hapus
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
+
+      {loading && (
+        <div className="rounded-2xl border border-slate-100 bg-white/90 px-4 py-3 text-sm text-slate-500 shadow-sm">
+          Memuat data pengguna...
+        </div>
+      )}
+
+      {savedMessage && (
+        <div
+          aria-live="polite"
+          role="status"
+          className={`fixed bottom-5 right-5 z-60 w-[min(92vw,22rem)] rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.35)] backdrop-blur transition-all duration-200 ${
+            toastVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex size-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden="true">
+                <path d="m20 6-11 11-5-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900">Berhasil</p>
+              <p className="mt-1 text-sm leading-5 text-slate-600">{savedMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Modal open={open} title={editingId ? "Edit User" : "Tambah User"} onClose={() => setOpen(false)}>
         <form onSubmit={submitUser} className="space-y-3">

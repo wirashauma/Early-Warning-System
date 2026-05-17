@@ -38,6 +38,7 @@ interface ApiWaterCurrent {
 interface ApiRainfallCurrent {
   sensorId: string;
   rainfall: number;
+  recordedAt?: string;
 }
 
 interface ApiWaterHistory {
@@ -101,6 +102,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   const [historyBySensor, setHistoryBySensor] = useState<Record<string, WaterLevelPoint[]>>({});
   const [latestBySensor, setLatestBySensor] = useState<Record<string, LiveWaterLevel>>({});
   const [sensorsSnapshot, setSensorsSnapshot] = useState<Sensor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const waterSensorIdsRef = useRef<Set<string>>(new Set());
 
@@ -112,6 +115,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
 
   const loadCurrent = useCallback(async () => {
     try {
+      setIsLoading(true);
+      setError(null);
       const [sensorsResp, waterResp, rainfallResp, flowResp] = await Promise.all([
         api.get("/sensors"),
         api.get("/water-levels/current"),
@@ -151,7 +156,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       const nextSensors: Sensor[] = effectiveSensors.map((sensor) => {
         const water = waterBySensorId.get(sensor.sensorId);
         const rain = rainfallBySensorId.get(sensor.sensorId);
-        const updatedAt = water?.recordedAt ?? rain?.recordedAt ?? sensor.lastActiveAt ?? toIsoNow();
+        const lastSeenAt = sensor.lastActiveAt ?? water?.recordedAt ?? rain?.recordedAt ?? null;
+        const updatedAt = lastSeenAt ?? STABLE_FALLBACK_TIMESTAMP;
         return {
           id: sensor.sensorId,
           name: sensor.name,
@@ -162,6 +168,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
           connectivity: mapConnectivity(sensor.connectivity),
           batteryPercent: sensor.batteryLevel ?? 0,
           lastLevelCm: water?.waterLevel ?? 0,
+          hasWaterLevelData: Boolean(water),
+          lastSeenAt,
           status: mapStatus(water?.status),
           updatedAt,
         };
@@ -185,10 +193,13 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       }, {});
 
       setLatestBySensor(nextLiveBySensor);
+      setIsLoading(false);
     } catch {
       if (isMountedRef.current) {
         setSensorsSnapshot([]);
         setLatestBySensor({});
+        setError("Gagal memuat data sensor. Silakan coba lagi.");
+        setIsLoading(false);
       }
     }
   }, []);
@@ -229,6 +240,11 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
               : currentSensor.connectivity,
           batteryPercent: payload.batteryLevel ?? currentSensor.batteryPercent,
           lastLevelCm: payload.waterLevel ?? currentSensor.lastLevelCm,
+          hasWaterLevelData:
+            payload.waterLevel !== undefined && payload.waterLevel !== null
+              ? true
+              : currentSensor.hasWaterLevelData,
+          lastSeenAt: timestamp,
           status: payload.status ? mapStatus(payload.status) : currentSensor.status,
           updatedAt: timestamp,
         };
@@ -382,5 +398,9 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     });
   }, [latestBySensor, sensorsSnapshot]);
 
-  return { latest, history, sensorsSnapshot, liveBySensor };
+  const reload = () => {
+    void loadCurrent();
+  };
+
+  return { latest, history, sensorsSnapshot, liveBySensor, isLoading, error, reload };
 }

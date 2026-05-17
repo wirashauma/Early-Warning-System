@@ -1,12 +1,21 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card } from "@/components/ui/Card";
 import { PublicGoogleSensorMap } from "@/components/maps/PublicGoogleSensorMap";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
-import { formatTimestamp } from "@/lib/utils";
+import { cn, formatRelativeTime, formatTimestamp, isSensorOnline } from "@/lib/utils";
 
 export default function MapPage() {
   const { sensorsSnapshot } = useWaterLevel();
+  const sensors = useMemo(
+    () =>
+      sensorsSnapshot.map((sensor) => ({
+        ...sensor,
+        online: isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt),
+      })),
+    [sensorsSnapshot],
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-8">
@@ -15,31 +24,37 @@ export default function MapPage() {
         Lihat titik sensor banjir secara interaktif. Klik marker untuk melihat status level air pada setiap lokasi.
       </p>
 
-      <PublicGoogleSensorMap sensors={sensorsSnapshot} />
+      <PublicGoogleSensorMap sensors={sensors} />
 
       <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {sensorsSnapshot.map((sensor) => (
+        {sensors.map((sensor) => (
           <Card key={sensor.id}>
             <div className="mb-2 flex items-start justify-between gap-2">
-              <h2 className="text-base font-semibold text-slate-900">{sensor.name}</h2>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">{sensor.name}</h2>
+                <p className="text-xs text-slate-500">{sensor.riverName}</p>
+              </div>
               <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  sensor.status === "danger"
-                    ? "bg-rose-100 text-rose-700"
-                    : sensor.status === "alert"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-emerald-100 text-emerald-700"
-                }`}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold",
+                  sensor.online ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600",
+                )}
               >
-                {sensor.status === "danger" ? "Bahaya" : sensor.status === "alert" ? "Waspada" : "Normal"}
+                <span className={cn("relative inline-flex h-3 w-3")}>{sensor.online ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /> : null}<span className={cn("relative inline-flex h-3 w-3 rounded-full", sensor.online ? "bg-emerald-500" : "bg-slate-400")} /></span>
+                {sensor.online ? "Online" : "Offline"}
               </span>
             </div>
 
-            <p className="text-sm text-slate-600">{sensor.riverName}</p>
             <p className="mt-2 text-sm text-slate-700">
-              Tinggi air: <span className="font-semibold">{sensor.lastLevelCm} cm</span>
+              Tinggi air:{" "}
+              {sensor.hasWaterLevelData ? (
+                <span className="font-semibold">{sensor.lastLevelCm.toFixed(1)} cm</span>
+              ) : (
+                <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+              )}
             </p>
-            <p className="text-xs text-slate-500">Pembaruan: {formatTimestamp(sensor.updatedAt)}</p>
+            <p className="text-xs text-slate-500">Terakhir Update: {formatRelativeTime(sensor.lastSeenAt ?? sensor.updatedAt)}</p>
+            <p className="text-xs text-slate-500">Terakhir Update (WIB): {formatTimestamp(sensor.lastSeenAt ?? sensor.updatedAt)}</p>
             <a
               href={`https://www.google.com/maps?q=${sensor.latitude},${sensor.longitude}`}
               target="_blank"

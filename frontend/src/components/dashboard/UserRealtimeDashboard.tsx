@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RainfallCard } from "@/components/dashboard/RainfallCard";
@@ -11,7 +11,7 @@ import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
 import { useFlowRate } from "@/hooks/useFlowRate";
-import { cn, getRainfallCategory, formatTimestamp } from "@/lib/utils";
+import { cn, getRainfallCategory, formatRelativeTime, formatTimestamp, isSensorOnline } from "@/lib/utils";
 import type { WaterStatus } from "@/types/water-level";
 
 interface UserRealtimeDashboardProps {
@@ -92,8 +92,23 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const pathname = usePathname();
   const isUserRoute = pathname.startsWith("/user");
   const [selectedSensorId, setSelectedSensorId] = useState("");
-  const { latest, history, sensorsSnapshot, liveBySensor } = useWaterLevel({ sensorId: selectedSensorId });
+  const { latest, history, sensorsSnapshot, liveBySensor } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000 });
   const { history: flowHistory } = useFlowRate();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const sensorState = useMemo(
+    () =>
+      sensorsSnapshot.map((sensor) => ({
+        ...sensor,
+        online: isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt, nowMs),
+      })),
+    [nowMs, sensorsSnapshot],
+  );
 
   const sortedSensors = useMemo(
     () => [...liveBySensor].sort((a, b) => statusRank[b.status] - statusRank[a.status] || b.levelCm - a.levelCm),
@@ -106,8 +121,8 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const warningCount = liveBySensor.filter((sensor) => sensor.status === "warning").length;
 
   const selectableSensors = useMemo(
-    () => sensorsSnapshot.filter((sensor) => sensor.type !== "FLOW_RATE"),
-    [sensorsSnapshot],
+    () => sensorState.filter((sensor) => sensor.type !== "FLOW_RATE"),
+    [sensorState],
   );
 
   const selectedSensor = useMemo(
@@ -115,8 +130,13 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
     [latest.sensorId, selectableSensors],
   );
 
+  const selectedSensorOnline = selectedSensor ? isSensorOnline(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt, nowMs) : false;
+  const selectedSensorHasData = selectedSensor?.hasWaterLevelData ?? true;
+  const selectedSensorLevel = selectedSensorHasData ? latest.levelCm : null;
+  const selectedSensorLastSeen = selectedSensor?.lastSeenAt ?? selectedSensor?.updatedAt ?? latest.updatedAt;
+
   const rainfallCategory = getRainfallCategory(latest.rainfallMm);
-  const onlineCount = sensorsSnapshot.filter((sensor) => sensor.connectivity === "online").length;
+  const onlineCount = sensorState.filter((sensor) => sensor.online).length;
   const activeMeta = statusMeta[latest.status];
   const globalMeta = statusMeta[overallStatus];
 
@@ -158,7 +178,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
             </div>
           </div>
           <div className="relative z-10 text-left md:text-right bg-black/10 rounded-2xl p-4 backdrop-blur-sm">
-            <p className="text-sm font-medium text-white/80">Pembaruan Terakhir</p>
+            <p className="text-sm font-medium text-white/80">Terakhir Update</p>
             <p className="text-lg font-bold">{formatTimestamp(latest.updatedAt)}</p>
           </div>
         </section>
@@ -167,8 +187,12 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
         <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
           <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
             <p className="text-sm font-medium text-slate-500">Tinggi Air (Aktif)</p>
-            <p className="mt-1 text-3xl font-extrabold text-slate-900">{latest.levelCm} <span className="text-lg font-medium text-slate-500">cm</span></p>
-            <p className="mt-1 text-xs text-slate-400 truncate">{latest.sensorName}</p>
+            {selectedSensorHasData ? (
+              <p className="mt-1 text-3xl font-extrabold text-slate-900">{latest.levelCm} <span className="text-lg font-medium text-slate-500">cm</span></p>
+            ) : (
+              <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-500">Menunggu Data</span>
+            )}
+            <p className="mt-1 text-xs text-slate-400 truncate">{selectedSensor?.name ?? latest.sensorName}</p>
           </div>
 
           <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
@@ -233,16 +257,30 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Tinggi Air</p>
-                  <p className="mt-1 text-xl font-bold text-slate-800">{latest.levelCm} cm</p>
+                  {selectedSensorHasData ? (
+                    <p className="mt-1 text-xl font-bold text-slate-800">{latest.levelCm} cm</p>
+                  ) : (
+                    <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+                  )}
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Koneksi</p>
-                  <p className="mt-1 text-xl font-bold text-slate-800">{selectedSensor?.connectivity === "online" ? "Online" : "Offline"}</p>
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <span className={cn("relative inline-flex h-3 w-3")}>{selectedSensorOnline ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /> : null}<span className={cn("relative inline-flex h-3 w-3 rounded-full", selectedSensorOnline ? "bg-emerald-500" : "bg-slate-400")} /></span>
+                    <p className={cn("text-xl font-bold", selectedSensorOnline ? "text-emerald-700" : "text-slate-600")}>{selectedSensorOnline ? "Online" : "Offline"}</p>
+                  </div>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Baterai</p>
                   <p className="mt-1 text-xl font-bold text-slate-800">{selectedSensor?.batteryPercent ?? 0}%</p>
                 </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                <span>
+                  Terakhir Update: <span className="font-semibold text-slate-900">{formatRelativeTime(selectedSensorLastSeen, nowMs)}</span>
+                </span>
+                <span className="text-xs text-slate-500">{formatTimestamp(selectedSensorLastSeen)}</span>
               </div>
 
               {/* Kotak Rekomendasi (Warna Menyesuaikan Status) */}
@@ -325,8 +363,13 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
           <p className="mt-1 text-sm text-slate-500">Diurutkan otomatis dari wilayah paling berisiko.</p>
           
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {sortedSensors.map((item) => (
-              <div key={item.sensorId} className="flex flex-col justify-between rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-100 transition hover:bg-slate-100">
+            {sortedSensors.map((item) => {
+              const sensor = sensorState.find((entry) => entry.id === item.sensorId);
+              const online = sensor ? isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt, nowMs) : false;
+              const hasData = sensor?.hasWaterLevelData ?? true;
+
+              return (
+              <div key={item.sensorId} className={cn("flex flex-col justify-between rounded-2xl p-5 ring-1 transition", online ? "bg-slate-50 ring-slate-100 hover:bg-slate-100" : "bg-slate-100/80 ring-slate-200 opacity-80 grayscale-[0.08]") }>
                 <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-4">
                   <div>
                     <p className="font-bold text-slate-800">{item.sensorName}</p>
@@ -337,15 +380,22 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <p className="text-xs text-slate-500">Tinggi Air</p>
-                    <p className="font-bold text-slate-900">{item.levelCm} cm</p>
+                    {hasData ? <p className="font-bold text-slate-900">{item.levelCm} cm</p> : <span className="inline-flex rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>}
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Curah Hujan</p>
                     <p className="font-bold text-slate-900">{item.rainfallMm} mm</p>
                   </div>
                 </div>
+                <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+                  <span className={cn("inline-flex items-center gap-2 rounded-full px-2 py-1 font-semibold", online ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-600") }>
+                    <span className={cn("relative inline-flex h-3 w-3")}>{online ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /> : null}<span className={cn("relative inline-flex h-3 w-3 rounded-full", online ? "bg-emerald-500" : "bg-slate-400")} /></span>
+                    {online ? "Online" : "Offline"}
+                  </span>
+                  <span>Terakhir Update: {formatRelativeTime(sensor?.lastSeenAt ?? item.updatedAt, nowMs)}</span>
+                </div>
               </div>
-            ))}
+            );})}
           </div>
         </section>
 

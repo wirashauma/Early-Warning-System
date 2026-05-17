@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime, isSensorOnline } from "@/lib/utils";
 import type { Sensor } from "@/types/sensor";
 
 interface PublicGoogleSensorMapProps {
@@ -64,13 +64,24 @@ function getStatusBadge(status: Sensor["status"]) {
  * Creates a custom SVG marker icon for a sensor status
  * Uses a pin-shaped SVG path with color-coding
  */
-function createMarkerIcon(status: Sensor["status"]): GoogleMapsMarkerIcon {
+function createMarkerIcon(status: Sensor["status"], isOnline: boolean): GoogleMapsMarkerIcon {
   const statusColors: Record<Sensor["status"], { fill: string; stroke: string }> = {
     danger: { fill: "#e11d48", stroke: "#be0027" },
     alert: { fill: "#f97316", stroke: "#d97706" },
     warning: { fill: "#f59e0b", stroke: "#d97706" },
     safe: { fill: "#10b981", stroke: "#059669" },
   };
+
+  if (!isOnline) {
+    return {
+      path: "M 0,-52 C -28.627,-52 -52,-28.627 -52,0 C -52,35.797 0,52 0,52 C 0,52 52,35.797 52,0 C 52,-28.627 28.627,-52 0,-52 Z M 0,-20 C 13.807,-20 25,-8.807 25,5 C 25,18.807 13.807,30 0,30 C -13.807,30 -25,18.807 -25,5 C -25,-8.807 -13.807,-20 0,-20 Z",
+      fillColor: "#94a3b8",
+      fillOpacity: 1,
+      strokeColor: "#64748b",
+      strokeWeight: 2,
+      scale: 0.5,
+    };
+  }
 
   const colors = statusColors[status];
 
@@ -204,12 +215,13 @@ export function PublicGoogleSensorMap({
       const infoWindow = new window.google.maps.InfoWindow();
 
       sensors.forEach((sensor) => {
+        const online = isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt);
         const status = getStatusBadge(sensor.status);
         const marker = new window.google!.maps!.Marker({
           map,
           position: { lat: sensor.latitude, lng: sensor.longitude },
           title: sensor.name,
-          icon: createMarkerIcon(sensor.status),
+          icon: createMarkerIcon(sensor.status, online),
         });
 
         marker.addListener("click", () => {
@@ -218,7 +230,9 @@ export function PublicGoogleSensorMap({
             <div style="min-width:190px;font-family:Inter,Arial,sans-serif;padding:2px 0;">
               <p style="font-size:13px;font-weight:700;margin:0 0 6px;color:#0f172a;">${sensor.name}</p>
               <p style="font-size:12px;margin:0 0 4px;color:#334155;">Sungai: <strong>${sensor.riverName}</strong></p>
-              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Tinggi Air: <strong>${sensor.lastLevelCm} cm</strong></p>
+              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Status Koneksi: <strong style=\"color:${online ? '#059669' : '#64748b'};\">${online ? 'Online' : 'Offline'}</strong></p>
+              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Terakhir Update: <strong>${formatRelativeTime(sensor.lastSeenAt ?? sensor.updatedAt)}</strong></p>
+              <p style="font-size:12px;margin:0 0 4px;color:#334155;">Tinggi Air: <strong>${sensor.hasWaterLevelData ? `${sensor.lastLevelCm} cm` : 'Menunggu Data'}</strong></p>
               <p style="font-size:12px;margin:0;color:#334155;">Status: <strong style=\"color:${status.color};\">${status.label}</strong></p>
             </div>
           `);

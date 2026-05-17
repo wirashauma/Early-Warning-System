@@ -4,8 +4,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { Card } from "@/components/ui/Card";
 import { PublicGoogleSensorMap } from "@/components/maps/PublicGoogleSensorMap";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
-import { cn } from "@/lib/utils";
-import { formatTimestamp } from "@/lib/utils";
+import { cn, formatRelativeTime, formatTimestamp, isSensorOnline } from "@/lib/utils";
 import type { WaterStatus } from "@/types/water-level";
 
 const statusMeta: Record<
@@ -56,11 +55,20 @@ export default function UserMapPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [selectedSensorId, setSelectedSensorId] = useState<string>(sensorsSnapshot[0]?.id ?? "");
+  const [selectedSensorId, setSelectedSensorId] = useState<string>("");
+
+  const sensorState = useMemo(
+    () =>
+      sensorsSnapshot.map((sensor) => ({
+        ...sensor,
+        online: isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt),
+      })),
+    [sensorsSnapshot],
+  );
 
   const sortedSensors = useMemo(
-    () => [...sensorsSnapshot].sort((a, b) => statusRank[b.status] - statusRank[a.status] || b.lastLevelCm - a.lastLevelCm),
-    [sensorsSnapshot],
+    () => [...sensorState].sort((a, b) => statusRank[b.status] - statusRank[a.status] || b.lastLevelCm - a.lastLevelCm),
+    [sensorState],
   );
 
   const filteredSensors = useMemo(() => {
@@ -95,23 +103,23 @@ export default function UserMapPage() {
     [activeSensors, effectiveSelectedSensorId],
   );
 
-  const riskCount = sensorsSnapshot.filter((sensor) => sensor.status !== "safe").length;
-  const dangerCount = sensorsSnapshot.filter((sensor) => sensor.status === "danger").length;
-  const alertCount = sensorsSnapshot.filter((sensor) => sensor.status === "alert").length;
-  const normalCount = sensorsSnapshot.filter((sensor) => sensor.status === "safe").length;
-  const onlineCount = sensorsSnapshot.filter((sensor) => sensor.connectivity === "online").length;
+  const riskCount = sensorState.filter((sensor) => sensor.status !== "safe").length;
+  const dangerCount = sensorState.filter((sensor) => sensor.status === "danger").length;
+  const alertCount = sensorState.filter((sensor) => sensor.status === "alert").length;
+  const normalCount = sensorState.filter((sensor) => sensor.status === "safe").length;
+  const onlineCount = sensorState.filter((sensor) => sensor.online).length;
 
   const latestUpdate = useMemo(() => {
-    if (sensorsSnapshot.length === 0) {
+    if (sensorState.length === 0) {
       return "-";
     }
 
-    const latest = [...sensorsSnapshot].sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    const latest = [...sensorState].sort(
+      (a, b) => new Date(b.lastSeenAt ?? b.updatedAt).getTime() - new Date(a.lastSeenAt ?? a.updatedAt).getTime(),
     )[0];
 
-    return formatTimestamp(latest.updatedAt);
-  }, [sensorsSnapshot]);
+    return formatRelativeTime(latest.lastSeenAt ?? latest.updatedAt);
+  }, [sensorState]);
 
   const hasNoFilteredResult = filteredSensors.length === 0;
 
@@ -170,10 +178,10 @@ export default function UserMapPage() {
             </Card>
             <Card className="border-slate-200 bg-white p-3">
               <p className="text-xs text-slate-500">Konektivitas</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{onlineCount}/{sensorsSnapshot.length}</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{onlineCount}/{sensorState.length}</p>
             </Card>
             <Card className="border-slate-200 bg-white p-3">
-              <p className="text-xs text-slate-500">Pembaruan Terakhir</p>
+              <p className="text-xs text-slate-500">Terakhir Update</p>
               <p className="mt-1 text-sm font-bold text-slate-900">{latestUpdate}</p>
             </Card>
           </div>
@@ -219,7 +227,9 @@ export default function UserMapPage() {
                 <dl className="space-y-2 text-sm text-slate-700">
                   <div className="grid grid-cols-[98px_1fr] items-start gap-2">
                     <dt className="text-slate-500">Tinggi air</dt>
-                    <dd className="font-semibold text-slate-900">{selectedSensor.lastLevelCm} cm</dd>
+                    <dd className="font-semibold text-slate-900">
+                      {selectedSensor.hasWaterLevelData ? `${selectedSensor.lastLevelCm} cm` : "Menunggu Data"}
+                    </dd>
                   </div>
 
                   <div className="grid grid-cols-[98px_1fr] items-center gap-2">
@@ -238,12 +248,15 @@ export default function UserMapPage() {
 
                   <div className="grid grid-cols-[98px_1fr] items-start gap-2">
                     <dt className="text-slate-500">Konektivitas</dt>
-                    <dd className="font-semibold text-slate-900">{selectedSensor.connectivity === "online" ? "Online" : "Offline"}</dd>
+                    <dd className="font-semibold text-slate-900">{selectedSensor.online ? "Online" : "Offline"}</dd>
                   </div>
 
                   <div className="grid grid-cols-[98px_1fr] items-start gap-2">
-                    <dt className="text-slate-500">Pembaruan</dt>
-                    <dd className="font-semibold text-slate-900">{formatTimestamp(selectedSensor.updatedAt)}</dd>
+                    <dt className="text-slate-500">Terakhir Update</dt>
+                    <dd className="font-semibold text-slate-900">
+                      {formatRelativeTime(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)}
+                      <div className="text-xs text-slate-500">{formatTimestamp(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)}</div>
+                    </dd>
                   </div>
                 </dl>
 
@@ -344,7 +357,7 @@ export default function UserMapPage() {
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
                       <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                         <p className="text-slate-500">Tinggi air</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{sensor.lastLevelCm} cm</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{sensor.hasWaterLevelData ? `${sensor.lastLevelCm} cm` : "Menunggu Data"}</p>
                       </div>
                       <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                         <p className="text-slate-500">Baterai</p>
@@ -352,11 +365,11 @@ export default function UserMapPage() {
                       </div>
                       <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                         <p className="text-slate-500">Konektivitas</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{sensor.connectivity === "online" ? "Online" : "Offline"}</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{sensor.online ? "Online" : "Offline"}</p>
                       </div>
                       <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-                        <p className="text-slate-500">Pembaruan</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{formatTimestamp(sensor.updatedAt)}</p>
+                        <p className="text-slate-500">Terakhir Update</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{formatRelativeTime(sensor.lastSeenAt ?? sensor.updatedAt)}</p>
                       </div>
                     </div>
                   </button>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminGoogleSensorMap } from "@/components/maps/AdminGoogleSensorMap";
 import { Card } from "@/components/ui/Card";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import type { Sensor } from "@/types/sensor";
-import { getStatusFromLevel } from "@/lib/utils";
-import { formatTimestamp } from "@/lib/utils";
+import { cn, formatRelativeTime, formatTimestamp, isSensorOnline } from "@/lib/utils";
+import { useWaterLevel } from "@/hooks/useWaterLevel";
 import api from "@/lib/api";
 
 function StatIcon({ children, colorClass }: { children: ReactNode; colorClass: string }) {
@@ -17,44 +18,25 @@ function CardTitleIcon({ children }: { children: ReactNode }) {
 }
 
 export default function AdminDashboardPage() {
-  const [sensors, setSensors] = useState<Sensor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { sensorsSnapshot, liveBySensor, isLoading, error, reload } = useWaterLevel({ refreshMs: 12_000 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activityLogs, setActivityLogs] = useState<Array<{ id: string; time: string; event: string; severity: "info" | "warning" | "critical" }>>([]);
-  const [avgRainfall, setAvgRainfall] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadData = async () => {
+    const loadActivity = async () => {
       setErrorMessage(null);
       try {
-        const [sensorResp, waterResp, rainResp, historyResp] = await Promise.all([
-          api.get("/sensors"),
-          api.get("/water-levels/current"),
-          api.get("/rainfall/current"),
-          api.get("/alerts/history", { params: { page: 1, limit: 10 } }),
-        ]);
+        const historyResp = await api.get("/alerts/history", { params: { page: 1, limit: 10 } });
+        if (cancelled) return;
 
-        if (cancelled) {
-          return;
-        }
-
-        const sensorPayload = sensorResp.data?.data;
-        const sensorRows = (Array.isArray(sensorPayload)
-          ? sensorPayload
-          : sensorPayload?.items ?? []) as Array<{
-          id: string;
-          sensorId: string;
-          name: string;
-          latitude: number;
-          longitude: number;
-          batteryLevel: number | null;
-          connectivity: "ONLINE" | "OFFLINE" | "MAINTENANCE";
-          lastActiveAt: string | null;
-        }>;
-        const waterRows = (waterResp.data?.data ?? []) as Array<{ sensorId: string; waterLevel: number; recordedAt: string }>;
-        const rainRows = (rainResp.data?.data ?? []) as Array<{ rainfall: number }>;
         const alertRows = (historyResp.data?.data?.items ?? []) as Array<{
           id: string;
           sentAt: string;
@@ -62,58 +44,23 @@ export default function AdminDashboardPage() {
           severity: "INFO" | "WARNING" | "DANGER";
         }>;
 
-        const waterMap = new Map(waterRows.map((row) => [row.sensorId, row]));
-        const mappedSensors: Sensor[] = sensorRows.map((item) => {
-          const water = waterMap.get(item.sensorId);
-          const level = water?.waterLevel ?? 0;
-          return {
+        setActivityLogs(
+          alertRows.map((item) => ({
             id: item.id,
-            name: item.name,
-            riverName: item.name,
-            latitude: item.latitude,
-            longitude: item.longitude,
-            connectivity: item.connectivity === "ONLINE" ? "online" : "offline",
-            batteryPercent: item.batteryLevel ?? 0,
-            lastLevelCm: level,
-            status: getStatusFromLevel(level),
-            updatedAt: water?.recordedAt ?? item.lastActiveAt ?? new Date().toISOString(),
-          };
-        });
-
-        const logs: Array<{
-          id: string;
-          time: string;
-          event: string;
-          severity: "info" | "warning" | "critical";
-        }> = alertRows.map((item) => ({
-          id: item.id,
-          time: new Date(item.sentAt).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }),
-          event: item.title,
-          severity: item.severity === "DANGER" ? "critical" : item.severity === "WARNING" ? "warning" : "info",
-        }));
-
-        setSensors(mappedSensors);
-        setActivityLogs(logs);
-        setAvgRainfall(
-          rainRows.length === 0
-            ? 0
-            : Math.round((rainRows.reduce((sum, row) => sum + row.rainfall, 0) / rainRows.length) * 10) / 10,
+            time: new Date(item.sentAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }),
+            event: item.title,
+            severity: item.severity === "DANGER" ? "critical" : item.severity === "WARNING" ? "warning" : "info",
+          })),
         );
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Gagal memuat dashboard admin.");
-      } finally {
-        setLoading(false);
       }
     };
 
-    void loadData();
+    void loadActivity();
     const timer = window.setInterval(() => {
-      void loadData();
-    }, 15000);
+      void loadActivity();
+    }, 15_000);
 
     return () => {
       cancelled = true;
@@ -121,14 +68,24 @@ export default function AdminDashboardPage() {
     };
   }, []);
 
-  const online = sensors.filter((sensor) => sensor.connectivity === "online").length;
-  const offline = sensors.length - online;
-  const warningCount = sensors.filter((sensor) => sensor.status === "alert").length;
-  const dangerCount = sensors.filter((sensor) => sensor.status === "danger").length;
-  const maxLevelCm = sensors.length ? Math.max(...sensors.map((sensor) => sensor.lastLevelCm)) : 0;
-  const globalStatus = sensors.some((sensor) => sensor.status === "danger")
+  const sensorState = useMemo(
+    () =>
+      sensorsSnapshot.map((sensor) => ({
+        ...sensor,
+        online: isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt, nowMs),
+      })),
+    [nowMs, sensorsSnapshot],
+  );
+
+  const online = sensorState.filter((sensor) => sensor.online).length;
+  const offline = sensorState.length - online;
+  const warningCount = sensorState.filter((sensor) => sensor.status === "alert").length;
+  const dangerCount = sensorState.filter((sensor) => sensor.status === "danger").length;
+  const maxLevelCm = sensorState.length ? Math.max(...sensorState.map((sensor) => sensor.lastLevelCm)) : 0;
+  const avgRainfall = liveBySensor.length ? Math.round((liveBySensor.reduce((sum, sensor) => sum + sensor.rainfallMm, 0) / liveBySensor.length) * 10) / 10 : 0;
+  const globalStatus = sensorState.some((sensor) => sensor.status === "danger")
     ? "Bahaya"
-    : sensors.some((sensor) => sensor.status === "alert")
+    : sensorState.some((sensor) => sensor.status === "alert")
       ? "Waspada"
       : "Aman";
 
@@ -148,7 +105,7 @@ export default function AdminDashboardPage() {
     {
       title: "Sensor Aktif",
       value: online,
-      sub: `Total sensor: ${sensors.length}`,
+      sub: `Total sensor: ${sensorState.length}`,
       color: "from-blue-500 to-indigo-500",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-7 w-7" aria-hidden="true">
@@ -185,7 +142,7 @@ export default function AdminDashboardPage() {
     {
       title: "Curah Hujan",
       value: `${avgRainfall} mm/jam`,
-      sub: "Rata-rata 12 data terakhir",
+      sub: "Rata-rata sensor aktif",
       color: "from-cyan-500 to-sky-500",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-7 w-7" aria-hidden="true">
@@ -258,23 +215,9 @@ export default function AdminDashboardPage() {
         </div>
       </Card>
 
-      <Card className="border-slate-200 bg-white py-4">
-        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 md:text-lg">
-          <CardTitleIcon>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="17" rx="3" />
-              <path strokeLinecap="round" d="M8 2.8v2.4M16 2.8v2.4M3 9h18" />
-            </svg>
-          </CardTitleIcon>
-          <span>
-            Tahun Operasional: <span className="text-blue-600">{new Date().getFullYear()}/{new Date().getFullYear() + 1}</span>
-          </span>
-        </div>
-      </Card>
-
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {stats.map((item) => (
-          <Card key={item.title} className="border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60">
+          <Card key={item.title} className="border-slate-200 bg-white/80 shadow-sm backdrop-blur-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-slate-500">{item.title}</p>
@@ -287,21 +230,71 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <Card className="border-slate-200 bg-white/95 shadow-md shadow-slate-200/40">
+      <Card className="border-slate-200 bg-white/80 shadow-md shadow-slate-200/40 backdrop-blur-xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Sensor Terkini</h2>
+            <p className="text-sm text-slate-500">Terakhir update, koneksi, dan ketinggian air terbaru.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Polling 12 detik</span>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {sensorState.slice(0, 4).map((sensor) => (
+            <div key={sensor.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-slate-900">{sensor.name}</p>
+                  <p className="text-xs text-slate-500">{sensor.riverName}</p>
+                </div>
+                <span className={cn("inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold", sensor.online ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-600")}>
+                  <span className="relative inline-flex h-3 w-3">
+                    {sensor.online && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />}
+                    <span className={cn("relative inline-flex h-3 w-3 rounded-full", sensor.online ? "bg-emerald-500" : "bg-slate-400")} />
+                  </span>
+                  {sensor.online ? "Online" : "Offline"}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Ketinggian Air</p>
+                  {sensor.hasWaterLevelData ? (
+                    <p className="mt-1 font-semibold text-slate-900">{sensor.lastLevelCm.toFixed(1)} cm</p>
+                  ) : (
+                    <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+                  )}
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">Baterai</p>
+                  <p className="mt-1 font-semibold text-slate-900">{sensor.batteryPercent}%</p>
+                </div>
+              </div>
+
+              <div className="mt-3 text-xs text-slate-500">
+                Terakhir Update: <span className="font-semibold text-slate-700">{formatRelativeTime(sensor.lastSeenAt ?? sensor.updatedAt, nowMs)}</span>
+                <div className="mt-1">{formatTimestamp(sensor.lastSeenAt ?? sensor.updatedAt)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="border-slate-200 bg-white/80 shadow-md shadow-slate-200/40 backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Peta Interaktif Sensor</h2>
             <p className="text-sm text-slate-500">Klik titik sensor untuk melihat lokasi, ketinggian air, dan status baterai.</p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            Total {sensors.length} Sensor
+            Total {sensorState.length} Sensor
           </span>
         </div>
 
-        <AdminGoogleSensorMap sensors={sensors} />
+        <AdminGoogleSensorMap sensors={sensorState} />
       </Card>
 
-      <Card className="border-slate-200 bg-white/95 shadow-md shadow-slate-200/40">
+      <Card className="border-slate-200 bg-white/80 shadow-md shadow-slate-200/40 backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Log Aktivitas Terkini</h2>
@@ -338,8 +331,19 @@ export default function AdminDashboardPage() {
         </div>
       </Card>
 
-      {loading && <p className="text-sm text-slate-500">Memuat data dashboard...</p>}
-      {errorMessage && <p className="text-sm text-rose-600">{errorMessage}</p>}
+      {(isLoading || error || errorMessage) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Status Sinkronisasi</p>
+            <p className="text-xs text-slate-500">{isLoading ? "Memuat data sensor terbaru..." : error || errorMessage || "Dashboard sinkron"}</p>
+          </div>
+          {(error || errorMessage) && (
+            <button type="button" onClick={() => reload()} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              Coba Lagi
+            </button>
+          )}
+        </div>
+      )}
     </main>
   );
 }

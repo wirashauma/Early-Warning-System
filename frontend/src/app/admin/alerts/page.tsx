@@ -1,19 +1,22 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatTimestamp } from "@/lib/utils";
 import api from "@/lib/api";
 
 type AlertLevel = "Aman" | "Waspada" | "Bahaya";
+type Channel = "push" | "email";
+
+const CHANNEL_LABELS: Record<Channel, string> = {
+  push: "Push",
+  email: "Email",
+};
 
 export default function AdminAlertsPage() {
   const [target, setTarget] = useState("Semua Wilayah");
   const [level, setLevel] = useState<AlertLevel>("Waspada");
-  const [channels, setChannels] = useState({
-    whatsapp: true,
+  const [channels, setChannels] = useState<Record<Channel, boolean>>({
     push: true,
     email: false,
   });
@@ -75,7 +78,7 @@ export default function AdminAlertsPage() {
     };
   }, []);
 
-  const toggleChannel = (key: keyof typeof channels) => {
+  const toggleChannel = (key: Channel) => {
     setChannels((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -96,11 +99,7 @@ export default function AdminAlertsPage() {
     setErrorMessage(null);
     setSent(false);
 
-    const usedChannels = [
-      channels.whatsapp ? "whatsapp" : null,
-      channels.push ? "push" : null,
-      channels.email ? "email" : null,
-    ].filter((item): item is string => Boolean(item));
+    const usedChannels = (Object.keys(channels) as Channel[]).filter((key) => channels[key]);
 
     if (usedChannels.length === 0) {
       setErrorMessage("Pilih minimal satu saluran pengiriman.");
@@ -131,128 +130,168 @@ export default function AdminAlertsPage() {
 
   return (
     <main className="space-y-6">
-      <Card className="relative overflow-hidden border-blue-500/30 bg-linear-to-r from-blue-600 via-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-900/20">
-        <div className="absolute -right-2 top-4 h-24 w-24 rounded-3xl border border-white/20 bg-white/10" />
-        <div className="relative z-10 space-y-1.5">
+      {/* Header */}
+      <Card className="relative overflow-hidden border-blue-500/10 bg-linear-to-r from-blue-600 via-sky-600 to-cyan-500 text-white shadow-xl">
+        <div className="absolute -right-6 top-6 h-28 w-28 rounded-3xl border border-white/10 bg-white/5" />
+        <div className="relative z-10 space-y-1.5 px-6 py-6">
           <h1 className="text-2xl font-bold tracking-tight">Peringatan (Broadcast Alert System)</h1>
-          <p className="max-w-2xl text-sm text-blue-50/95">Sebarkan peringatan darurat melalui WhatsApp, Push Notification, dan Email secara terpusat.</p>
+          <p className="max-w-2xl text-sm text-blue-50/95">Sebarkan peringatan darurat melalui Push Notification dan Email secara terpusat. Sistem ini memiliki proteksi konfirmasi untuk mencegah siaran tidak sengaja.</p>
         </div>
       </Card>
 
+      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
+        <Card className="border border-slate-100 bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm text-slate-500">Total Riwayat Broadcast</p>
-          <p className="mt-1 text-3xl font-bold text-slate-900">{history.length}</p>
-          <p className="text-xs text-slate-500">Data pengiriman yang tercatat</p>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="rounded-lg bg-slate-50 p-2">
+              <svg viewBox="0 0 24 24" className="h-6 w-6 text-slate-700" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 7h18M3 12h18M3 17h18" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-900">{history.length}</p>
+              <p className="text-xs text-slate-500">Data pengiriman yang tercatat</p>
+            </div>
+          </div>
         </Card>
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
+
+        <Card className="border border-slate-100 bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm text-slate-500">Level Saat Ini</p>
-          <p className={`mt-1 text-3xl font-bold ${level === "Bahaya" ? "text-rose-600" : level === "Waspada" ? "text-amber-600" : "text-emerald-600"}`}>
-            {level}
-          </p>
-          <p className="text-xs text-slate-500">Draft alert aktif</p>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="rounded-lg p-2">
+              {level === "Bahaya" ? (
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-rose-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              ) : level === "Waspada" ? (
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 9v4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="16" r="1"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              )}
+            </div>
+            <div>
+              <p className={`text-3xl font-bold ${level === "Bahaya" ? "text-rose-600" : level === "Waspada" ? "text-amber-600" : "text-emerald-600"}`}>{level}</p>
+              <p className="text-xs text-slate-500">Draft alert aktif</p>
+            </div>
+          </div>
         </Card>
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
+
+        <Card className="border border-slate-100 bg-white rounded-xl shadow-sm p-5">
           <p className="text-sm text-slate-500">Saluran Aktif</p>
-          <p className="mt-1 text-3xl font-bold text-cyan-700">{[channels.whatsapp, channels.push, channels.email].filter(Boolean).length}</p>
-          <p className="text-xs text-slate-500">WhatsApp, Push, Email</p>
+          <div className="mt-2">
+            <p className="text-3xl font-bold text-cyan-700">{Object.values(channels).filter(Boolean).length}</p>
+            <p className="text-xs text-slate-500">Push, Email</p>
+          </div>
         </Card>
       </div>
 
-      <Card className="border-slate-200 bg-white/95 shadow-md shadow-slate-200/40">
+      {/* Form */}
+      <Card className="border border-slate-100 bg-white rounded-xl shadow-md p-6">
         <h2 className="mb-3 text-base font-semibold text-slate-900">Panel Kirim Peringatan Manual</h2>
-        <form onSubmit={submitWithConfirm} className="space-y-4">
-          <label className="block text-sm text-slate-700">
-            Target Penerima
-            <select
-              value={target}
-              onChange={(event) => setTarget(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            >
-              <option>Semua Wilayah</option>
-              <option>Kecamatan Utara</option>
-              <option>Kecamatan Tengah</option>
-              <option>Kecamatan Hilir</option>
-            </select>
-          </label>
+        <form onSubmit={submitWithConfirm} className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="block text-sm text-slate-700">
+              Target Penerima
+              <select
+                value={target}
+                onChange={(event) => setTarget(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              >
+                <option>Semua Wilayah</option>
+                <option>Kecamatan Utara</option>
+                <option>Kecamatan Tengah</option>
+                <option>Kecamatan Hilir</option>
+              </select>
+            </label>
 
-          <label className="block text-sm text-slate-700">
-            Judul Peringatan
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            />
-          </label>
+            <label className="block text-sm text-slate-700 md:col-span-2">
+              Judul Peringatan
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
+            </label>
+          </div>
 
-          <label className="block text-sm text-slate-700">
-            Jenis/Level Peringatan
-            <select
-              value={level}
-              onChange={(event) => setLevel(event.target.value as AlertLevel)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-            >
-              <option value="Aman">Aman</option>
-              <option value="Waspada">Waspada</option>
-              <option value="Bahaya">Bahaya</option>
-            </select>
-          </label>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="block text-sm text-slate-700">
+              Jenis/Level Peringatan
+              <select
+                value={level}
+                onChange={(event) => setLevel(event.target.value as AlertLevel)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              >
+                <option value="Aman">Aman</option>
+                <option value="Waspada">Waspada</option>
+                <option value="Bahaya">Bahaya</option>
+              </select>
+            </label>
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Pilih Saluran</p>
-            <div className="flex flex-wrap gap-3 text-sm text-slate-700">
-              <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
-                <input type="checkbox" checked={channels.whatsapp} onChange={() => toggleChannel("whatsapp")} /> WhatsApp
-              </label>
-              <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
-                <input type="checkbox" checked={channels.push} onChange={() => toggleChannel("push")} /> Push Notification
-              </label>
-              <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
-                <input type="checkbox" checked={channels.email} onChange={() => toggleChannel("email")} /> Email
-              </label>
+            <div className="md:col-span-2">
+              <p className="mb-2 text-sm font-medium text-slate-700">Pilih Saluran</p>
+              <div className="flex flex-wrap gap-3">
+                {/* Push pill */}
+                <button
+                  type="button"
+                  onClick={() => toggleChannel("push")}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-shadow ${channels.push ? 'bg-sky-50 border border-sky-200 shadow-sm text-sky-700' : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 5v7l3 3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Push
+                </button>
+
+                {/* Email pill */}
+                <button
+                  type="button"
+                  onClick={() => toggleChannel("email")}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-shadow ${channels.email ? 'bg-blue-50 border border-blue-200 shadow-sm text-blue-700' : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 8l9 6 9-6" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 8v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Email
+                </button>
+              </div>
             </div>
           </div>
 
           <div>
-            <div className="mb-2 flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" onClick={() => applyTemplate("evakuasi")}>
-                Template Evakuasi
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => applyTemplate("waspada")}>
-                Template Waspada
-              </Button>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => applyTemplate("evakuasi")} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium hover:bg-slate-200 transition">Template Evakuasi</button>
+              <button type="button" onClick={() => applyTemplate("waspada")} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium hover:bg-slate-200 transition">Template Waspada</button>
             </div>
 
             <label className="block text-sm font-medium text-slate-700">Isi Pesan</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="mt-2 h-36 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            />
           </div>
-
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="h-30 w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
 
           <div className="flex items-center gap-3">
-            <Button type="submit" className="bg-rose-600 hover:bg-rose-700">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-md bg-rose-600 px-4 py-2 text-sm font-bold text-white tracking-wide shadow-md hover:bg-rose-700 hover:shadow-lg transition-all"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 11h14M21 11v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6" strokeLinecap="round" strokeLinejoin="round"/></svg>
               Siarkan Sekarang
-            </Button>
+            </button>
             {sent && <p className="text-sm text-emerald-600">Peringatan berhasil disiarkan.</p>}
           </div>
+
           {errorMessage && <p className="text-sm text-rose-600">{errorMessage}</p>}
         </form>
       </Card>
 
-      <Card className="border-slate-200 bg-white/95 shadow-md shadow-slate-200/40">
+      {/* History table */}
+      <Card className="border border-slate-100 bg-white rounded-xl shadow-md p-5">
         <h2 className="mb-3 text-base font-semibold text-slate-900">Tabel Riwayat Peringatan</h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-180 text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2">Tanggal & Waktu</th>
-                <th className="py-2">Jenis/Level Peringatan</th>
-                <th className="py-2">Saluran Digunakan</th>
-                <th className="py-2">Pengirim</th>
-                <th className="py-2">Status</th>
+                <th className="py-3 px-4">Tanggal & Waktu</th>
+                <th className="py-3 px-4">Jenis/Level Peringatan</th>
+                <th className="py-3 px-4">Saluran Digunakan</th>
+                <th className="py-3 px-4">Pengirim</th>
+                <th className="py-3 px-4">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -290,18 +329,38 @@ export default function AdminAlertsPage() {
         </div>
       </Card>
 
-      <ConfirmDialog
-        open={confirmBroadcastOpen}
-        title="Siarkan peringatan sekarang?"
-        description="Pesan akan dikirim ke kanal aktif sesuai target wilayah. Pastikan judul dan isi pesan sudah benar."
-        confirmText="Ya, siarkan"
-        cancelText="Periksa lagi"
-        onCancel={() => setConfirmBroadcastOpen(false)}
-        onConfirm={() => {
-          setConfirmBroadcastOpen(false);
-          void sendAlert();
-        }}
-      />
+      {/* Custom Confirm Modal */}
+      {confirmBroadcastOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirmBroadcastOpen(false)} />
+
+          <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-rose-100 p-2">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-rose-600" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Konfirmasi Siaran Darurat</h3>
+                <p className="mt-2 text-sm text-slate-600">Anda akan mengirimkan peringatan <strong className="text-slate-900">{level}</strong> ke <strong className="text-slate-900">{target}</strong> melalui <strong className="text-slate-900">{(Object.entries(channels) as Array<[Channel, boolean]>).filter(([, enabled]) => enabled).map(([key]) => CHANNEL_LABELS[key]).join(', ')}</strong>. Apakah Anda yakin data ini sudah benar? Tindakan ini tidak dapat dibatalkan.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmBroadcastOpen(false)} className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmBroadcastOpen(false);
+                  void sendAlert();
+                }}
+                className="inline-flex items-center gap-2 rounded-md bg-rose-600 px-4 py-2 text-sm font-bold text-white tracking-wide shadow-md hover:bg-rose-700 hover:shadow-lg transition-all"
+              >
+                Ya, Siarkan Sekarang!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

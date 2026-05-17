@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AlertSeverity, UserRole } from '@prisma/client';
+import { EmailService } from '../common/email/email.service';
 import { FirebaseService } from '../common/firebase/firebase.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -10,6 +11,14 @@ interface BroadcastPayload {
   channels: string[];
   pushEnabled?: boolean;
   targetArea?: string;
+}
+
+interface BroadcastEmailResult {
+  attempted: boolean;
+  skippedReason?: string;
+  recipientCount?: number;
+  messageId?: string;
+  response?: string;
 }
 
 export interface TopicSubscriptionResult {
@@ -29,6 +38,7 @@ export class AlertsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly firebaseService: FirebaseService,
+    private readonly emailService: EmailService,
   ) {}
 
   async getActive() {
@@ -170,6 +180,8 @@ export class AlertsService {
       : null;
     let pushMessageId: string | null = null;
     let pushError: string | null = null;
+    let emailDelivery: BroadcastEmailResult | null = null;
+    let emailError: string | null = null;
 
     if (shouldSendPush && pushTopic) {
       try {
@@ -193,6 +205,23 @@ export class AlertsService {
       this.logger.log(`Push delivery skipped for alert ${alert.id} because pushEnabled=false.`);
     }
 
+    if (payload.channels.some((channel) => channel.toLowerCase() === 'email')) {
+      try {
+        emailDelivery = await this.emailService.sendBroadcastEmail({
+          title: payload.title,
+          message: payload.message,
+          severity: payload.severity,
+          targetArea: payload.targetArea,
+          alertId: alert.id,
+        });
+      } catch (error) {
+        emailError = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Failed to send email broadcast for alert ${alert.id}: ${emailError}`,
+        );
+      }
+    }
+
     return {
       id: alert.id,
       title: alert.title,
@@ -212,6 +241,15 @@ export class AlertsService {
         topic: pushTopic,
         messageId: pushMessageId,
         error: pushError,
+      },
+      emailDelivery: {
+        enabled: this.emailService.isEnabled(),
+        attempted: emailDelivery?.attempted ?? false,
+        skippedReason: emailDelivery?.skippedReason ?? null,
+        recipientCount: emailDelivery?.recipientCount ?? 0,
+        messageId: emailDelivery?.messageId ?? null,
+        response: emailDelivery?.response ?? null,
+        error: emailError,
       },
     };
   }

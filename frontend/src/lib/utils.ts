@@ -15,6 +15,15 @@ export interface RainfallCategory {
 
 export type UserRiskLevel = "normal" | "yellow" | "orange" | "red";
 
+export const SENSOR_OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+
+function toTimestamp(value: string | Date | null | undefined) {
+  if (!value) return null;
+
+  const parsed = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -30,6 +39,46 @@ export function formatTimestamp(date: string) {
     timeStyle: "short",
     timeZone: "Asia/Jakarta",
   });
+}
+
+export function isSensorOffline(
+  lastSeenAt: string | Date | null | undefined,
+  nowMs = Date.now(),
+  thresholdMs = SENSOR_OFFLINE_THRESHOLD_MS,
+) {
+  const parsed = toTimestamp(lastSeenAt);
+  if (parsed === null) return true;
+
+  return nowMs - parsed > thresholdMs;
+}
+
+export function isSensorOnline(
+  lastSeenAt: string | Date | null | undefined,
+  nowMs = Date.now(),
+  thresholdMs = SENSOR_OFFLINE_THRESHOLD_MS,
+) {
+  return !isSensorOffline(lastSeenAt, nowMs, thresholdMs);
+}
+
+export function formatRelativeTime(dateValue: string | Date | null | undefined, nowMs = Date.now()) {
+  const parsed = toTimestamp(dateValue);
+  if (parsed === null) return "Belum ada ingest";
+
+  const diffSeconds = Math.round((parsed - nowMs) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+
+  if (absSeconds < 45) {
+    return diffSeconds <= 0 ? "beberapa detik yang lalu" : "dalam beberapa detik";
+  }
+
+  const formatter = new Intl.RelativeTimeFormat("id-ID", { numeric: "auto" });
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (Math.abs(diffMinutes) < 60) return formatter.format(diffMinutes, "minute");
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) return formatter.format(diffHours, "hour");
+
+  return formatter.format(Math.round(diffHours / 24), "day");
 }
 
 export function getStatusFromLevel(

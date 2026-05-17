@@ -37,9 +37,11 @@ export class IotService {
   constructor(private readonly prisma: PrismaService) {}
 
   async ingest(payload: IngestPayload): Promise<IngestResult> {
-    const hasWater = payload.waterLevel !== undefined;
-    const hasRain = payload.rainfall !== undefined;
-    const hasFlow = payload.flowRate !== undefined;
+    const hasValue = (value: number | null | undefined) => value !== undefined && value !== null;
+
+    const hasWater = hasValue(payload.waterLevel);
+    const hasRain = hasValue(payload.rainfall);
+    const hasFlow = hasValue(payload.flowRate);
 
     if (!hasWater && !hasRain && !hasFlow) {
       throw new BadRequestException(
