@@ -116,12 +116,12 @@ class _LoginPageState extends State<LoginPage> {
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              Expanded(child: Divider(color: AppTheme.textGrey.withOpacity(0.3))),
+                              Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
                               ),
-                              Expanded(child: Divider(color: AppTheme.textGrey.withOpacity(0.3))),
+                              Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
                             ],
                           ),
                           const SizedBox(height: 16),

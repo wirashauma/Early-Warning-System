@@ -162,7 +162,7 @@ class _StatusScreenState extends State<StatusScreen> {
                                 border: Border.all(color: isFocused ? Colors.white : Colors.transparent, width: 3),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: s.statusColor.withOpacity(0.5), 
+                                    color: s.statusColor.withValues(alpha: 0.5), 
                                     blurRadius: isFocused ? 10 : 4
                                   )
                                 ],

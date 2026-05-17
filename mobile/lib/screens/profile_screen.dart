@@ -383,7 +383,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       final ok = await _auth.updateProfile(
                         name: nameCtrl.text, phone: phoneCtrl.text, address: addressCtrl.text,
                       );
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       if (ok) {
                         Navigator.pop(sheetCtx);
                         setState(() {});
@@ -518,7 +518,7 @@ class _SwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged, activeColor: AppTheme.primaryBlue),
+          Switch(value: value, onChanged: onChanged, activeThumbColor: AppTheme.primaryBlue),
         ],
       ),
     );
