@@ -9,9 +9,7 @@ import 'register_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onLogout;
-
   const ProfileScreen({super.key, this.onLogout});
-
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -47,7 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.lightBlue,
                   shape: BoxShape.circle,
                 ),
@@ -108,7 +106,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                    // Avatar
                     Stack(
                       children: [
                         Container(
@@ -141,14 +138,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: user.role == 'admin' ? AppTheme.statusWaspada.withAlpha(51) : AppTheme.statusNormal.withAlpha(51),
+                        color: user.role == 'admin' ? AppTheme.statusWaspada.withValues(alpha: 0.2) : AppTheme.statusNormal.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: user.role == 'admin' ? AppTheme.statusWaspada : AppTheme.statusNormal,
                         ),
                       ),
                       child: Text(
-                        user.role == 'admin' ? '👑 Administrator' : '👤 Pengguna',
+                        user.role == 'admin' ? ' 👑  Administrator' : ' 👤  Pengguna',
                         style: TextStyle(
                           color: user.role == 'admin' ? AppTheme.statusWaspada : AppTheme.statusNormal,
                           fontSize: 12,
@@ -167,16 +164,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Info cards
                 _buildInfoSection(user),
                 const SizedBox(height: 16),
-                // Notifications
                 _buildNotificationSection(),
                 const SizedBox(height: 16),
-                // Menu
                 _buildMenuSection(context),
                 const SizedBox(height: 16),
-                // Logout
                 _buildLogoutButton(context),
                 const SizedBox(height: 32),
               ],
@@ -272,11 +265,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('📍 Sensor Hulu — Batang Arau', style: TextStyle(fontSize: 13)),
+                Text(' 📍  Sensor Hulu — Batang Arau', style: TextStyle(fontSize: 13)),
                 SizedBox(height: 6),
-                Text('📍 Sensor Tengah — Batang Arau', style: TextStyle(fontSize: 13)),
+                Text(' 📍  Sensor Tengah — Batang Arau', style: TextStyle(fontSize: 13)),
                 SizedBox(height: 6),
-                Text('📍 Sensor Hilir — Batang Arau', style: TextStyle(fontSize: 13)),
+                Text(' 📍  Sensor Hilir — Batang Arau', style: TextStyle(fontSize: 13)),
               ],
             ),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))],
@@ -313,7 +306,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }),
     ];
-
     return _SectionCard(
       title: 'Lainnya',
       icon: Icons.more_horiz,
@@ -351,14 +343,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final phoneCtrl = TextEditingController(text: user.phone);
     final addressCtrl = TextEditingController(text: user.address);
     final formKey = GlobalKey<FormState>();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -370,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Edit Profil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(onPressed: () => Navigator.pop(sheetCtx), icon: const Icon(Icons.close)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -394,7 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                       if (!mounted) return;
                       if (ok) {
-                        Navigator.pop(context);
+                        Navigator.pop(sheetCtx);
                         setState(() {});
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Profil berhasil diperbarui'), backgroundColor: AppTheme.statusNormal),
@@ -415,14 +406,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Keluar dari Akun?'),
         content: const Text('Apakah Anda yakin ingin keluar? Anda perlu login kembali untuk mengakses fitur personal.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
               _auth.logout();
               setState(() {});
               widget.onLogout?.call();
@@ -443,9 +434,7 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
-
   const _SectionCard({required this.title, required this.icon, required this.child});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -479,9 +468,7 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-
   const _InfoRow(this.icon, this.label, this.value);
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -509,9 +496,7 @@ class _SwitchRow extends StatelessWidget {
   final bool value;
   final Color color;
   final ValueChanged<bool> onChanged;
-
   const _SwitchRow({required this.icon, required this.label, required this.subtitle, required this.value, required this.color, required this.onChanged});
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -520,7 +505,7 @@ class _SwitchRow extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withAlpha(26), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
@@ -544,15 +529,12 @@ class _MenuItem {
   final IconData icon;
   final String title, subtitle;
   final VoidCallback onTap;
-
   _MenuItem(this.icon, this.title, this.subtitle, this.onTap);
 }
 
 class _MenuTile extends StatelessWidget {
   final _MenuItem item;
-
   const _MenuTile({required this.item});
-
   @override
   Widget build(BuildContext context) {
     return InkWell(

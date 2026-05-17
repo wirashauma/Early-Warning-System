@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/auth_service.dart';
+import '../models/auth_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/auth_widgets.dart';
+import 'register_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,138 +12,183 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController email = TextEditingController();
-  final TextEditingController password = TextEditingController();
-  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _auth = AuthProvider();
 
-  Future<void> _handleLogin(BuildContext context) async {
-    setState(() {
-      _isLoading = true;
-    });
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
 
-    final result = await AuthService.instance.login(email.text.trim(), password.text);
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+    final ok = await _auth.login(_emailCtrl.text.trim(), _passCtrl.text);
 
-    if (!result.isSuccess) {
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.errorMessage ?? 'Login gagal.')),
+        SnackBar(
+          content: Text(_auth.errorMessage ?? 'Login gagal. Silakan coba lagi.'),
+          backgroundColor: AppTheme.statusBahaya,
+        ),
       );
-      return;
     }
+  }
 
-    Navigator.pushReplacementNamed(context, '/dashboard');
+  Future<void> _handleGoogleLogin() async {
+    final ok = await _auth.loginWithGoogle();
+
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_auth.errorMessage ?? 'Login Google gagal. Silakan coba lagi.'),
+          backgroundColor: AppTheme.statusBahaya,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'LOGIN',
-              style: TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 40),
-            TextField(
-              controller: email,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : () => _handleLogin(context),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Login'),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Belum punya akun? '),
-                GestureDetector(
-                  child: const Text(
-                    'Register',
-                    style: TextStyle(color: Colors.blue),
+      backgroundColor: AppTheme.pageBg,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: ListenableBuilder(
+                    listenable: _auth,
+                    builder: (context, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_auth.errorMessage != null) ...[
+                            ErrorBanner(message: _auth.errorMessage!),
+                            const SizedBox(height: 16),
+                          ],
+                          const SizedBox(height: 16),
+                          AuthTextField(
+                            label: 'Email',
+                            hint: 'nama@email.com',
+                            controller: _emailCtrl,
+                            keyboardType: TextInputType.emailAddress,
+                            prefixIcon: Icons.email_outlined,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Email wajib diisi';
+                              if (!v.contains('@')) return 'Format email tidak valid';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          AuthTextField(
+                            label: 'Password',
+                            hint: 'Masukkan password Anda',
+                            controller: _passCtrl,
+                            isPassword: true,
+                            prefixIcon: Icons.lock_outline,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Password wajib diisi';
+                              if (v.length < 6) return 'Password minimal 6 karakter';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          AuthButton(
+                            label: 'Masuk',
+                            onPressed: _handleLogin,
+                            isLoading: _auth.isLoading,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: AppTheme.textGrey.withOpacity(0.3))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+                              ),
+                              Expanded(child: Divider(color: AppTheme.textGrey.withOpacity(0.3))),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          GoogleSignInButton(
+                            onPressed: _handleGoogleLogin,
+                            isLoading: _auth.isLoading,
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text('Belum punya akun? ', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+                              GestureDetector(
+                                onTap: () => Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                                ),
+                                child: const Text('Daftar Sekarang',
+                                    style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold, fontSize: 14)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
                   ),
-                  onTap: () {
-                    Navigator.pushNamed(context, '/register');
-                  },
-                )
-              ],
-            ),
-            const SizedBox(height: 30),
-            const Text(
-              'Quick Login (Dev):',
-              style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _quickLoginBtn(context, 'Admin 1', 'admin@ews.com', 'Admin123!'),
-                _quickLoginBtn(context, 'Admin 2', 'admin2@ews.com', 'AdminOps123!'),
-                _quickLoginBtn(context, 'User 1', 'user1@ews.com', 'User12345!'),
-                _quickLoginBtn(context, 'User 2', 'user2@ews.com', 'User12345!'),
-                _quickLoginBtn(context, 'User 3', 'user3@ews.com', 'User12345!'),
-              ],
-            ),
-          ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _quickLoginBtn(BuildContext context, String label, String emailVal, String passVal) {
-    return InkWell(
-      onTap: _isLoading
-          ? null
-          : () {
-              email.text = emailVal;
-              password.text = passVal;
-              _handleLogin(context);
-            },
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(4),
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey.shade700,
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.accentBlue,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.login_outlined, color: Colors.white, size: 28),
           ),
-        ),
+          const SizedBox(height: 16),
+          const Text('Selamat Datang', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 6),
+          const Text('EWS Flood Guard', style: TextStyle(color: Colors.white70, fontSize: 14)),
+          const SizedBox(height: 8),
+          const Text('Sistem Peringatan Dini Banjir Real-Time', 
+            style: TextStyle(color: Colors.white60, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

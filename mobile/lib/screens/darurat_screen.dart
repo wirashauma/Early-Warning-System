@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
+import 'main_navigation.dart';
 
 class DaruratScreen extends StatelessWidget {
   const DaruratScreen({super.key});
@@ -12,136 +13,130 @@ class DaruratScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildEmergencyAlert(),
-            _buildEmergencyActions(context),
-            _buildBeforeCallingTips(),
-            _buildSafetyGuide(),
-            _buildEmergencyKit(),
+            _buildHeader(context),
+            _buildServices(context),
+            _buildBeforeCallingInfo(),
+            _buildQuickFlow(),
+            const SizedBox(height: 30), // Padding bawah
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmergencyAlert() {
+  Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      color: const Color(0xFFFFF5F5),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.warning_amber_rounded, color: AppTheme.statusBahaya, size: 20),
-              const SizedBox(width: 8),
-              const Text('TINDAKAN CEPAT', style: TextStyle(color: AppTheme.statusBahaya, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Kontak Darurat', 
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Gunakan halaman ini saat situasi kritis. Pilih layanan yang tepat dan sampaikan informasi yang jelas agar bantuan datang lebih cepat.',
+                      style: TextStyle(color: AppTheme.textGrey, fontSize: 13, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.statusBahaya.withAlpha(15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.statusBahaya.withAlpha(60)),
+                ),
+                child: Column(
+                  children: [
+                    Text('Prioritas saat\nstatus Bahaya',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppTheme.statusBahaya, fontWeight: FontWeight.bold, fontSize: 11)),
+                    const SizedBox(height: 4),
+                    Text('Keselamatan jiwa\ndahulu.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppTheme.statusBahaya, fontSize: 10)),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text('Emergency Action Section', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text(
-            'Tombol one-click call berikut memudahkan masyarakat menghubungi layanan darurat saat kondisi kritis.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 13, height: 1.5),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            children: [
+              _NavPill(label: 'Pantau Dashboard', onTap: () => navIndexNotifier.value = 1),
+              _NavPill(label: 'Lihat Peta Sensor', onTap: () => navIndexNotifier.value = 2),
+              _NavPill(label: 'Buka Panduan', onTap: () => navIndexNotifier.value = 4),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmergencyActions(BuildContext context) {
+  Widget _buildServices(BuildContext context) {
     final services = [
-      _EmergencyService(
-        name: 'BPBD Kota',
-        subtitle: 'Nomor prioritas tanggap darurat',
-        phone: '117',
-        focus: 'Koordinasi kebencanaan wilayah',
-        responseTime: 'Target respons 5-10 menit',
-        note: 'Gunakan untuk laporan kejadian banjir skala lingkungan/kecamatan.',
-        color: AppTheme.statusBahaya,
-      ),
-      _EmergencyService(
-        name: 'Basarnas',
-        subtitle: 'Nomor prioritas tanggap darurat',
-        phone: '115',
-        focus: 'Evakuasi & penyelamatan',
-        responseTime: 'Target respons 10-20 menit',
-        note: 'Hubungi saat ada korban terjebak atau butuh evakuasi air deras.',
-        color: AppTheme.statusBahaya,
-      ),
-      _EmergencyService(
-        name: 'Ambulans',
-        subtitle: 'Nomor prioritas tanggap darurat',
-        phone: '118',
-        focus: 'Bantuan medis darurat',
-        responseTime: 'Target respons 10-15 menit',
-        note: 'Prioritaskan untuk kondisi medis kritis selama kejadian banjir.',
-        color: AppTheme.statusBahaya,
-      ),
+      _Service('Ambulans', '118', 'Prioritas', AppTheme.statusBahaya,
+          'Pertolongan medis darurat untuk korban luka, sesak, atau kondisi gawat.',
+          'Secepat mungkin sesuai antrian darurat',
+          'Sampaikan kondisi pasien, usia, gejala utama, dan akses kendaraan.'),
+      _Service('Basarnas', '115', 'Prioritas', AppTheme.statusSiaga,
+          'Pencarian dan penyelamatan korban pada kondisi arus/akses berbahaya.',
+          'Prioritas tinggi untuk kondisi kritis',
+          'Hubungi jika ada korban terjebak, hanyut, atau butuh rescue segera.'),
+      _Service('BPBD Kota Padang', '117', 'Prioritas', AppTheme.accentBlue,
+          'Koordinasi tanggap bencana, evakuasi wilayah terdampak, dan aktivasi posko.',
+          '± 5-15 menit (tergantung akses lapangan)',
+          'Cocok dihubungi saat tinggi air naik cepat dan butuh koordinasi wilayah.'),
+      _Service('Polisi', '110', 'Prioritas', const Color(0xFF7C3AED),
+          'Pengamanan lokasi, pengaturan lalu lintas, dan dukungan evakuasi.',
+          'Sesuai prioritas kejadian lapangan',
+          'Hubungi jika perlu pengamanan area, rekayasa lalu lintas, atau dukungan keamanan.'),
+      _Service('RS Umum Daerah', '119', 'Prioritas', const Color(0xFF0D9488),
+          'Rujukan medis lanjutan dan penanganan kegawatdaruratan fasilitas kesehatan.',
+          'Bergantung kapasitas rumah sakit',
+          'Hubungi untuk koordinasi rujukan pasien banjir dan ketersediaan layanan.'),
     ];
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
-        children: services.map((s) => _EmergencyCard(service: s)).toList(),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Layanan Darurat Prioritas', 
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text('Tekan tombol panggil sesuai kebutuhan utama yang sedang terjadi.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          const SizedBox(height: 12),
+          ...services.map((s) => _ServiceCard(service: s)),
+        ],
       ),
     );
   }
 
-  Widget _buildBeforeCallingTips() {
+  Widget _buildBeforeCallingInfo() {
     final tips = [
-      'Sebutkan lokasi detail (alamat/patokan terdekat).',
-      'Jelaskan kondisi air (tinggi, arus, akses jalan).',
-      'Informasikan jumlah warga terdampak.',
-      'Simpan daya baterai ponsel untuk komunikasi lanjutan.',
+      'Sebutkan lokasi detail (alamat, patokan terdekat, atau titik Google Maps).',
+      'Jelaskan kondisi saat ini: tinggi air, arus, akses jalan, dan cuaca.',
+      'Informasikan jumlah warga terdampak dan kelompok rentan (anak/lansia/disabilitas).',
+      'Sampaikan kebutuhan paling mendesak: evakuasi, medis, logistik, atau penyelamatan.',
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.statusWaspada.withAlpha(77)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.tips_and_updates, color: AppTheme.statusWaspada, size: 18),
-              const SizedBox(width: 8),
-              const Text('Sebelum Menekan Tombol Darurat',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.statusWaspada)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...tips.asMap().entries.map((e) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(color: AppTheme.statusWaspada.withAlpha(51), shape: BoxShape.circle),
-                  child: Center(child: Text('${e.key + 1}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.statusWaspada))),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13, color: AppTheme.textDark, height: 1.4))),
-              ],
-            ),
-          )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSafetyGuide() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -150,89 +145,57 @@ class DaruratScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('FLOOD EDUCATION & FAQ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.accentBlue, letterSpacing: 1)),
-          const SizedBox(height: 8),
-          const Text('Panduan Keselamatan dan Persiapan Darurat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          // Evacuation guide card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Panduan Evakuasi Saat Status Merah', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 12),
-                ...[
-                  'Pantau notifikasi resmi dan ikuti instruksi petugas saat status merah aktif.',
-                  'Matikan listrik utama rumah dan amankan dokumen penting ke tempat kedap air.',
-                  'Bawa tas siaga, bantu lansia/anak, lalu bergerak ke titik evakuasi terdekat.',
-                  'Tetap di jalur aman dan hindari menerobos arus banjir atau kabel listrik terbuka.',
-                ].asMap().entries.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(color: AppTheme.accentBlue, borderRadius: BorderRadius.circular(6)),
-                        child: Center(child: Text('${e.key + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13, height: 1.4))),
-                    ],
-                  ),
-                )),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmergencyKit() {
-    final items = [
-      'Dokumen penting (KTP, KK, surat berharga)',
-      'Obat pribadi, P3K, dan masker',
-      'Air minum, makanan siap saji, perlengkapan bayi',
-      'Senter, powerbank, peluit, dan baterai cadangan',
-      'Pakaian ganti dan perlengkapan kebersihan dasar',
-    ];
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Daftar Barang Darurat Wajib', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text('Informasi yang Harus Disiapkan Saat Menelepon',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.statusSiaga)),
+          const SizedBox(height: 6),
+          Text('Semakin jelas informasi yang kamu sampaikan, semakin cepat tim dapat menentukan tindakan.',
+              style: TextStyle(color: AppTheme.statusSiaga, fontSize: 12)),
           const SizedBox(height: 12),
-          ...items.map((item) => Padding(
+          ...tips.map((t) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(top: 4),
-                  decoration: const BoxDecoration(color: AppTheme.accentBlue, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(item, style: const TextStyle(fontSize: 13, height: 1.4))),
-              ],
-            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(width: 6, height: 6, margin: const EdgeInsets.only(top: 5, right: 10),
+                  decoration: const BoxDecoration(color: AppTheme.accentBlue, shape: BoxShape.circle)),
+              Expanded(child: Text(t, style: const TextStyle(fontSize: 13, height: 1.4))),
+            ]),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickFlow() {
+    final steps = [
+      'Cek sensor paling berisiko di Dashboard/Peta.',
+      'Hubungi layanan darurat yang paling relevan.',
+      'Ikuti arahan petugas dan prioritaskan evakuasi aman.',
+    ];
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Alur Tindakan Cepat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 12),
+          ...steps.asMap().entries.map((e) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(color: AppTheme.accentBlue.withAlpha(20), borderRadius: BorderRadius.circular(6)),
+                child: Center(child: Text('${e.key + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentBlue, fontSize: 13))),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13, height: 1.4))),
+            ]),
           )),
         ],
       ),
@@ -240,25 +203,15 @@ class DaruratScreen extends StatelessWidget {
   }
 }
 
-class _EmergencyService {
-  final String name, subtitle, phone, focus, responseTime, note;
+class _Service {
+  final String name, phone, badge, focus, response, note;
   final Color color;
-
-  const _EmergencyService({
-    required this.name,
-    required this.subtitle,
-    required this.phone,
-    required this.focus,
-    required this.responseTime,
-    required this.note,
-    required this.color,
-  });
+  const _Service(this.name, this.phone, this.badge, this.color, this.focus, this.response, this.note);
 }
 
-class _EmergencyCard extends StatelessWidget {
-  final _EmergencyService service;
-
-  const _EmergencyCard({required this.service});
+class _ServiceCard extends StatelessWidget {
+  final _Service service;
+  const _ServiceCard({required this.service});
 
   @override
   Widget build(BuildContext context) {
@@ -269,70 +222,73 @@ class _EmergencyCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(service.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          Text(service.subtitle, style: const TextStyle(color: AppTheme.textGrey, fontSize: 12)),
-          const SizedBox(height: 12),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(service.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: service.color.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: service.color.withAlpha(80)),
+              ),
+              child: Text(service.badge, style: TextStyle(color: service.color, fontSize: 10, fontWeight: FontWeight.w600)),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          const Text('Nomor Darurat', style: TextStyle(color: AppTheme.textGrey, fontSize: 11)),
+          Text(service.phone, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Fokus layanan', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: AppTheme.textGrey)),
-                          Text(service.focus, style: const TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Estimasi respons', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: AppTheme.textGrey)),
-                          Text(service.responseTime, style: const TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Fokus layanan', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textGrey)),
+                Text(service.focus, style: const TextStyle(fontSize: 12)),
+              ])),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Estimasi respons', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textGrey)),
+                Text(service.response, style: const TextStyle(fontSize: 12)),
+              ])),
+            ]),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: Text('Hubungi ${service.name}'),
-                    content: Text('Apakah Anda ingin menghubungi ${service.phone}?\n\n${service.note}'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusBahaya, foregroundColor: Colors.white),
-                        child: Text('Hubungi ${service.phone}'),
+              onPressed: () => showDialog(
+                context: context,
+                builder: (dialogCtx) => AlertDialog( // Menggunakan dialogCtx agar tidak konflik
+                  title: Text('Hubungi ${service.name}'),
+                  content: Text('Apakah Anda ingin menghubungi ${service.phone}?\n\n${service.note}'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogCtx), 
+                      child: const Text('Batal')
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Logika panggil telepon (Gunakan url_launcher)
+                        Navigator.pop(dialogCtx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: service.color, 
+                        foregroundColor: Colors.white
                       ),
-                    ],
-                  ),
-                );
-              },
+                      child: Text('Hubungi ${service.phone}'),
+                    ),
+                  ],
+                ),
+              ),
               icon: const Icon(Icons.phone, size: 16),
               label: Text('Hubungi ${service.phone}'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.statusBahaya,
+                backgroundColor: service.color,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -342,6 +298,29 @@ class _EmergencyCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(service.note, style: const TextStyle(color: AppTheme.textGrey, fontSize: 11, height: 1.4)),
         ],
+      ),
+    );
+  }
+}
+
+class _NavPill extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _NavPill({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFFF8FAFC),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 12)),
       ),
     );
   }

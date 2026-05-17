@@ -12,9 +12,10 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _authService.isLoggedIn;
   UserModel? get currentUser => _authService.currentUser;
+  String get userRole => _authService.currentUser?.role ?? 'user';
 
-  void _setLoading(bool val) {
-    _isLoading = val;
+  void _setLoading(bool value) {
+    _isLoading = value;
     notifyListeners();
   }
 
@@ -25,66 +26,123 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> login(String email, String password) async {
     _setLoading(true);
-    _errorMessage = null;
-    final result = await _authService.login(email, password);
-    _isLoading = false;
-    if (!result.isSuccess) {
-      _errorMessage = result.errorMessage;
+    clearError();
+
+    try {
+      final result = await _authService.login(email, password);
+
+      if (!result.isSuccess) {
+        _errorMessage = result.errorMessage;
+      }
+
+      return result.isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _setLoading(false);
     }
-    notifyListeners();
-    return result.isSuccess;
   }
 
   Future<bool> register({
     required String name,
     required String email,
     required String password,
-    String? institution,
+    required String phone,
+    String? address,
   }) async {
     _setLoading(true);
-    _errorMessage = null;
-    final result = await _authService.register(
-      name: name,
-      email: email,
-      password: password,
-      institution: institution,
-    );
-    _isLoading = false;
-    if (!result.isSuccess) {
-      _errorMessage = result.errorMessage;
+    clearError();
+
+    try {
+      final result = await _authService.register(
+        name: name,
+        email: email,
+        password: password,
+        phone: phone,
+        address: address,
+      );
+
+      if (!result.isSuccess) {
+        _errorMessage = result.errorMessage;
+      }
+
+      return result.isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _setLoading(false);
     }
-    notifyListeners();
-    return result.isSuccess;
   }
 
   Future<String?> forgotPassword(String email) async {
     _setLoading(true);
-    _errorMessage = null;
-    final result = await _authService.forgotPassword(email);
-    _isLoading = false;
-    if (result == null || result.isEmpty) {
-      _errorMessage = 'Permintaan reset password gagal. Silakan coba lagi.';
-      notifyListeners();
+    clearError();
+
+    try {
+      final result = await _authService.forgotPassword(email);
+
+      if (result.isSuccess) {
+        return "Instruksi reset password telah dikirim.";
+      } else {
+        _errorMessage = result.errorMessage;
+        return null;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
       return null;
+    } finally {
+      _setLoading(false);
     }
-    notifyListeners();
-    return result;
   }
 
   Future<bool> updateProfile({
     required String name,
-    String? phone,
-    String? address,
+    required String phone,
+    required String address,
   }) async {
     _setLoading(true);
-    _errorMessage = null;
-    final result = await _authService.updateProfile(name: name);
-    _isLoading = false;
-    if (!result.isSuccess) {
-      _errorMessage = result.errorMessage;
+    clearError();
+
+    try {
+      final result = await _authService.updateProfile(
+        name: name,
+        phone: phone,
+        address: address,
+      );
+
+      if (!result.isSuccess) {
+        _errorMessage = result.errorMessage;
+      }
+
+      return result.isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _setLoading(false);
     }
-    notifyListeners();
-    return result.isSuccess;
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      final result = await _authService.loginWithGoogle();
+
+      if (!result.isSuccess) {
+        _errorMessage = result.errorMessage;
+      }
+
+      return result.isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   void logout() {

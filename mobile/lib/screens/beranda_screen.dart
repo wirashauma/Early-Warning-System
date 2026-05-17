@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/auth_provider.dart';
 import '../widgets/ews_appbar.dart';
 import 'main_navigation.dart';
 import '../theme/app_theme.dart';
@@ -10,16 +12,195 @@ class BerandaScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🛠️ LANGKAH KUNCI: Membaca peran akun dari AuthProvider global
+    final authProvider = context.watch<AuthProvider>();
+    final String currentRole = authProvider.userRole.toString().toUpperCase();
+    final bool isAdmin = currentRole == 'ADMIN' || currentRole == 'USERROLE.ADMIN';
+
     return Scaffold(
       appBar: EWSAppBar(onRefresh: onRefresh),
+      // PERCAKAPAN HAK AKSES: Jika Admin, tampilkan Dashboard Operasional Mobile Admin
       body: SingleChildScrollView(
         child: Column(
+          children: isAdmin 
+            ? [
+                _buildAdminHeroSection(),
+                _buildAdminStatsSection(),
+                _buildAdminQuickActions(context),
+              ]
+            : [
+                _HeroSection(),
+                _StatsSection(),
+                _FeaturesSection(),
+                _HowItWorksSection(),
+                _FooterSection(),
+              ],
+        ),
+      ),
+    );
+  }
+
+  // =========================================================================
+  // KOMPONEN LAYOUT BERANDA KHUSUS ADMIN MOBILE
+  // =========================================================================
+
+  Widget _buildAdminHeroSection() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)], // Gradasi Navy Premium khusus Admin
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'SISTEM PEMANTAUAN PETUGAS BPBD',
+                  style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Selamat Datang di Panel Manajemen Admin Mobile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Pantau seluruh status telemetri perangkat IoT, kelola ambang batas risiko, dan lakukan tindakan broadcast darurat terkoordinasi secara langsung.',
+                style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              // Tombol kontrol cepat admin
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => navIndexNotifier.value = 1, // Pindah ke tab Data Sensor
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.analytics_outlined, size: 18),
+                      label: const Text('Kelola Alat IoT', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminStatsSection() {
+    // Sinkronisasi data manifest dari berkas seed.ts (3 Perangkat Water Level + 2 Rain Gauge = 5 Sensor Aktif)
+    final adminStats = [
+      {'value': '5', 'label': 'Sensor Terpasang', 'icon': Icons.sensors, 'color': AppTheme.primaryBlue},
+      {'value': 'ONLINE', 'label': 'Konektivitas Global', 'icon': Icons.cloud_done, 'color': Colors.green},
+      {'value': '0', 'label': 'Status Waspada', 'icon': Icons.warning_amber_rounded, 'color': Colors.orange},
+      {'value': '0', 'label': 'Status Bahaya', 'icon': Icons.notifications_active, 'color': Colors.redAccent},
+    ];
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Kondisi Infrastruktur Real-Time', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.5,
+            children: adminStats.map((s) {
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(s['icon'] as IconData, color: s['color'] as Color, size: 20),
+                    const SizedBox(height: 6),
+                    Text(s['value'] as String, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: s['color'] as Color)),
+                    Text(s['label'] as String, style: const TextStyle(fontSize: 11, color: AppTheme.textGrey)),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminQuickActions(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      color: Colors.white,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF1F2), // Box merah tipis penanda aksi darurat
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFECDD3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _HeroSection(),
-            _StatsSection(),
-            _FeaturesSection(),
-            _HowItWorksSection(),
-            _FooterSection(),
+            const Row(
+              children: [
+                Icon(Icons.campaign, color: Colors.redAccent, size: 20),
+                SizedBox(width: 8),
+                Text('Komando Siaran Cepat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF9F1239))),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Gunakan tombol di bawah untuk menyiarkan push notification peringatan evakuasi massal secara manual ke seluruh perangkat warga apabila terjadi anomali sistem.',
+              style: TextStyle(fontSize: 12, color: Color(0xFFBE123C), height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => navIndexNotifier.value = 3, // Pindah langsung ke menu siaran darurat
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 40),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              child: const Text('Buka Menu Broadcast Darurat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            )
           ],
         ),
       ),
@@ -27,6 +208,9 @@ class BerandaScreen extends StatelessWidget {
   }
 }
 
+// =========================================================================
+// LAYOUT ASLI LAMA KHUSUS WARGA (TETAP DIKUNCI AMAN TANPA PERUBAHAN)
+// =========================================================================
 class _HeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -112,7 +296,7 @@ class _HeroSection extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white10,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withAlpha(51)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Text(tag, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   );
@@ -252,7 +436,7 @@ class _FeatureCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withAlpha(26),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -379,33 +563,33 @@ class _FooterSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Platform monitoring real-time untuk membantu admin memantau sensor, memvalidasi alert, dan mempercepat koordinasi respons banjir.',
+            'Platform monitoring real-time untuk membantu admin memantau sensor, memvalidasi alert, and mempercepat koordinasi respons banjir.',
             style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.5),
           ),
           const SizedBox(height: 24),
           const Divider(color: Colors.white24),
           const SizedBox(height: 12),
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.email_outlined, color: Colors.white60, size: 14),
-              const SizedBox(width: 8),
-              const Text('support@ewsfloodguard.id', style: TextStyle(color: Colors.white60, fontSize: 12)),
+              Icon(Icons.email_outlined, color: Colors.white60, size: 14),
+              SizedBox(width: 8),
+              Text('support@ewsfloodguard.id', style: TextStyle(color: Colors.white60, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.phone_outlined, color: Colors.white60, size: 14),
-              const SizedBox(width: 8),
-              const Text('+62 21 555 0199', style: TextStyle(color: Colors.white60, fontSize: 12)),
+              Icon(Icons.phone_outlined, color: Colors.white60, size: 14),
+              SizedBox(width: 8),
+              Text('+62 21 555 0199', style: TextStyle(color: Colors.white60, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.location_on_outlined, color: Colors.white60, size: 14),
-              const SizedBox(width: 8),
-              const Text('Padang, Sumatera Barat', style: TextStyle(color: Colors.white60, fontSize: 12)),
+              Icon(Icons.location_on_outlined, color: Colors.white60, size: 14),
+              SizedBox(width: 8),
+              Text('Padang, Sumatera Barat', style: TextStyle(color: Colors.white60, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 16),

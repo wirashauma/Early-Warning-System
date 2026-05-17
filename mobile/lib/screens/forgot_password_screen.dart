@@ -24,7 +24,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _handleForgot() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Pastikan metode forgotPassword sudah ada di AuthProvider Anda
     final msg = await _auth.forgotPassword(_emailCtrl.text);
+    
     if (!mounted) return;
     if (msg != null) {
       setState(() => _successMessage = msg);
@@ -35,16 +38,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.pageBg,
+      // Menambahkan AppBar untuk memudahkan navigasi kembali
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(), // Error "undefined_method" hilang
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: ListenableBuilder(
                   listenable: _auth,
                   builder: (context, _) {
+                    // Logika tampilan sukses atau form
                     if (_successMessage != null) return _buildSuccessState();
                     return _buildForm();
                   },
@@ -57,36 +70,37 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
+  // --- HELPER METHODS (Pastikan berada di DALAM kelas State) ---
+
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)],
         ),
       ),
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              padding: EdgeInsets.zero,
-            ),
-          ),
-          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: AppTheme.accentBlue, borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(
+              color: AppTheme.accentBlue, 
+              borderRadius: BorderRadius.circular(14)
+            ),
             child: const Icon(Icons.lock_reset, color: Colors.white, size: 28),
           ),
           const SizedBox(height: 14),
-          const Text('Lupa Password?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text(
+            'Lupa Password?', 
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)
+          ),
           const SizedBox(height: 8),
           const Text(
-            'Jangan khawatir! Masukkan email Anda\ndan kami akan kirimkan link reset password.',
+            'Masukkan email Anda dan kami akan kirimkan link reset password.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
           ),
@@ -106,12 +120,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 16),
           ],
           const Text(
-            'Masukkan email yang terdaftar pada akun Anda. Kami akan mengirimkan instruksi untuk mereset password.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 14, height: 1.5),
+            'Alamat Email',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           AuthTextField(
-            label: 'Alamat Email',
+            label: 'Email',
             hint: 'contoh@email.com',
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
@@ -124,18 +138,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 24),
           AuthButton(
-            label: 'Kirim Link Reset Password',
-            onPressed: _handleForgot,
+            label: 'Kirim Link Reset',
+            onPressed: _handleForgot, // Memanggil fungsi _handleForgot
             isLoading: _auth.isLoading,
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, size: 16),
-              label: const Text('Kembali ke Login'),
-              style: TextButton.styleFrom(foregroundColor: AppTheme.textGrey),
-            ),
           ),
         ],
       ),
@@ -145,36 +150,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildSuccessState() {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppTheme.statusNormal.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.mark_email_read_outlined, color: AppTheme.statusNormal, size: 48),
-        ),
-        const SizedBox(height: 20),
-        const Text('Email Terkirim!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        SuccessBanner(message: _successMessage!),
+        const Icon(Icons.check_circle_outline, color: AppTheme.statusNormal, size: 64),
         const SizedBox(height: 16),
         const Text(
-          'Periksa inbox email Anda dan ikuti instruksi untuk mereset password. Jika tidak menerima email dalam 5 menit, cek folder spam Anda.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppTheme.textGrey, fontSize: 13, height: 1.5),
+          'Berhasil!', 
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 8),
+        Text(
+          _successMessage!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppTheme.textGrey),
+        ),
+        const SizedBox(height: 24),
         AuthButton(
           label: 'Kembali ke Login',
           onPressed: () => Navigator.pop(context),
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () => setState(() {
-            _successMessage = null;
-            _auth.clearError();
-          }),
-          child: const Text('Kirim Ulang Email', style: TextStyle(color: AppTheme.accentBlue)),
         ),
       ],
     );

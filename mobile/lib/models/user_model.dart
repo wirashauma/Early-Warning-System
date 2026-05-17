@@ -2,68 +2,60 @@ class UserModel {
   final String id;
   final String name;
   final String email;
-  final String role;
   final String? phone;
+  final String role;
   final String? address;
-  final String? avatar;
-  final String? institution;
-  final DateTime? createdAt;
+  final DateTime createdAt;
 
   UserModel({
     required this.id,
     required this.name,
     required this.email,
-    this.role = 'user',
     this.phone,
+    this.role = 'user',
     this.address,
-    this.avatar,
-    this.institution,
-    this.createdAt,
+    required this.createdAt,
   });
 
   UserModel copyWith({
     String? name,
     String? email,
+    String? phone,
+    String? address,
     String? role,
-    String? avatar,
-    String? institution,
   }) {
     return UserModel(
       id: id,
       name: name ?? this.name,
       email: email ?? this.email,
+      phone: phone ?? this.phone,
       role: role ?? this.role,
-      avatar: avatar ?? this.avatar,
-      institution: institution ?? this.institution,
+      address: address ?? this.address,
       createdAt: createdAt,
     );
   }
 
-  factory UserModel.fromMap(Map<String, dynamic> map) {
+  factory UserModel.fromMap(String id, Map<String, dynamic> map) {
     return UserModel(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      email: map['email'] as String,
-      role: map['role'] as String? ?? 'user',
-      phone: map['phone'] as String?,
-      address: map['address'] as String?,
-      avatar: map['avatar'] as String?,
-      institution: map['institution'] as String?,
+      id: id,
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      phone: map['phone'],
+      role: map['role'] ?? 'user',
+      address: map['address'],
       createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt'] as String)
-          : null,
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'email': email,
-        'role': role,
-        if (phone != null) 'phone': phone,
-        if (address != null) 'address': address,
-        if (avatar != null) 'avatar': avatar,
-        if (institution != null) 'institution': institution,
-        if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'role': role,
+    'address': address,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }

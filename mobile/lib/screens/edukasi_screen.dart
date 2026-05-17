@@ -1,34 +1,31 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 import 'package:flutter/services.dart';
+import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
+import 'main_navigation.dart';
 
 class EdukasiScreen extends StatefulWidget {
   const EdukasiScreen({super.key});
-
   @override
   State<EdukasiScreen> createState() => _EdukasiScreenState();
 }
 
 class _EdukasiScreenState extends State<EdukasiScreen> {
-  final List<int> _expandedFaqs = [];
+  final Set<int> _expandedFaqs = {};
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const EWSAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 24),
-            _buildFloodTypes(),
-            const SizedBox(height: 24),
+            _buildLevelGuides(),
+            _buildChecklist(),
+            _buildDosAndDonts(),
             _buildFAQ(),
-            const SizedBox(height: 24),
-            _buildContactSection(),
+            _buildQuickAccess(),
           ],
         ),
       ),
@@ -39,204 +36,326 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('PANDUAN USER', style: TextStyle(fontSize: 11, color: AppTheme.accentBlue, fontWeight: FontWeight.w600, letterSpacing: 1)),
+          const SizedBox(height: 8),
+          const Text('Pusat Panduan Kesiapsiagaan Banjir',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('Informasi diringkas untuk orang awam: baca level notifikasi, ikuti 3 langkah utama, lalu cek daftar aman.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 13, height: 1.5)),
+          const SizedBox(height: 16),
+          // Quick jump pills
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _JumpPill(label: 'Aksi Kuning'),
+            _JumpPill(label: 'Aksi Oren'),
+            _JumpPill(label: 'Aksi Merah'),
+            _JumpPill(label: 'Checklist'),
+            _JumpPill(label: 'FAQ'),
+          ]),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('RINGKAS 60 DETIK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.accentBlue)),
+                const SizedBox(height: 6),
+                const Text('Kalau dapat notifikasi:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                const Text('1. Cek warna status (Kuning, Oren, Merah).', style: TextStyle(fontSize: 12, height: 1.4)),
+                const Text('2. Ikuti langkah pada kartu warna yang sama.', style: TextStyle(fontSize: 12, height: 1.4)),
+                const Text('3. Prioritaskan keselamatan keluarga, bukan barang.', style: TextStyle(fontSize: 12, height: 1.4)),
+              ]),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.lightBlue,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.accentBlue.withAlpha(40)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Hubungan dengan Notifikasi Detail',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.accentBlue)),
+                const SizedBox(height: 8),
+                Text('Tombol Buka Tab Panduan pada detail notifikasi akan langsung membawa Anda ke bagian level yang sesuai.',
+                    style: TextStyle(color: AppTheme.accentBlue, fontSize: 12, height: 1.4)),
+              ]),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLevelGuides() {
+    final levels = [
+      _LevelGuide(
+        color: AppTheme.statusWaspada,
+        name: 'Kuning (Waspada)',
+        desc: 'Air mulai naik. Ini momen terbaik untuk siap-siap tanpa panik.',
+        dos: ['Pantau dashboard tiap 10-15 menit.', 'Siapkan tas siaga (dokumen, obat, charger, air minum).', 'Pastikan semua anggota keluarga tahu rute keluar rumah.'],
+        donts: ['Jangan menunggu status naik dulu baru mulai persiapan.', 'Jangan abaikan notifikasi berulang dari area yang sama.'],
+      ),
+      _LevelGuide(
+        color: AppTheme.statusSiaga,
+        name: 'Oren (Siaga)',
+        desc: 'Risiko banjir makin tinggi. Fokus ke pra-evakuasi sekarang.',
+        dos: ['Pindahkan barang berharga ke tempat lebih tinggi.', 'Siapkan anak, lansia, dan anggota rentan untuk berangkat lebih dulu.', 'Pastikan jalur evakuasi tidak terhalang.'],
+        donts: ['Jangan menunda keputusan sampai air masuk rumah.', 'Jangan sebarkan kabar yang belum pasti.'],
+      ),
+      _LevelGuide(
+        color: AppTheme.statusBahaya,
+        name: 'Merah (Bahaya)',
+        desc: 'Kondisi kritis. Prioritas utama adalah menyelamatkan jiwa.',
+        dos: ['Evakuasi segera ke lokasi aman resmi.', 'Hubungi layanan darurat bila ada yang terjebak atau terluka.', 'Ikuti instruksi petugas dan jangan menerobos arus air.'],
+        donts: ['Jangan menyelamatkan barang jika membahayakan diri.', 'Jangan menunggu konfirmasi kedua bila situasi sudah jelas kritis.'],
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Panduan Per Level Notifikasi',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text('Pilih level yang sama dengan notifikasi Anda.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          const SizedBox(height: 12),
+          ...levels.map((l) => _LevelCard(level: l)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklist() {
+    final items = [
+      'Dokumen penting (KTP, KK, akta, surat berharga) dalam pelindung tahan air',
+      'Obat rutin keluarga, P3K, masker, dan hand sanitizer',
+      'Air minum, makanan siap saji, perlengkapan bayi/lansia',
+      'Senter, peluit, power bank, baterai cadangan',
+      'Pakaian ganti, selimut ringan, perlengkapan kebersihan',
+      'Uang tunai secukupnya dan daftar kontak penting',
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E40AF), Color(0xFF3B82F6)],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('FLOOD EDUCATION & FAQ', style: TextStyle(fontSize: 11, color: Colors.white70, letterSpacing: 1)),
-          const SizedBox(height: 8),
-          const Text('Edukasi & Panduan\nPenanggulangan Banjir', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white, height: 1.3)),
-          const SizedBox(height: 8),
-          const Text(
-            'Pelajari cara memahami sistem peringatan dini, mempersiapkan diri menghadapi banjir, dan langkah tepat saat darurat.',
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['Cara kerja sistem', 'Panduan darurat', 'FAQ', 'Tips aman'].map((tag) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 11)),
-              );
-            }).toList(),
+          const Text('Checklist Tas Siaga 72 Jam', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text('Simpan perlengkapan ini di tempat yang mudah dijangkau.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 2.8,
+            children: items.map((item) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('– ', style: TextStyle(color: AppTheme.accentBlue, fontWeight: FontWeight.bold)),
+                Expanded(child: Text(item, style: const TextStyle(fontSize: 11, height: 1.3))),
+              ]),
+            )).toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFloodTypes() {
-    final topics = [
-      _EduTopic(
-        icon: Icons.sensors,
-        title: 'Cara Kerja Sensor EWS',
-        desc: 'Sensor ultrasonik mengukur ketinggian air sungai secara real-time dan mengirim data ke server setiap 5 menit untuk dianalisis.',
-        color: AppTheme.accentBlue,
+  Widget _buildDosAndDonts() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Do & Don\'t Saat Evakuasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text('Petunjuk singkat ini membantu mengurangi risiko cedera saat proses penyelamatan.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          const SizedBox(height: 12),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.statusNormal.withAlpha(15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.statusNormal.withAlpha(60)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Yang Harus Dilakukan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.statusNormal)),
+                const SizedBox(height: 10),
+                ...['Gunakan alas kaki anti-slip saat evakuasi.', 'Sampaikan lokasi dengan patokan jelas saat menghubungi darurat.', 'Bantu tetangga rentan jika kondisi memungkinkan.', 'Pantau pembaruan resmi secara berkala.']
+                    .map((t) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('+ ', style: TextStyle(color: AppTheme.statusNormal, fontWeight: FontWeight.bold)),
+                      Expanded(child: Text(t, style: TextStyle(fontSize: 12, color: AppTheme.statusNormal))),
+                    ]))),
+              ]),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.statusBahaya.withAlpha(15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.statusBahaya.withAlpha(60)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Yang Harus Dihindari', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.statusBahaya)),
+                const SizedBox(height: 10),
+                ...['Jangan melintasi arus banjir deras walau terlihat dangkal.', 'Jangan menyalakan listrik di area yang masih basah.', 'Jangan menunggu terlalu lama saat status sudah merah.', 'Jangan percaya hoaks atau informasi tanpa sumber resmi.']
+                    .map((t) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('✕ ', style: TextStyle(color: AppTheme.statusBahaya, fontWeight: FontWeight.bold)),
+                      Expanded(child: Text(t, style: TextStyle(fontSize: 12, color: AppTheme.statusBahaya))),
+                    ]))),
+              ]),
+            )),
+          ]),
+        ],
       ),
-      _EduTopic(
-        icon: Icons.notifications_active,
-        title: 'Sistem Peringatan Otomatis',
-        desc: 'Ketika ketinggian air melampaui ambang batas, sistem secara otomatis mengganti status dan mengirimkan notifikasi kepada pengguna terdaftar.',
-        color: AppTheme.statusWaspada,
-      ),
-      _EduTopic(
-        icon: Icons.family_restroom,
-        title: 'Persiapan Keluarga',
-        desc: 'Setiap keluarga sebaiknya memiliki rencana evakuasi, tas siaga, dan titik kumpul yang disepakati bersama sebelum bencana terjadi.',
-        color: AppTheme.statusSiaga,
-      ),
-      _EduTopic(
-        icon: Icons.water_damage,
-        title: 'Mengenali Tanda Banjir',
-        desc: 'Perhatikan tanda-tanda seperti air sungai keruh, bau tanah basah, suara gemuruh dari hulu, dan naiknya permukaan air secara cepat.',
-        color: AppTheme.statusBahaya,
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('MATERI EDUKASI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.accentBlue, letterSpacing: 1)),
-        const SizedBox(height: 8),
-        const Text('Pelajari Lebih Lanjut', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        ...topics.map((t) => _EduCard(topic: t)),
-      ],
     );
   }
 
   Widget _buildFAQ() {
     final faqs = [
-      _FAQItem('Bagaimana data sensor diperbarui?', 'Data sensor dikirim berkala ke sistem dan ditampilkan hampir real-time pada dashboard publik. Pembaruan terjadi setiap 5 menit sekali.'),
-      _FAQItem('Apa peran admin dalam sistem EWS?', 'Admin mengelola sensor, memvalidasi data/alert, dan memastikan informasi darurat dikirim tepat waktu kepada masyarakat.'),
-      _FAQItem('Apa yang harus dilakukan saat status Kuning?', 'Siapkan dokumen penting, tas siaga, dan pantau terus pembaruan status dari dashboard maupun petugas setempat.'),
-      _FAQItem('Apakah tombol darurat bisa langsung menelepon?', 'Ya, tombol menggunakan fitur one-click call, terutama efektif pada perangkat mobile yang memiliki aplikasi telepon aktif.'),
-      _FAQItem('Berapa lama sistem bisa beroperasi tanpa internet?', 'Sensor memiliki penyimpanan lokal sementara. Data akan disinkronkan ketika koneksi pulih. Status terakhir tetap ditampilkan.'),
-      _FAQItem('Apakah aplikasi ini tersedia secara offline?', 'Fitur utama memerlukan koneksi internet, namun panduan darurat dan nomor telepon dapat diakses dalam mode offline setelah diunduh.'),
+      {'q': 'Bagaimana cara membaca warna status di dashboard?', 'a': 'Hijau = Normal (aman), Kuning = Waspada (persiapkan diri), Oren = Siaga (siap evakuasi), Merah = Bahaya (evakuasi segera). Warna berubah otomatis berdasarkan data sensor.'},
+      {'q': 'Kapan saya harus menghubungi kontak darurat?', 'a': 'Segera hubungi jika status sudah Oren atau Merah, ada anggota keluarga yang butuh bantuan evakuasi, atau ada orang terjebak/terluka di area terdampak.'},
+      {'q': 'Apakah notifikasi selalu muncul otomatis?', 'a': 'Ya, sistem mengirim notifikasi otomatis ketika status sensor berubah ke Kuning, Oren, atau Merah. Pastikan notifikasi aplikasi diaktifkan di pengaturan ponsel Anda.'},
+      {'q': 'Apa informasi minimum saat menelepon layanan darurat?', 'a': 'Lokasi (alamat/patokan), kondisi air saat ini, jumlah orang terdampak, dan kebutuhan utama (evakuasi/medis/logistik).'},
+      {'q': 'Jika saya ragu harus evakuasi atau tidak, apa yang dilakukan?', 'a': 'Jangan tunggu sampai yakin. Jika status sudah Oren, mulailah bergerak. Lebih baik evakuasi lebih awal dan aman daripada terlambat. Prioritaskan keselamatan jiwa.'},
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('PERTANYAAN UMUM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.accentBlue, letterSpacing: 1)),
-        const SizedBox(height: 8),
-        const Text('FAQ — Pertanyaan yang Sering Diajukan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        ...faqs.asMap().entries.map((e) => _FAQCard(
-          item: e.value,
-          isExpanded: _expandedFaqs.contains(e.key),
-          onTap: () => setState(() {
-            if (_expandedFaqs.contains(e.key)) {
-              _expandedFaqs.remove(e.key);
-            } else {
-              _expandedFaqs.add(e.key);
-            }
-          }),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildContactSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E3A5F),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Butuh Bantuan Lebih Lanjut?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 8),
-          const Text('Tim kami siap membantu 24/7 untuk pertanyaan teknis dan laporan darurat.',
-              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(const ClipboardData(text: 'support@ewsfloodguard.id'));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Email disalin: support@ewsfloodguard.id'), duration: Duration(seconds: 2)),
-                    );
-                  },
-                  icon: const Icon(Icons.email_outlined, size: 16, color: Colors.white),
-                  label: const Text('Email Support', style: TextStyle(color: Colors.white)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white30),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
+          const Text('FAQ Cepat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text('Pertanyaan umum yang paling sering muncul dari pengguna.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          const SizedBox(height: 12),
+          ...faqs.asMap().entries.map((entry) {
+            final i = entry.key;
+            final faq = entry.value;
+            final isExpanded = _expandedFaqs.contains(i);
+            return GestureDetector(
+              onTap: () => setState(() => isExpanded ? _expandedFaqs.remove(i) : _expandedFaqs.add(i)),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Hubungi Tim EWS'),
-                        content: const Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('📞 +62 21 555 0199'),
-                            SizedBox(height: 8),
-                            Text('📧 support@ewsfloodguard.id'),
-                            SizedBox(height: 8),
-                            Text('Jam operasional: 24/7', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
-                        ],
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.phone, size: 16),
-                  label: const Text('Hubungi Kami'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentBlue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                child: Column(children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Expanded(child: Text(faq['q']!, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
+                      Text(isExpanded ? '∧' : 'v', style: const TextStyle(color: AppTheme.accentBlue, fontWeight: FontWeight.bold)),
+                    ]),
                   ),
-                ),
+                  if (isExpanded)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                      child: Text(faq['a']!, style: const TextStyle(fontSize: 13, color: AppTheme.textGrey, height: 1.5)),
+                    ),
+                ]),
               ),
-            ],
-          ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccess() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Akses Cepat Fitur User', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const Text('Gunakan halaman terkait berikut untuk mengambil tindakan langsung.',
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          const SizedBox(height: 14),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            ElevatedButton(
+              onPressed: () => navIndexNotifier.value = 1,
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentBlue, foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: const Text('Buka Dashboard'),
+            ),
+            OutlinedButton(
+              onPressed: () {},
+              style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: const Text('Cek Notifikasi'),
+            ),
+            OutlinedButton(
+              onPressed: () => navIndexNotifier.value = 2,
+              style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: const Text('Lihat Peta Sensor'),
+            ),
+            OutlinedButton(
+              onPressed: () => navIndexNotifier.value = 3,
+              style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: const Text('Kontak Darurat'),
+            ),
+          ]),
         ],
       ),
     );
   }
 }
 
-class _EduTopic {
-  final IconData icon;
-  final String title, desc;
+class _LevelGuide {
   final Color color;
-
-  const _EduTopic({required this.icon, required this.title, required this.desc, required this.color});
+  final String name, desc;
+  final List<String> dos, donts;
+  const _LevelGuide({required this.color, required this.name, required this.desc, required this.dos, required this.donts});
 }
 
-class _EduCard extends StatelessWidget {
-  final _EduTopic topic;
-
-  const _EduCard({required this.topic});
+class _LevelCard extends StatelessWidget {
+  final _LevelGuide level;
+  const _LevelCard({required this.level});
 
   @override
   Widget build(BuildContext context) {
@@ -248,89 +367,62 @@ class _EduCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: topic.color.withAlpha(26),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(topic.icon, color: topic.color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(topic.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 6),
-                Text(topic.desc, style: const TextStyle(color: AppTheme.textGrey, fontSize: 13, height: 1.4)),
-              ],
-            ),
-          ),
+          Row(children: [
+            Container(width: 12, height: 12, decoration: BoxDecoration(color: level.color, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Text(level.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: level.color)),
+          ]),
+          const SizedBox(height: 6),
+          Text(level.desc, style: const TextStyle(color: AppTheme.textGrey, fontSize: 13)),
+          const SizedBox(height: 12),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('LAKUKAN SEKARANG', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.accentBlue)),
+              const SizedBox(height: 6),
+              ...level.dos.asMap().entries.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${e.key + 1} ', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.accentBlue)),
+                  Expanded(child: Text(e.value, style: const TextStyle(fontSize: 12, height: 1.4, color: AppTheme.accentBlue))),
+                ]),
+              )),
+            ])),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('HINDARI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textGrey)),
+              const SizedBox(height: 6),
+              ...level.donts.map((d) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(width: 6, height: 6, margin: const EdgeInsets.only(top: 5, right: 6),
+                      decoration: const BoxDecoration(color: AppTheme.textGrey, shape: BoxShape.circle)),
+                  Expanded(child: Text(d, style: const TextStyle(fontSize: 12, height: 1.4, color: AppTheme.textGrey))),
+                ]),
+              )),
+            ])),
+          ]),
         ],
       ),
     );
   }
 }
 
-class _FAQItem {
-  final String question, answer;
-  const _FAQItem(this.question, this.answer);
-}
-
-class _FAQCard extends StatelessWidget {
-  final _FAQItem item;
-  final bool isExpanded;
-  final VoidCallback onTap;
-
-  const _FAQCard({required this.item, required this.isExpanded, required this.onTap});
+class _JumpPill extends StatelessWidget {
+  final String label;
+  const _JumpPill({required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isExpanded ? AppTheme.accentBlue.withAlpha(77) : const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(item.question,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: isExpanded ? AppTheme.primaryBlue : AppTheme.textDark,
-                        )),
-                  ),
-                  Icon(
-                    isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: AppTheme.textGrey,
-                  ),
-                ],
-              ),
-              if (isExpanded) ...[
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Text(item.answer, style: const TextStyle(color: AppTheme.textGrey, fontSize: 13, height: 1.5)),
-              ],
-            ],
-          ),
-        ),
-      ),
+      child: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 }

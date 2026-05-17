@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../models/auth_service.dart';
 import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/notifikasi.dart'; // 1. PASTIKAN IMPORT INI ADA
 
 class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onRefresh;
@@ -27,8 +28,40 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        // 2. PERBAIKAN: Tombol Notifikasi dengan Navigasi
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: AppTheme.textDark),
+                onPressed: () {
+                  // INI KUNCINYA: Navigasi ke halaman notifikasi
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotifikasiPage()),
+                  );
+                },
+              ),
+              // Badge Merah (Titik Notifikasi)
+              Positioned(
+                right: 12,
+                top: 12,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.statusBahaya,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
         if (isLoggedIn)
-          // Sudah login: tampilkan avatar + nama → buka profil
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -74,7 +107,6 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           )
         else
-          // Belum login: tampilkan tombol Login
           TextButton(
             onPressed: () {
               Navigator.push(

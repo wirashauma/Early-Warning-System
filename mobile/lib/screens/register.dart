@@ -11,6 +11,8 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
+  // TAMBAHKAN CONTROLLER UNTUK TELEPON
+  final TextEditingController phoneController = TextEditingController(); 
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmController = TextEditingController();
   bool _isLoading = false;
@@ -18,8 +20,17 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _handleRegister() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
+    final phone = phoneController.text.trim(); // Ambil input telepon
     final password = passwordController.text;
     final confirm = confirmController.text;
+
+    // Validasi dasar
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Semua field harus diisi.')),
+      );
+      return;
+    }
 
     if (password != confirm) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -32,11 +43,16 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });
 
+    // KIRIM PARAMETER PHONE
     final result = await AuthService.instance.register(
       name: name,
       email: email,
       password: password,
+      phone: phone, // Tambahkan ini agar error hilang
     );
+
+    // CEK MOUNTED sebelum menggunakan context setelah await
+    if (!mounted) return;
 
     setState(() {
       _isLoading = false;
@@ -49,18 +65,18 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    // Gunakan pesan sukses yang valid
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message ?? 'Registrasi berhasil.')),
+      const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
     );
+    
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Register'),
-      ),
+      appBar: AppBar(title: const Text('Register')),
       body: Padding(
         padding: const EdgeInsets.all(30),
         child: SingleChildScrollView(
@@ -71,9 +87,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 8),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
               const SizedBox(height: 20),
               const Text('Email'),
@@ -81,8 +95,18 @@ class _RegisterPageState extends State<RegisterPage> {
               TextField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 20),
+              // TAMBAHKAN INPUT TELEPON DI UI
+              const Text('Nomor Telepon'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                  hintText: '08xxxxxxxxxx',
+                  border: OutlineInputBorder()
                 ),
               ),
               const SizedBox(height: 20),
@@ -91,9 +115,7 @@ class _RegisterPageState extends State<RegisterPage> {
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
               const SizedBox(height: 20),
               const Text('Konfirmasi Password'),
@@ -101,9 +123,7 @@ class _RegisterPageState extends State<RegisterPage> {
               TextField(
                 controller: confirmController,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
               const SizedBox(height: 30),
               Center(
@@ -113,7 +133,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleRegister,
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
                         : const Text('Daftar'),
                   ),
                 ),
@@ -123,5 +147,16 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Biasakan melakukan dispose untuk menghindari memory leak
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    confirmController.dispose();
+    super.dispose();
   }
 }

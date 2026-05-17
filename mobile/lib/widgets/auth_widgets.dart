@@ -213,3 +213,50 @@ class DividerWithText extends StatelessWidget {
     );
   }
 }
+
+class GoogleSignInButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final bool isLoading;
+
+  const GoogleSignInButton({
+    super.key,
+    required this.onPressed,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppTheme.accentBlue, width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(color: AppTheme.accentBlue, strokeWidth: 2),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.account_circle, color: AppTheme.accentBlue, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Masuk dengan Google',
+                    style: TextStyle(
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}

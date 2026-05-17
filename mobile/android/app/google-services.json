@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1234567890",
+    "project_id": "ews-flood-guard",
+    "storage_bucket": "ews-flood-guard.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1234567890:android:abcdef123456",
+        "android_client_info": {
+          "package_name": "com.ews.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1234567890-abcdefghijk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ews.mobile",
+            "certificate_hash": "AABBCCDDEEFF00112233445566778899AABBCCDD"
+          }
+        },
+        {
+          "client_id": "1234567890-abcdefghijk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbCdEfGhIjKlMnOpQrStUvWxYz1234567890"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1234567890-abcdefghijk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+
