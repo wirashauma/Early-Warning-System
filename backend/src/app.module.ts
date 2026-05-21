@@ -14,6 +14,7 @@ import { ThresholdsModule } from './thresholds/thresholds.module';
 import { UsersModule } from './users/users.module';
 import { WaterLevelsModule } from './water-levels/water-levels.module';
 import { IotModule } from './iot/iot.module';
+import { DischargeModule } from './discharge/discharge.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { IotModule } from './iot/iot.module';
     ThresholdsModule,
     UsersModule,
     EmergencyContactsModule,
+    DischargeModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

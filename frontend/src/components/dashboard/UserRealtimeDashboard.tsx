@@ -8,6 +8,7 @@ import { WaterLevelGauge } from "@/components/dashboard/WaterLevelGauge";
 import { WaterLevelChart } from "@/components/charts/WaterLevelChart";
 import { RainfallChart } from "@/components/charts/RainfallChart";
 import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
+import { WaterDischargeChart } from "@/components/charts/WaterDischargeChart";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
 import { useFlowRate } from "@/hooks/useFlowRate";
@@ -431,6 +432,11 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
             {/* Chart Row 2 */}
             <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-3">
               <RainfallChart points={history} />
+            </div>
+
+            {/* Chart Row 3 */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-3">
+              <WaterDischargeChart />
             </div>
           </div>
         </section>

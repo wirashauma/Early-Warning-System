@@ -26,4 +26,10 @@ export class RainfallController {
     const data = await this.rainfallService.getHistory(query);
     return ok(data);
   }
+
+  @Get('kenten')
+  async getKenten() {
+    const data = await this.rainfallService.getKentenRainfall();
+    return ok(data);
+  }
 }

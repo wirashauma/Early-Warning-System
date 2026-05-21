@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SensorType } from '@prisma/client';
+import { SensorType, RainfallIntensity } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface HistoryQuery {
@@ -130,6 +130,97 @@ export class RainfallService {
         total,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  async getKentenRainfall() {
+    let sensor = await this.prisma.sensor.findUnique({
+      where: { sensorId: 'EWS-RF-KENTEN' },
+    });
+
+    if (!sensor) {
+      sensor = await this.prisma.sensor.create({
+        data: {
+          sensorId: 'EWS-RF-KENTEN',
+          name: 'Rain Gauge Kenten',
+          type: SensorType.RAINFALL,
+          latitude: -2.9348,
+          longitude: 104.757,
+          batteryLevel: 95,
+          connectivity: 'ONLINE',
+          isActive: true,
+          installedAt: new Date(),
+          lastActiveAt: new Date(),
+        },
+      });
+    }
+
+    const existingLogsCount = await this.prisma.rainfallLog.count({
+      where: { sensorId: sensor.id },
+    });
+
+    if (existingLogsCount === 0) {
+      const logs: any[] = [];
+      const baseRainfalls = [280, 240, 220, 150, 110, 60, 40, 50, 90, 160, 260, 310];
+      const currentYear = new Date().getFullYear();
+
+      for (let month = 0; month < 12; month++) {
+        const totalRain = baseRainfalls[month];
+        const numLogs = 8;
+        const avgRain = totalRain / numLogs;
+        for (let i = 0; i < numLogs; i++) {
+          const rainValue = parseFloat(
+            (avgRain * (0.6 + Math.random() * 0.8)).toFixed(1),
+          );
+          const day = Math.floor(Math.random() * 27) + 1;
+          const hour = Math.floor(Math.random() * 24);
+          const recordedAt = new Date(currentYear, month, day, hour, 0, 0);
+
+          let intensity: RainfallIntensity = RainfallIntensity.LIGHT;
+          if (rainValue > 20) {
+            intensity = RainfallIntensity.HEAVY;
+          } else if (rainValue > 5) {
+            intensity = RainfallIntensity.MODERATE;
+          }
+
+          logs.push({
+            sensorId: sensor.id,
+            rainfall: rainValue,
+            intensity,
+            unit: 'mm/hour',
+            recordedAt,
+          });
+        }
+      }
+      await this.prisma.rainfallLog.createMany({ data: logs });
+    }
+
+    const logs = await this.prisma.rainfallLog.findMany({
+      where: { sensorId: sensor.id },
+      orderBy: { recordedAt: 'asc' },
+    });
+
+    const threshold = await this.prisma.threshold.findUnique({
+      where: { type: 'rainfall' },
+    });
+
+    return {
+      sensor: {
+        sensorId: sensor.sensorId,
+        name: sensor.name,
+        latitude: sensor.latitude,
+        longitude: sensor.longitude,
+        batteryLevel: sensor.batteryLevel,
+        connectivity: sensor.connectivity,
+      },
+      threshold: threshold ? threshold.warningMax ?? 150 : 150,
+      logs: logs.map((log) => ({
+        id: log.id,
+        rainfall: log.rainfall,
+        intensity: log.intensity,
+        unit: log.unit,
+        recordedAt: log.recordedAt,
+      })),
     };
   }
 }

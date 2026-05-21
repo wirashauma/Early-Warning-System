@@ -194,14 +194,14 @@ export function PublicRealtimeDashboardSection() {
           </Card>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <Card>
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
             <WaterLevelChart points={history} />
           </Card>
-          <Card>
+          <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
             <RainfallChart points={history} />
           </Card>
-          <Card>
+          <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
             <FlowSpeedChart points={flowHistory} />
           </Card>
         </div>

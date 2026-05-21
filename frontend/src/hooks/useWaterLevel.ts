@@ -280,6 +280,16 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     socket.on("sensorUpdate", applyRealtimeUpdate);
     socket.on("statusChange", applyRealtimeUpdate);
 
+    // Listen to custom Supabase Realtime connectivity update events
+    const handleRealtimeSensorUpdate = () => {
+      console.log("⚡ Supabase Realtime Event: Reloading sensor data...");
+      void loadCurrent();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
+    }
+
     void loadCurrent();
     const timer = window.setInterval(() => {
       void loadCurrent();
@@ -290,6 +300,9 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       socket.off("sensorUpdate", applyRealtimeUpdate);
       socket.off("statusChange", applyRealtimeUpdate);
       socket.disconnect();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
+      }
     };
   }, [loadCurrent, refreshMs]);
 
