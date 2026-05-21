@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { PropsWithChildren } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,12 +8,55 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
+import api from "@/lib/api";
 
 export default function AdminLayout({ children }: PropsWithChildren) {
   const router = useRouter();
   const { loading, isAuthenticated, logout, user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== "admin") return;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await api.get("/alerts/history", {
+          params: { page: 1, limit: 100 },
+        });
+
+        const rows = (response.data?.data?.items ?? []) as Array<{ id: string }>;
+        const savedReadMapRaw = localStorage.getItem("ews_admin_notifications_read_map");
+        let savedReadMap: Record<string, boolean> = {};
+        if (savedReadMapRaw) {
+          try {
+            savedReadMap = JSON.parse(savedReadMapRaw);
+          } catch {
+            savedReadMap = {};
+          }
+        }
+        
+        const count = rows.filter((row) => !savedReadMap[row.id]).length;
+        setUnreadCount(count);
+      } catch {
+        // ignore
+      }
+    };
+
+    void fetchUnreadCount();
+
+    window.addEventListener("adminNotificationsUpdated", fetchUnreadCount);
+
+    const timer = setInterval(() => {
+      void fetchUnreadCount();
+    }, 10000);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("adminNotificationsUpdated", fetchUnreadCount);
+    };
+  }, [isAuthenticated, user]);
 
   const handleLogout = () => {
     setLogoutConfirmOpen(false);
@@ -100,20 +143,22 @@ export default function AdminLayout({ children }: PropsWithChildren) {
               Periode: {new Date().getFullYear()}/{new Date().getFullYear() + 1}
             </span>
 
-            <button
-              type="button"
+            <Link
+              href="/admin/notifications"
               className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50"
               aria-label="Notifikasi"
               title="Notifikasi"
             >
-              <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
-                2
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4.5 w-4.5" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4a5 5 0 00-5 5v2.4c0 .8-.3 1.6-.8 2.2L5 15.5h14l-1.2-1.9a3.5 3.5 0 01-.8-2.2V9a5 5 0 00-5-5z" />
                 <path strokeLinecap="round" d="M10.2 18a2 2 0 003.6 0" />
               </svg>
-            </button>
+            </Link>
 
             <div className="hidden h-8 w-px bg-slate-200 lg:block" />
 

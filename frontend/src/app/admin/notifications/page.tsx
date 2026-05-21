@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { formatTimestamp } from "@/lib/utils";
 import api from "@/lib/api";
@@ -14,7 +15,20 @@ const levelDotClass: Record<NotificationConditionLevel, string> = {
   Bahaya: "bg-rose-500",
 };
 
+const ADMIN_NOTIFICATION_STORAGE_KEY = "ews_admin_notifications_read_map";
+
+function parseReadMap(raw: string | null): Record<string, boolean> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export default function AdminNotificationsPage() {
+  const router = useRouter();
   const [items, setItems] = useState<Array<{
     id: string;
     subject: string;
@@ -48,6 +62,10 @@ export default function AdminNotificationsPage() {
           user?: { name?: string };
         }>;
 
+        const savedReadMap = typeof window !== "undefined"
+          ? parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY))
+          : {};
+
         setItems(
           rows.map((row) => ({
             id: row.id,
@@ -57,7 +75,7 @@ export default function AdminNotificationsPage() {
             sender: row.user?.name ?? "Sistem EWS",
             channel: row.channels?.[0] ?? "push",
             receivedAt: row.sentAt,
-            isRead: false,
+            isRead: Boolean(savedReadMap[row.id]),
           })),
         );
       } catch (error) {
@@ -72,11 +90,25 @@ export default function AdminNotificationsPage() {
     setItems((prev) => prev.filter((item) => item.id !== id));
     setDeleteConfirm(null);
     setOpenMenu(null);
+
+    if (typeof window !== "undefined") {
+      const savedReadMap = parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY));
+      savedReadMap[id] = true;
+      localStorage.setItem(ADMIN_NOTIFICATION_STORAGE_KEY, JSON.stringify(savedReadMap));
+      window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
+    }
   };
 
   const handleMarkAsRead = (id: string) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true } : item)));
     setOpenMenu(null);
+
+    if (typeof window !== "undefined") {
+      const savedReadMap = parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY));
+      savedReadMap[id] = true;
+      localStorage.setItem(ADMIN_NOTIFICATION_STORAGE_KEY, JSON.stringify(savedReadMap));
+      window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
+    }
   };
 
   useEffect(() => {
@@ -184,8 +216,8 @@ export default function AdminNotificationsPage() {
                     role="button"
                     onClick={() => {
                       try {
-                        // use client-side navigation via location to avoid importing router in many places
-                        window.location.href = `/admin/notifications/${item.id}`;
+                        handleMarkAsRead(item.id);
+                        router.push(`/admin/notifications/${item.id}`);
                       } catch {
                         // ignore
                       }

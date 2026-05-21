@@ -42,23 +42,259 @@ export function RainfallChart({ points }: RainfallChartProps) {
       const exportBtn = cardRef.current.querySelector(".pdf-export-btn") as HTMLElement;
       if (exportBtn) exportBtn.style.opacity = "0";
 
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
+      // Capture chart visual cleanly
+      const chartEl = cardRef.current.querySelector(".chart-container-capture") as HTMLElement;
+      let chartImg = "";
+      if (chartEl) {
+        const canvas = await html2canvas(chartEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+        chartImg = canvas.toDataURL("image/png");
+      }
 
       if (exportBtn) exportBtn.style.opacity = "1";
 
-      const imgData = canvas.toDataURL("image/png");
+      // Initialize jsPDF A4 portrait
       const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [canvas.width / 2, canvas.height / 2],
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
       });
 
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save("Grafik_Curah_Hujan.pdf");
+      // Page dimensions
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 15;
+      const contentWidth = pageWidth - 2 * margin;
+
+      // 1. TOP HEADER BANNER (Navy Theme)
+      pdf.setFillColor(30, 58, 138); // Navy blue
+      pdf.rect(0, 0, pageWidth, 38, "F");
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("LAPORAN RESMI PEMANTAUAN CURAH HUJAN", margin, 13);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(226, 232, 240);
+      pdf.text("Early Warning System (EWS) • Flood Guard Portal Pemantauan", margin, 19);
+
+      // Current formatted date
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      pdf.setFontSize(8);
+      pdf.text(`Waktu Cetak: ${formattedDate} WIB`, margin, 31);
+
+      // Decorative accent line
+      pdf.setFillColor(59, 130, 246); // Accent blue
+      pdf.rect(0, 38, pageWidth, 2, "F");
+
+      // 2. METADATA SECTION
+      let currentY = 49;
+      pdf.setTextColor(15, 23, 42); // slate-900
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("I. METADATA SENSOR & PARAMETER", margin, currentY);
+
+      // Separator Line
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      // Metadata values
+      currentY += 8;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(71, 85, 105); // slate-600
+      pdf.text("Parameter:", margin, currentY);
+      pdf.text("Tipe Sensor:", margin + 85, currentY);
+      
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("Curah Hujan Bulanan (Rainfall Intensity)", margin + 22, currentY);
+      pdf.text("Telemetri Stasiun Cuaca Kenten (Live)", margin + 110, currentY);
+
+      currentY += 5;
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(71, 85, 105);
+      pdf.text("Rentang Waktu:", margin, currentY);
+      pdf.text("Status Ambang Batas:", margin + 85, currentY);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("Akumulasi Bulanan (Showcase)", margin + 22, currentY);
+      pdf.text(`Batas Normal (${threshold} mm)`, margin + 115, currentY);
+
+      // 3. STATISTIK SUMMARY CARD BOXES
+      currentY += 12;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("II. RINGKASAN STATISTIK CURAH HUJAN", margin, currentY);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      currentY += 6;
+      const cardWidth = 56;
+      const cardHeight = 15;
+      const cardGap = 6;
+
+      // Card 1: Minimum
+      pdf.setFillColor(248, 250, 252);
+      pdf.setDrawColor(226, 232, 240);
+      pdf.roundedRect(margin, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Nilai Minimum", margin + 4, currentY + 5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 58, 138);
+      pdf.text(`${min} mm`, margin + 4, currentY + 11);
+
+      // Card 2: Rata-rata
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(margin + cardWidth + cardGap, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Nilai Rata-rata", margin + cardWidth + cardGap + 4, currentY + 5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 58, 138);
+      pdf.text(`${average} mm`, margin + cardWidth + cardGap + 4, currentY + 11);
+
+      // Card 3: Puncak
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(margin + (cardWidth + cardGap) * 2, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Curah Hujan Tertinggi", margin + (cardWidth + cardGap) * 2 + 4, currentY + 5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 58, 138);
+      pdf.text(`${max} mm`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
+
+      // 4. CHART IMAGE
+      currentY += cardHeight + 8;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("III. VISUALISASI TREN GRAFIK CURAH HUJAN", margin, currentY);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      currentY += 6;
+      if (chartImg) {
+        pdf.addImage(chartImg, "PNG", margin, currentY, contentWidth, 54);
+        currentY += 58;
+      } else {
+        currentY += 4;
+      }
+
+      // 5. DETAILED DATA TABLE
+      currentY += 4;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("IV. TABEL DETAIL AKUMULASI CURAH HUJAN", margin, currentY);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      currentY += 6;
+      
+      // Draw Table Header
+      const colWidths = [20, 85, 45, 30]; // Sums up to 180
+      const colNames = ["No.", "Bulan Pengukuran", "Hasil Akumulasi", "Satuan"];
+      
+      pdf.setFillColor(30, 58, 138);
+      pdf.rect(margin, currentY, contentWidth, 7, "F");
+      
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      
+      let colX = margin;
+      for (let i = 0; i < colNames.length; i++) {
+        pdf.text(colNames[i], colX + 4, currentY + 5);
+        colX += colWidths[i];
+      }
+      
+      currentY += 7;
+      
+      // Draw Table Rows
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      
+      chartData.forEach((row, idx) => {
+        if (currentY > pageHeight - 20) {
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(7);
+          pdf.setTextColor(148, 163, 184);
+          pdf.text("EWS Flood Guard • Halaman 1", pageWidth / 2, pageHeight - 10, { align: "center" });
+
+          pdf.addPage();
+          currentY = 20;
+
+          pdf.setFillColor(30, 58, 138);
+          pdf.rect(margin, currentY, contentWidth, 7, "F");
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFont("helvetica", "bold");
+          let subColX = margin;
+          for (let i = 0; i < colNames.length; i++) {
+            pdf.text(colNames[i], subColX + 4, currentY + 5);
+            subColX += colWidths[i];
+          }
+          currentY += 7;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(8);
+        }
+
+        if (idx % 2 === 0) {
+          pdf.setFillColor(248, 250, 252);
+        } else {
+          pdf.setFillColor(255, 255, 255);
+        }
+        pdf.rect(margin, currentY, contentWidth, 5.5, "F");
+        
+        pdf.setDrawColor(241, 245, 249);
+        pdf.line(margin, currentY + 5.5, pageWidth - margin, currentY + 5.5);
+        
+        pdf.setTextColor(15, 23, 42);
+        
+        pdf.text((idx + 1).toString(), margin + 4, currentY + 4);
+        pdf.text(row.month, margin + colWidths[0] + 4, currentY + 4);
+        pdf.text(row.value.toString(), margin + colWidths[0] + colWidths[1] + 4, currentY + 4);
+        pdf.text("mm", margin + colWidths[0] + colWidths[1] + colWidths[2] + 4, currentY + 4);
+        
+        currentY += 5.5;
+      });
+
+      // 6. BOTTOM FOOTER SIGNATURE & BRANDING
+      const totalPages = pdf.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        pdf.setPage(p);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7);
+        pdf.setTextColor(148, 163, 184);
+        pdf.text(
+          `Laporan otomatis digenerate oleh EWS Flood Guard • Halaman ${p} dari ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: "center" }
+        );
+      }
+
+      pdf.save(`Laporan_Curah_Hujan_${now.toISOString().slice(0,10)}.pdf`);
     } catch (err) {
       console.error("PDF Export failed:", err);
     }
@@ -218,7 +454,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
             <p className="text-sm font-semibold text-rose-500">{error}</p>
           </div>
         ) : (
-          <div className="h-[250px] w-full">
+          <div className="chart-container-capture h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />

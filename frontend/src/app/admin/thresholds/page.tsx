@@ -1,11 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ThresholdFlowRateChart } from "@/components/charts/ThresholdFlowRateChart";
-import { ThresholdRainfallChart } from "@/components/charts/ThresholdRainfallChart";
+import { FormEvent, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import api from "@/lib/api";
-import { useThresholdIotData, type ThresholdIotPoint } from "@/hooks/useThresholdIotData";
+import { useThresholdIotData } from "@/hooks/useThresholdIotData";
 
 interface ThresholdForm {
   normalMax: number;
@@ -16,84 +14,6 @@ interface ThresholdForm {
   sedangMax: number;
   lebatMin: number;
   autoBroadcast: boolean;
-}
-
-interface ChartPlaceholderProps {
-  title: string;
-  subtitle: string;
-  statusLabel: string;
-  accent: "emerald" | "sky" | "amber";
-  data: ThresholdIotPoint[];
-  loading: boolean;
-  emptyLabel: string;
-}
-
-const accentClasses = {
-  emerald: {
-    chip: "bg-emerald-50 text-emerald-700",
-    border: "border-emerald-200",
-    gradient: "bg-linear-to-br from-emerald-50/80 via-white to-cyan-50/60",
-    icon: "bg-emerald-100 text-emerald-700",
-  },
-  sky: {
-    chip: "bg-sky-50 text-sky-700",
-    border: "border-sky-200",
-    gradient: "bg-linear-to-br from-sky-50/80 via-white to-blue-50/60",
-    icon: "bg-sky-100 text-sky-700",
-  },
-  amber: {
-    chip: "bg-amber-50 text-amber-700",
-    border: "border-amber-200",
-    gradient: "bg-linear-to-br from-amber-50/80 via-white to-rose-50/60",
-    icon: "bg-amber-100 text-amber-700",
-  },
-} as const;
-
-function ChartPlaceholder({ title, subtitle, statusLabel, accent, data, loading, emptyLabel }: ChartPlaceholderProps) {
-  const styles = accentClasses[accent];
-  const latestPoint = data[0];
-
-  return (
-    <Card className="min-h-62.5 rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-        </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${styles.chip}`}>{statusLabel}</span>
-      </div>
-
-      <div className={`flex min-h-45 items-center justify-center rounded-2xl border border-dashed p-6 text-center ${styles.border} ${styles.gradient}`}>
-        <div className="max-w-xs space-y-2">
-          <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${styles.icon}`}>
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M4 18V6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M7 14l3-3 3 2 4-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          {loading ? (
-            <>
-              <p className="text-sm font-medium text-slate-700">Memuat data real-time...</p>
-              <p className="text-xs leading-5 text-slate-500">Menyiapkan stream IoT untuk {title.toLowerCase()}.</p>
-            </>
-          ) : latestPoint ? (
-            <>
-              <p className="text-sm font-medium text-slate-700">{latestPoint.sensorName}</p>
-              <p className="text-xs leading-5 text-slate-500">
-                Nilai terakhir: <span className="font-semibold text-slate-700">{latestPoint.value}</span> pada {new Date(latestPoint.recordedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-slate-700">{emptyLabel}</p>
-              <p className="text-xs leading-5 text-slate-500">Tempat ini siap menerima komponen chart saat stream terhubung.</p>
-            </>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
 }
 
 export default function AdminThresholdsPage() {
@@ -116,7 +36,7 @@ export default function AdminThresholdsPage() {
     autoBroadcast: false,
   });
 
-  const { rainfallData, flowRateData, waterLevelData, isLoading: isIotLoading, error: iotError, lastUpdated: iotLastUpdated } = useThresholdIotData();
+  const { error: iotError, lastUpdated: iotLastUpdated } = useThresholdIotData();
 
   const loadData = async () => {
     setErrorMessage(null);
@@ -217,14 +137,6 @@ export default function AdminThresholdsPage() {
     openSaveConfirmation();
   };
 
-  const chartSummary = useMemo(
-    () => ({
-      rainfallCount: rainfallData.length,
-      flowCount: flowRateData.length,
-      waterLevelCount: waterLevelData.length,
-    }),
-    [flowRateData.length, rainfallData.length, waterLevelData.length],
-  );
 
   return (
     <main className="space-y-6">
@@ -282,46 +194,19 @@ export default function AdminThresholdsPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
-        <section className="space-y-6">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ThresholdRainfallChart data={rainfallData} loading={isIotLoading} />
-            <ThresholdFlowRateChart data={flowRateData} loading={isIotLoading} />
+      <div className="max-w-3xl mx-auto w-full">
+        <Card className="rounded-2xl border border-slate-100 bg-white/90 shadow-md shadow-slate-200/40 backdrop-blur">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="rounded-2xl bg-blue-50 p-2.5 text-blue-700 shadow-sm">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v18" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 8c2-3 5-4 7-4s5 1 7 4" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 16c2 3 5 4 7 4s5-1 7-4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Form Pengaturan Ambang Batas</h2>
+              <p className="text-sm text-slate-500">Pastikan konfigurasi level air dan hujan sesuai kondisi lapangan tiap sensor.</p>
+            </div>
           </div>
 
-          <Card className="min-h-62.5 rounded-2xl border border-slate-100 bg-white/80 p-5 shadow-sm backdrop-blur">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Grafik Ketinggian Air (Menunggu Koneksi)</h2>
-                <p className="mt-1 text-sm text-slate-500">Placeholder untuk sensor water level yang akan dihubungkan berikutnya.</p>
-              </div>
-              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">Pending</span>
-            </div>
-            <div className="flex min-h-45 items-center justify-center rounded-2xl border border-dashed border-amber-200 bg-linear-to-br from-amber-50/80 via-white to-rose-50/60 p-6 text-center">
-              <div className="max-w-sm space-y-2">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-sm">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" /></svg>
-                </div>
-                <p className="text-sm font-medium text-slate-700">Grafik ini menunggu koneksi sensor water level</p>
-                <p className="text-xs leading-5 text-slate-500">Anda bisa menempatkan chart realtime ketika IoT water level sudah aktif.</p>
-              </div>
-            </div>
-          </Card>
-        </section>
-
-        <section className="space-y-6">
-          <Card className="rounded-2xl border border-slate-100 bg-white/90 shadow-md shadow-slate-200/40 backdrop-blur">
-            <div className="mb-4 flex items-start gap-3">
-              <div className="rounded-2xl bg-blue-50 p-2.5 text-blue-700 shadow-sm">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v18" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 8c2-3 5-4 7-4s5 1 7 4" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 16c2 3 5 4 7 4s5-1 7-4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Form Pengaturan Ambang Batas</h2>
-                <p className="text-sm text-slate-500">Pastikan konfigurasi level air dan hujan sesuai kondisi lapangan tiap sensor.</p>
-              </div>
-            </div>
-
-            <form id="threshold-settings-form" onSubmit={handleSubmit} className="space-y-6">
+          <form id="threshold-settings-form" onSubmit={handleSubmit} className="space-y-6">
               <p className="text-sm text-slate-600">
                 Pengaturan ini disimpan di database dan diterapkan sebagai threshold global. {iotLastUpdated ? `Pembaruan IoT terakhir: ${new Date(iotLastUpdated).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}.` : ""}
               </p>
@@ -504,8 +389,7 @@ export default function AdminThresholdsPage() {
               </div>
             </form>
           </Card>
-        </section>
-      </div>
+        </div>
 
       {confirmSaveOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">

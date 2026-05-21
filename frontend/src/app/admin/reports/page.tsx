@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { RainfallChart } from "@/components/charts/RainfallChart";
 import { WaterLevelChart } from "@/components/charts/WaterLevelChart";
+import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { formatTimestamp } from "@/lib/utils";
 import type { WaterLevelPoint } from "@/types/water-level";
 import api from "@/lib/api";
@@ -20,7 +21,7 @@ export default function AdminReportsPage() {
   const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
   const initialFromDate = weekAgo.toISOString().slice(0, 10);
   const initialToDate = today.toISOString().slice(0, 10);
-  const [sensorOptions, setSensorOptions] = useState<Array<{ id: string; sensorId: string; name: string }>>([]);
+  const [sensorOptions, setSensorOptions] = useState<Array<{ id: string; sensorId: string; name: string; type?: string }>>([]);
   const [filteredData, setFilteredData] = useState<WaterLevelPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -44,33 +45,59 @@ export default function AdminReportsPage() {
     return rows;
   };
 
-  const loadHistory = async (filter: FilterState, sensors: Array<{ sensorId: string }>) => {
-    const targets = filter.sensorId === "all" ? sensors.map((item) => item.sensorId) : [filter.sensorId];
-    const requests = targets.map((sensorId) =>
-      api.get("/water-levels/history", {
+  const loadHistory = async (filter: FilterState, sensors: Array<{ sensorId: string; type?: string }>) => {
+    const targets = filter.sensorId === "all" 
+      ? sensors 
+      : sensors.filter((s) => s.sensorId === filter.sensorId);
+
+    const requests = targets.map(async (sensor) => {
+      const isRainSensor = sensor.type === "RAINFALL";
+      const isFlowSensor = sensor.type === "FLOW_RATE";
+      const endpoint = isRainSensor 
+        ? "/rainfall/history" 
+        : isFlowSensor 
+          ? "/flow-rate/history" 
+          : "/water-levels/history";
+
+      const response = await api.get(endpoint, {
         params: {
-          sensorId,
+          sensorId: sensor.sensorId,
           startDate: `${filter.fromDate}T00:00:00.000Z`,
           endDate: `${filter.toDate}T23:59:59.000Z`,
           interval: "hourly",
         },
-      }),
-    );
+      });
+
+      const historyPayload = response.data?.data;
+      const rows = (Array.isArray(historyPayload)
+        ? historyPayload
+        : historyPayload?.items ?? []) as Array<{
+          sensorId: string;
+          waterLevel?: number;
+          rainfall?: number;
+          flowRate?: number;
+          recordedAt: string;
+        }>;
+
+      return rows.map((row) => {
+        const levelCm = isRainSensor || isFlowSensor ? 0 : row.waterLevel ?? 0;
+        const rainfallMm = isRainSensor ? row.rainfall ?? 0 : 0;
+        const flowRateLpm = isFlowSensor 
+          ? row.flowRate ?? 0 
+          : Number((Math.max(0.3, levelCm / 220 + rainfallMm / 35)).toFixed(2));
+
+        return {
+          timestamp: row.recordedAt,
+          levelCm,
+          rainfallMm,
+          flowRateLpm,
+          sensorId: row.sensorId,
+        };
+      });
+    });
 
     const results = await Promise.all(requests);
-    const points = results.flatMap((result) => {
-      const rows = (result.data?.data ?? []) as Array<{
-        sensorId: string;
-        waterLevel: number;
-        recordedAt: string;
-      }>;
-      return rows.map((row) => ({
-        timestamp: row.recordedAt,
-        levelCm: row.waterLevel,
-        rainfallMm: 0,
-        sensorId: row.sensorId,
-      }));
-    });
+    const points = results.flat();
 
     points.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     setFilteredData(points);
@@ -101,13 +128,14 @@ export default function AdminReportsPage() {
 
   const exportCsv = () => {
     const lines = [
-      ["Waktu", "Sensor", "Ketinggian (cm)", "Intensitas Hujan (mm/jam)"]
+      ["Waktu", "Sensor", "Ketinggian (cm)", "Intensitas Hujan (mm/jam)", "Debit Aliran (LPM)"]
         .join(","),
       ...filteredData.map((row) => [
         formatTimestamp(row.timestamp),
         row.sensorId,
         row.levelCm.toString(),
         row.rainfallMm.toString(),
+        (row.flowRateLpm ?? 0).toString(),
       ].join(",")),
     ];
 
@@ -210,12 +238,15 @@ export default function AdminReportsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="flex flex-col h-full hover:shadow-md transition-shadow border-slate-200 bg-white/95 shadow-sm">
           <WaterLevelChart points={filteredData} />
         </Card>
-        <Card className="border-slate-200 bg-white/95 shadow-sm">
+        <Card className="flex flex-col h-full hover:shadow-md transition-shadow border-slate-200 bg-white/95 shadow-sm">
           <RainfallChart points={filteredData} />
+        </Card>
+        <Card className="flex flex-col h-full hover:shadow-md transition-shadow border-slate-200 bg-white/95 shadow-sm">
+          <FlowSpeedChart points={filteredData} />
         </Card>
       </div>
 
@@ -237,12 +268,13 @@ export default function AdminReportsPage() {
               <th className="py-2">Sensor</th>
               <th className="py-2">Ketinggian</th>
               <th className="py-2">Intensitas Hujan</th>
+              <th className="py-2">Debit Air</th>
             </tr>
           </thead>
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-sm text-slate-500">
+                <td colSpan={5} className="py-6 text-center text-sm text-slate-500">
                   Tidak ada data pada rentang filter ini.
                 </td>
               </tr>
@@ -253,6 +285,7 @@ export default function AdminReportsPage() {
                   <td className="py-3 text-slate-700">{row.sensorId}</td>
                   <td className="py-3 text-slate-700">{row.levelCm} cm</td>
                   <td className="py-3 text-slate-700">{row.rainfallMm} mm/jam</td>
+                  <td className="py-3 text-slate-700">{row.flowRateLpm ?? 0} LPM</td>
                 </tr>
               ))
             )}
