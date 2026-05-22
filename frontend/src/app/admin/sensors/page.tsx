@@ -151,6 +151,7 @@ export default function AdminSensorsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<SensorFormState>(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -259,7 +260,19 @@ export default function AdminSensorsPage() {
     setSavedMessage(null);
     setErrorMessage(null);
     try {
-      await api.patch(`/sensors/${id}`, payload);
+      const response = await fetch(`/api/sensors/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Gagal memperbarui sensor.");
+      }
+
       setSavedMessage("Data sensor berhasil diperbarui.");
       setOpen(false);
       reload();
@@ -289,6 +302,7 @@ export default function AdminSensorsPage() {
 
   const submitForm = async (event: FormEvent) => {
     event.preventDefault();
+    setIsSubmitting(true);
     const payload: SensorMutationPayload = {
       sensorId: form.id,
       name: form.name,
@@ -296,7 +310,7 @@ export default function AdminSensorsPage() {
       latitude: form.latitude,
       longitude: form.longitude,
       batteryLevel: form.batteryPercent,
-      connectivity: form.connectivity === "online" ? "ONLINE" : "OFFLINE",
+      connectivity: form.connectivity.toUpperCase() as "ONLINE" | "OFFLINE",
     };
 
     if (editingId) {
@@ -304,6 +318,7 @@ export default function AdminSensorsPage() {
     } else {
       await handleAddSubmit(payload);
     }
+    setIsSubmitting(false);
   };
 
   const renderSkeleton = () => (
@@ -731,12 +746,12 @@ export default function AdminSensorsPage() {
           <label className="block text-sm font-medium text-slate-700">
             Status Koneksi
             <select
-              value={form.connectivity}
+              value={form.connectivity.toUpperCase()}
               onChange={(event) => setForm((prev) => ({ ...prev, connectivity: event.target.value as SensorConnectivity }))}
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm bg-white text-slate-900 focus:border-blue-500 focus:outline-none"
             >
-              <option value="online">Online</option>
-              <option value="offline">Offline</option>
+              <option value="ONLINE">Online</option>
+              <option value="OFFLINE">Offline</option>
             </select>
           </label>
 
@@ -751,10 +766,12 @@ export default function AdminSensorsPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={isSubmitting}>
               Batal
             </Button>
-            <Button type="submit">Simpan Sensor</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Menyimpan..." : "Simpan Sensor"}
+            </Button>
           </div>
         </form>
       </Modal>

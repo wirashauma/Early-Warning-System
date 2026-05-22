@@ -1,6 +1,6 @@
 import type { WaterStatus } from "./water-level";
 
-export type SensorConnectivity = "online" | "offline";
+export type SensorConnectivity = "online" | "offline" | "ONLINE" | "OFFLINE" | "MAINTENANCE";
 export type SensorType = "WATER_LEVEL" | "RAINFALL" | "FLOW_RATE";
 
 export interface Sensor {

@@ -41,7 +41,9 @@ class _AdminNavigationState extends State<AdminNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
+      appBar: _currentIndex == 0
+          ? null
+          : AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         iconTheme: const IconThemeData(color: Color(0xFF0066FF)),

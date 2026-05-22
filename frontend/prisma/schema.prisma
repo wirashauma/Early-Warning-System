@@ -1,0 +1,198 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Menambahkan kembali FIELD_OFFICER atau menyamakan dengan backend
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  FIELD_OFFICER
+  USER
+}
+
+enum SensorType {
+  WATER_LEVEL
+  RAINFALL
+  FLOW_RATE
+}
+
+enum SensorConnectivity {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+}
+
+enum WaterLevelStatus {
+  NORMAL
+  WARNING
+  ALERT
+  DANGER
+}
+
+enum RainfallIntensity {
+  LIGHT
+  MODERATE
+  HEAVY
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  ALERT
+  DANGER
+}
+
+enum EmergencyCategory {
+  BPBD
+  SAR
+  AMBULANCE
+  POLICE
+  HOSPITAL
+  OTHER
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        UserRole @default(USER)
+  institution String?
+  phone       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  avatar      String?  @db.Text 
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  alerts     Alert[]
+  thresholds Threshold[]
+
+  @@map("users")
+}
+
+model Sensor {
+  id           String             @id @default(uuid())
+  sensorId     String             @unique @map("sensor_id")
+  name         String
+  type         SensorType
+  latitude     Float
+  longitude    Float
+  batteryLevel Int?               @map("battery_level")
+  connectivity SensorConnectivity @default(ONLINE)
+  installedAt  DateTime?          @map("installed_at")
+  lastActiveAt DateTime?          @map("last_active_at")
+  isActive     Boolean            @default(true) @map("is_active")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  waterLevelLogs WaterLevelLog[]
+  rainfallLogs   RainfallLog[]
+  flowRateLogs   FlowRateLog[]
+
+  @@index([type])
+  @@index([isActive])
+  @@map("sensors")
+}
+
+model WaterLevelLog {
+  id         String           @id @default(uuid())
+  sensorId   String           @map("sensor_id")
+  waterLevel Float            @map("water_level")
+  unit       String           @default("meter")
+  status     WaterLevelStatus
+  recordedAt DateTime         @map("recorded_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId, recordedAt])
+  @@index([recordedAt])
+  @@map("water_level_logs")
+}
+
+model RainfallLog {
+  id         String            @id @default(uuid())
+  sensorId   String            @map("sensor_id")
+  rainfall   Float             // Menghapus @map("rainfall") yang redundan
+  unit       String            @default("mm/hour")
+  intensity  RainfallIntensity
+  recordedAt DateTime          @map("recorded_at")
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId, recordedAt])
+  @@index([recordedAt])
+  @@map("rainfall_logs")
+}
+
+model Threshold {
+  id         String   @id @default(uuid())
+  type       String   @unique 
+  normalMin  Float    @map("normal_min")
+  normalMax  Float    @map("normal_max")
+  warningMin Float    @map("warning_min")
+  warningMax Float    @map("warning_max")
+  alertMin   Float?   @map("alert_min")
+  alertMax   Float?   @map("alert_max")
+  dangerMin  Float    @map("danger_min")
+  dangerMax  Float?   @map("danger_max")
+  updatedBy  String?  @map("updated_by")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@index([updatedBy])
+  @@map("thresholds")
+}
+
+model Alert {
+  id         String        @id @default(uuid())
+  title      String
+  message    String
+  severity   AlertSeverity
+  channels   Json          // Reverted to Json to avoid data loss
+  targetArea String?       @map("target_area")
+  sentBy     String?       @map("sent_by") 
+  sentAt     DateTime      @default(now()) @map("sent_at")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  user User? @relation(fields: [sentBy], references: [id], onDelete: SetNull)
+
+  @@index([sentAt])
+  @@index([sentBy])
+  @@map("alerts")
+}
+
+model EmergencyContact {
+  id        String            @id @default(uuid())
+  name      String
+  phone     String
+  category  EmergencyCategory
+  isActive  Boolean           @default(true) @map("is_active")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@map("emergency_contacts")
+}
+
+model FlowRateLog {
+  id         String   @id @default(uuid())
+  sensorId   String   @map("sensor_id")
+  flowRate   Float    @map("flow_rate")
+  unit       String   @default("l/min")
+  recordedAt DateTime @map("recorded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId, recordedAt])
+  @@index([recordedAt])
+  @@map("flow_rate_logs")
+}

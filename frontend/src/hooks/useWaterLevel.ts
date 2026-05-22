@@ -281,8 +281,18 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     socket.on("statusChange", applyRealtimeUpdate);
 
     // Listen to custom Supabase Realtime connectivity update events
-    const handleRealtimeSensorUpdate = () => {
+    const handleRealtimeSensorUpdate = (e: Event) => {
       console.log("⚡ Supabase Realtime Event: Reloading sensor data...");
+      const customEvent = e as CustomEvent<{ sensor_id: string; connectivity: string }>;
+      if (customEvent?.detail?.sensor_id) {
+        const { sensor_id, connectivity } = customEvent.detail;
+        const mappedConn = connectivity.toLowerCase() === "online" ? "online" : "offline";
+        setSensorsSnapshot((prev) =>
+          prev.map((sensor) =>
+            sensor.id === sensor_id ? { ...sensor, connectivity: mappedConn } : sensor
+          )
+        );
+      }
       void loadCurrent();
     };
 

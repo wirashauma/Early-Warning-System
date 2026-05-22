@@ -2,6 +2,12 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import 'water_level_log.dart';
+import 'rainfall_log.dart';
+import 'flow_rate_log.dart';
+import 'alert_model.dart';
+import 'sensor_model.dart';
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;
@@ -125,5 +131,117 @@ class ApiService {
       body['avatar'] = avatar;
     }
     return await put('auth/profile', body) as Map<String, dynamic>;
+  }
+
+  // ==========================================
+  // TELEMETRY & ALERTS HISTORY METHODS
+  // ==========================================
+
+  Future<List<WaterLevelLog>> fetchWaterLevelHistory({
+    String? sensorId,
+    String? startDate,
+    String? endDate,
+    String? interval,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (sensorId != null) queryParams['sensorId'] = sensorId;
+    if (startDate != null) queryParams['startDate'] = startDate;
+    if (endDate != null) queryParams['endDate'] = endDate;
+    if (interval != null) queryParams['interval'] = interval;
+
+    final response = await get('water-levels/history', queryParams: queryParams);
+    
+    // In our NestJS architecture, success response is either { status: 'success', data: [...] }
+    // or just direct [...] depending on how the data was nested, but `get()` automatically
+    // returns response['data'] if the key exists (lines 45-47 in _parseResponse!).
+    // Therefore, we can cast or map directly.
+    final list = response as List<dynamic>? ?? [];
+    return list.map((item) => WaterLevelLog.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<RainfallLog>> fetchRainfallHistory({
+    String? sensorId,
+    String? startDate,
+    String? endDate,
+    String? interval,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (sensorId != null) queryParams['sensorId'] = sensorId;
+    if (startDate != null) queryParams['startDate'] = startDate;
+    if (endDate != null) queryParams['endDate'] = endDate;
+    if (interval != null) queryParams['interval'] = interval;
+
+    final response = await get('rainfall/history', queryParams: queryParams);
+    final list = response as List<dynamic>? ?? [];
+    return list.map((item) => RainfallLog.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<FlowRateLog>> fetchFlowRateHistory({
+    String? sensorId,
+    String? startDate,
+    String? endDate,
+    String? interval,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (sensorId != null) queryParams['sensorId'] = sensorId;
+    if (startDate != null) queryParams['startDate'] = startDate;
+    if (endDate != null) queryParams['endDate'] = endDate;
+    if (interval != null) queryParams['interval'] = interval;
+
+    final response = await get('flow-rate/history', queryParams: queryParams);
+    final list = response as List<dynamic>? ?? [];
+    return list.map((item) => FlowRateLog.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<AlertModel>> fetchActiveAlerts() async {
+    final response = await get('alerts/active');
+    final list = response as List<dynamic>? ?? [];
+    return list.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<AlertModel>> fetchAlertHistory({int page = 1, int limit = 10}) async {
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    final response = await get('alerts/history', queryParams: queryParams);
+    
+    // Paginated responses might have a meta or list inside data
+    if (response is Map<String, dynamic> && response.containsKey('alerts')) {
+      final list = response['alerts'] as List<dynamic>? ?? [];
+      return list.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+    }
+    final list = response as List<dynamic>? ?? [];
+    return list.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<SensorModel>> fetchSensors({int page = 1, int limit = 20}) async {
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    final response = await get('sensors', queryParams: queryParams);
+    
+    if (response is Map<String, dynamic> && response.containsKey('sensors')) {
+      final list = response['sensors'] as List<dynamic>? ?? [];
+      return list.map((item) => SensorModel.fromJson(item as Map<String, dynamic>)).toList();
+    }
+    final list = response as List<dynamic>? ?? [];
+    return list.map((item) => SensorModel.fromJson(item as Map<String, dynamic>)).toList();
   }
 }

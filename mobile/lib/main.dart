@@ -11,6 +11,8 @@ import 'screens/main_navigation.dart';
 import 'screens/admin_navigation.dart';
 import 'models/auth_provider.dart';
 import 'models/admin_provider.dart';
+import 'providers/telemetry_provider.dart';
+import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 
 FirebaseOptions _firebaseOptionsFromEnv() {
@@ -43,6 +45,15 @@ Future<void> main() async {
     debugPrint("Peringatan: File .env tidak ditemukan.");
   }
 
+  // Initialize Supabase & Subscribe to Realtime postgres_changes
+  try {
+    final supabase = SupabaseService();
+    await supabase.initialize();
+    supabase.subscribeToRealtime();
+  } catch (e) {
+    debugPrint("Supabase Realtime initialization error: $e");
+  }
+
   try {
     await Firebase.initializeApp(
       options: _firebaseOptionsFromEnv(),
@@ -63,6 +74,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => TelemetryProvider()..loadInitialData()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
