@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/auth_widgets.dart';
@@ -19,7 +20,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
 
-  final _auth = AuthProvider();
   bool _agreeTerms = false;
 
   @override
@@ -41,7 +41,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
-    final success = await _auth.register(
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.register(
       name: _nameCtrl.text,
       email: _emailCtrl.text,
       phone: _phoneCtrl.text,
@@ -64,7 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _handleGoogleRegister() async {
-    final success = await _auth.loginWithGoogle();
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.loginWithGoogle();
     if (!mounted) return;
     if (success) {
       widget.onLoginSuccess?.call();
@@ -80,7 +82,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_auth.errorMessage ?? 'Google sign-up gagal'),
+          content: Text(authProvider.errorMessage ?? 'Google sign-up gagal'),
           backgroundColor: AppTheme.statusBahaya,
         ),
       );
@@ -100,92 +102,87 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Form(
                   key: _formKey,
-                  child: ListenableBuilder(
-                    listenable: _auth,
-                    builder: (context, _) {
-                      return Column(
+                  child: Column(
+                    children: [
+                      if (context.watch<AuthProvider>().errorMessage != null)
+                        ErrorBanner(message: context.watch<AuthProvider>().errorMessage!),
+                      AuthTextField(
+                        label: 'Nama Lengkap',
+                        hint: 'Masukkan nama Anda',
+                        controller: _nameCtrl,
+                        prefixIcon: Icons.person_outline,
+                        validator: (v) => v!.isEmpty ? 'Nama wajib diisi' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Email',
+                        hint: 'contoh@email.com',
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.email_outlined,
+                        validator: (v) => v!.contains('@') ? null : 'Email tidak valid',
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Nomor Telepon',
+                        hint: '08xxxxxxxxxx',
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        prefixIcon: Icons.phone_outlined,
+                        validator: (v) => v!.length < 10 ? 'Nomor tidak valid' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Alamat (Opsional)',
+                        hint: 'Masukkan alamat tinggal',
+                        controller: _addressCtrl,
+                        prefixIcon: Icons.location_on_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Password',
+                        hint: 'Minimal 6 karakter',
+                        controller: _passCtrl,
+                        isPassword: true,
+                        prefixIcon: Icons.lock_outline,
+                        validator: (v) => v!.length < 6 ? 'Password terlalu pendek' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      AuthTextField(
+                        label: 'Konfirmasi Password',
+                        hint: 'Ulangi password Anda',
+                        controller: _confirmPassCtrl,
+                        isPassword: true,
+                        prefixIcon: Icons.lock_reset,
+                        validator: (v) => v != _passCtrl.text ? 'Password tidak cocok' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildTermsCheckbox(),
+                      const SizedBox(height: 24),
+                      AuthButton(
+                        label: 'Buat Akun',
+                        onPressed: _handleRegister,
+                        isLoading: context.watch<AuthProvider>().isLoading,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
-                          if (_auth.errorMessage != null)
-                            ErrorBanner(message: _auth.errorMessage!),
-                          AuthTextField(
-                            label: 'Nama Lengkap',
-                            hint: 'Masukkan nama Anda',
-                            controller: _nameCtrl,
-                            prefixIcon: Icons.person_outline,
-                            validator: (v) => v!.isEmpty ? 'Nama wajib diisi' : null,
+                          Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
                           ),
-                          const SizedBox(height: 16),
-                          AuthTextField(
-                            label: 'Email',
-                            hint: 'contoh@email.com',
-                            controller: _emailCtrl,
-                            keyboardType: TextInputType.emailAddress,
-                            prefixIcon: Icons.email_outlined,
-                            validator: (v) => v!.contains('@') ? null : 'Email tidak valid',
-                          ),
-                          const SizedBox(height: 16),
-                          AuthTextField(
-                            label: 'Nomor Telepon',
-                            hint: '08xxxxxxxxxx',
-                            controller: _phoneCtrl,
-                            keyboardType: TextInputType.phone,
-                            prefixIcon: Icons.phone_outlined,
-                            validator: (v) => v!.length < 10 ? 'Nomor tidak valid' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          AuthTextField(
-                            label: 'Alamat (Opsional)',
-                            hint: 'Masukkan alamat tinggal',
-                            controller: _addressCtrl,
-                            prefixIcon: Icons.location_on_outlined,
-                          ),
-                          const SizedBox(height: 16),
-                          AuthTextField(
-                            label: 'Password',
-                            hint: 'Minimal 6 karakter',
-                            controller: _passCtrl,
-                            isPassword: true,
-                            prefixIcon: Icons.lock_outline,
-                            validator: (v) => v!.length < 6 ? 'Password terlalu pendek' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          AuthTextField(
-                            label: 'Konfirmasi Password',
-                            hint: 'Ulangi password Anda',
-                            controller: _confirmPassCtrl,
-                            isPassword: true,
-                            prefixIcon: Icons.lock_reset,
-                            validator: (v) => v != _passCtrl.text ? 'Password tidak cocok' : null,
-                          ),
-                          const SizedBox(height: 20),
-                          _buildTermsCheckbox(),
-                          const SizedBox(height: 24),
-                          AuthButton(
-                            label: 'Buat Akun',
-                            onPressed: _handleRegister,
-                            isLoading: _auth.isLoading,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
-                              ),
-                              Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          GoogleSignInButton(
-                            onPressed: _handleGoogleRegister,
-                            isLoading: _auth.isLoading,
-                          ),
-                          const SizedBox(height: 24),
-                          _buildFooter(),
+                          Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
                         ],
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 16),
+                      GoogleSignInButton(
+                        onPressed: _handleGoogleRegister,
+                        isLoading: context.watch<AuthProvider>().isLoading,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildFooter(),
+                    ],
                   ),
                 ),
               ),

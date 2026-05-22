@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class AdminAlertsScreen extends StatefulWidget {
   const AdminAlertsScreen({super.key});
@@ -47,7 +48,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
           const SizedBox(height: 24),
           const Text('Riwayat Broadcast Kebencanaan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B))),
           const SizedBox(height: 8),
-          _buildHistoryItem('Waspada', 'Pesan disiarkan ke semua warga sektor 1', '14 Mei 2026', Colors.orange),
+          _buildHistoryItem('Waspada', 'Pesan disiarkan ke semua warga sektor 1', '14 Mei 2026', AppTheme.statusWaspada),
           _buildHistoryItem('Evakuasi', 'Perintah evakuasi mandiri RT03/RW04', '11 Mei 2026', Colors.red),
         ],
       ),

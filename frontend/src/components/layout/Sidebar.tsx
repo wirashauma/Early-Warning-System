@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { adminNavLinks } from "@/constants";
 import { cn } from "@/lib/utils";
 
@@ -83,25 +85,9 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-function FlowIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8c2.4-2.2 5.2-2.2 7.6 0s5.2 2.2 7.6 0" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 13c2.4-2.2 5.2-2.2 7.6 0s5.2 2.2 7.6 0" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 18c2.4-2.2 5.2-2.2 7.6 0s5.2 2.2 7.6 0" />
-    </svg>
-  );
-}
-
 function CollapseIcon({ collapsed, className }: { collapsed: boolean; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" className={className} aria-hidden="true">
-      {collapsed ? (
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 7l5 5-5 5" />
-      ) : (
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 7l-5 5 5 5" />
-      )}
-    </svg>
+    collapsed ? <ChevronRight className={className} aria-hidden="true" /> : <ChevronLeft className={className} aria-hidden="true" />
   );
 }
 
@@ -111,29 +97,46 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "sticky top-0 h-screen shrink-0 overflow-hidden bg-linear-to-b from-blue-700 via-blue-700 to-indigo-800 text-blue-50 shadow-xl shadow-blue-950/25 transition-all duration-300",
-        collapsed ? "w-24" : "w-71 xl:w-74",
+        "sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-slate-800 bg-[#0B1120] text-slate-50 shadow-2xl shadow-slate-950/40 transition-all duration-300 md:flex",
+        collapsed ? "w-20 xl:w-24" : "w-64 xl:w-72",
       )}
     >
-      <div className="relative flex h-full flex-col px-3 py-4">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_5%,rgba(255,255,255,0.16),transparent_40%),radial-gradient(circle_at_90%_100%,rgba(125,211,252,0.18),transparent_36%)]" />
+      <div className="relative flex h-full w-full flex-col px-3 py-4">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(59,130,246,0.18),transparent_34%),radial-gradient(circle_at_90%_100%,rgba(15,23,42,0.2),transparent_40%)]" />
 
-        <div className="relative z-10 mb-4 border-b border-white/15 pb-4">
+        <div className="relative z-10 mb-4 border-b border-slate-800/80 pb-4 pt-1">
           {!collapsed ? (
-            <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-3 py-3 shadow-sm shadow-blue-950/20 backdrop-blur-sm">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/18">
-                <FlowIcon className="h-5 w-5 text-cyan-200" />
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-700/80 bg-slate-800/60 px-3 py-3 shadow-lg shadow-slate-950/20 backdrop-blur-md">
+              <div className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/95 ring-1 ring-white/10">
+                <Image
+                  src="/logo.png"
+                  alt="EWS Flood Guard"
+                  width={40}
+                  height={40}
+                  priority
+                  className="h-10 w-10 object-contain"
+                />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-[0.72rem] font-medium uppercase tracking-[0.14em] text-blue-100/85">Early Warning</p>
-                <h2 className="truncate text-[1.35rem] font-semibold leading-tight">Flood Guard</h2>
-                <p className="truncate text-xs text-blue-100/90">Dashboard Admin</p>
+                <p className="truncate text-[0.72rem] font-medium uppercase tracking-[0.18em] text-slate-400">Early Warning</p>
+                <h2 className="truncate text-[1.2rem] font-bold leading-tight tracking-wide text-white">Flood Guard</h2>
+                <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-500">Dashboard Admin</p>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-2.5">
-              <div className="rounded-xl border border-white/25 bg-white/10 px-2.5 py-2 text-sm font-semibold leading-none">EWS</div>
-              <FlowIcon className="h-4 w-4 text-cyan-200" />
+            <div className="flex flex-col items-center justify-center gap-2.5 py-1">
+              <div className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-white/95 p-1.5 shadow-sm">
+                <Image
+                  src="/logo.png"
+                  alt="EWS Flood Guard"
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="rounded-xl border border-slate-700 bg-slate-800/70 px-2.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] leading-none text-slate-200">
+                EWS
+              </div>
             </div>
           )}
         </div>
@@ -141,15 +144,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <div className="relative z-10 mb-3 px-2">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-blue-100/80">Menu Admin</span>
-              <span className="h-px flex-1 bg-linear-to-r from-white/30 to-transparent" />
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Menu Admin</span>
+              <span className="h-px flex-1 bg-linear-to-r from-slate-700 to-transparent" />
             </div>
           ) : (
-            <span className="mx-auto block h-7 w-px bg-white/35" />
+            <span className="mx-auto block h-7 w-px bg-slate-700" />
           )}
         </div>
 
-        <ul className={cn("relative z-10", collapsed ? "space-y-2.5" : "space-y-1.5")}>
+        <ul className={cn("relative z-10", collapsed ? "space-y-2" : "space-y-1") }>
           {adminNavLinks.map((item) => (
             <li key={item.href}>
               {(() => {
@@ -162,16 +165,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     title={item.label}
                     aria-label={item.label}
                     className={cn(
-                      "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-transparent px-3 py-2.5 text-sm font-medium tracking-normal transition-all",
-                      "hover:border-white/20 hover:bg-white/16",
-                      collapsed && "mx-auto h-11 w-11 justify-center rounded-2xl px-0 py-0",
-                      isActive && "border-white/25 bg-white/20 shadow-inner shadow-white/10",
+                      "group relative mx-2 flex items-center gap-3 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-all duration-200",
+                      "text-slate-400 hover:bg-slate-800/50 hover:text-white",
+                      collapsed && "mx-auto h-11 w-11 justify-center rounded-xl px-0 py-0",
+                      isActive && "bg-blue-600 text-white shadow-md shadow-blue-900/20 hover:bg-blue-600",
                     )}
                   >
                     <span
                       className={cn(
                         "absolute inset-y-2 left-1.5 w-1 rounded-full bg-transparent transition-colors",
-                        isActive && "bg-cyan-200/95",
+                        isActive && "bg-white/90",
                         collapsed && "hidden",
                       )}
                     />
@@ -179,16 +182,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       name={iconName}
                       className={cn(
                         "h-[1.05rem] w-[1.05rem] shrink-0 transition-transform duration-200 group-hover:scale-110",
-                        collapsed && "h-[1.22rem] w-[1.22rem]",
-                        isActive ? "text-white" : "text-blue-100",
+                        collapsed && "h-[1.15rem] w-[1.15rem]",
+                        isActive ? "text-white" : "text-slate-400 group-hover:text-white",
                       )}
                     />
-                    {!collapsed && <span className="text-[1rem] text-blue-50/95">{item.label}</span>}
+                    {!collapsed && <span className="text-[0.95rem] font-medium">{item.label}</span>}
                     {!collapsed && (
                       <span
                         className={cn(
-                          "ml-auto h-1.5 w-1.5 rounded-full bg-white/30 transition-colors",
-                          isActive && "bg-cyan-200",
+                          "ml-auto h-1.5 w-1.5 rounded-full bg-white/10 transition-colors",
+                          isActive && "bg-white/95",
                         )}
                       />
                     )}
@@ -199,45 +202,46 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           ))}
         </ul>
 
-        <div className="relative z-10 mt-auto px-2 pb-1 pt-4.5">
+        <div className="relative z-10 mt-auto px-2 pb-2 pt-4">
           {!collapsed ? (
-            <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-blue-50/95">
-                <FlowIcon className="h-3.5 w-3.5 text-cyan-200" />
-                <p className="text-xs font-medium tracking-wide">Monitoring banjir real-time</p>
+            <div className="mx-2 mb-4 rounded-xl border border-slate-700/60 bg-slate-800/50 p-4 backdrop-blur-md">
+              <div className="flex items-center gap-2.5 text-slate-100">
+                <Activity className="h-4 w-4 text-blue-400" aria-hidden="true" />
+                <p className="text-xs font-semibold tracking-wide text-slate-200">Monitoring banjir real-time</p>
               </div>
-              <p className="mt-1.5 text-[11px] text-blue-100/80">Status sistem dipantau 24/7 untuk respons cepat.</p>
+              <p className="mt-1.5 text-[11px] leading-5 text-slate-400">Status sistem dipantau 24/7 untuk respons cepat.</p>
             </div>
           ) : (
-            <div className="mx-auto mt-1 flex flex-col items-center gap-1.5">
-              <button
-                type="button"
-                onClick={onToggle}
-                className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-white/30 bg-white/10 text-white shadow-sm shadow-blue-950/25 transition-all hover:-translate-y-0.5 hover:bg-white/20"
-                aria-label="Buka sidebar"
-                title="Buka sidebar"
-              >
-                <CollapseIcon collapsed className="h-4 w-4" />
-              </button>
-              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-white/20 bg-white/10">
-                <FlowIcon className="h-4 w-4 text-cyan-200" />
+            <div className="mx-auto mb-4 mt-1 flex flex-col items-center gap-1.5">
+              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300">
+                <Activity className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
           )}
         </div>
 
-        {!collapsed && (
-          <div className="relative z-10 mt-3 px-2">
+        <div className="relative z-10 px-2 pb-2">
+          {!collapsed ? (
             <button
               type="button"
               onClick={onToggle}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-xs font-semibold text-blue-50 transition-all hover:bg-white/18"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-xs font-semibold text-slate-200 transition-all duration-200 hover:bg-slate-700/70 hover:text-white"
             >
               <CollapseIcon collapsed={false} className="h-3.5 w-3.5" />
               <span>Ciutkan Sidebar</span>
             </button>
-          </div>
-        )}
+          ) : (
+            <button
+              type="button"
+              onClick={onToggle}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 transition-all duration-200 hover:bg-slate-700 hover:text-white"
+              aria-label="Buka sidebar"
+              title="Buka sidebar"
+            >
+              <CollapseIcon collapsed className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   );

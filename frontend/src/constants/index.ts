@@ -24,7 +24,7 @@ export const landingNavLinks = [
   { id: "realtime-dashboard", href: "/#realtime-dashboard", label: "Dashboard" },
   { id: "status-legend", href: "/#status-legend", label: "Status" },
   { id: "emergency-action", href: "/#emergency-action", label: "Darurat" },
-  { id: "education-faq", href: "/#education-faq", label: "Edukasi & FAQ" },
+  { id: "edukasi", href: "/#edukasi", label: "Edukasi & FAQ" },
   { id: "contact", href: "/#contact", label: "Kontak" },
 ];
 

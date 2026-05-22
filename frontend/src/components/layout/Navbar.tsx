@@ -81,46 +81,59 @@ export function Navbar() {
     };
   }, [isHomePage]);
 
-  // Highlight menu aktif saat di-scroll di Landing Page
   useEffect(() => {
     if (!isHomePage) return;
 
-    const navbarOffset = 92;
-    const lastSectionId = links[links.length - 1]?.id ?? "home";
+    const sectionIds = links.map((item) => item.id).filter((id): id is string => Boolean(id));
+    const sections = sectionIds
+      .map((id) => document.getElementById(id))
+      .map((section, index) => ({ id: sectionIds[index], section }))
+      .filter((entry): entry is { id: string; section: HTMLElement } => Boolean(entry.section));
+
+    if (!sections.length) return;
+
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash && sectionIds.includes(hash)) {
+        setActiveSection(hash);
+      }
+    };
 
     const updateActiveSection = () => {
-      const isBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 10;
-      if (isBottom) {
-        setActiveSection(lastSectionId);
-        return;
-      }
+      const viewportLine = Math.max(120, window.innerHeight * 0.38);
+      let currentSection = sections[0]?.id ?? "home";
 
-      const currentPosition = window.scrollY + navbarOffset;
-      let currentSection = links[0]?.id ?? "home";
+      for (const { id, section } of sections) {
+        const rect = section.getBoundingClientRect();
 
-      links.forEach((item) => {
-        if (!item.id) return;
-        const section = document.getElementById(item.id);
-        if (!section) return;
-
-        if (section.offsetTop <= currentPosition) {
-          currentSection = item.id;
+        if (rect.top <= viewportLine) {
+          currentSection = id;
+        } else {
+          break;
         }
-      });
+      }
 
       setActiveSection(currentSection);
     };
 
-    const frameId = window.requestAnimationFrame(updateActiveSection);
-    window.addEventListener("scroll", updateActiveSection, { passive: true });
-    window.addEventListener("resize", updateActiveSection);
-    window.addEventListener("hashchange", updateActiveSection);
+    let frameId = 0;
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    scheduleUpdate();
+    syncFromHash();
+
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("hashchange", syncFromHash);
 
     return () => {
       window.cancelAnimationFrame(frameId);
-      window.removeEventListener("scroll", updateActiveSection);
-      window.removeEventListener("resize", updateActiveSection);
-      window.removeEventListener("hashchange", updateActiveSection);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("hashchange", syncFromHash);
     };
   }, [isHomePage, links]);
 
@@ -158,10 +171,18 @@ export function Navbar() {
         <Link
           href="/"
           className={cn(
-            "text-lg font-bold transition-colors",
+            "flex items-center gap-3 font-bold transition-colors",
             isHomePage && isHeroMode ? "text-white" : "text-blue-700",
           )}
         >
+          <Image
+            src="/logo.png"
+            alt="EWS Flood Guard"
+            width={36}
+            height={36}
+            priority
+            className="h-9 w-9 shrink-0 rounded-full object-contain"
+          />
           EWS Flood Guard
         </Link>
         <ul className="flex flex-wrap items-center gap-2 sm:gap-3">

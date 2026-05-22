@@ -8,7 +8,7 @@ import 'beranda_screen.dart';
 import 'dashboard_screen.dart';
 import 'status_screen.dart';
 import 'darurat_screen.dart';
-import 'edukasi_screen.dart';
+import 'profile_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_sensors_screen.dart';
 import 'admin_thresholds_screen.dart';
@@ -111,6 +111,33 @@ class _MainNavigationState extends State<MainNavigation> {
                 _buildDrawerItem(4, Icons.mail_outline, 'Notifikasi'),
                 _buildDrawerItem(5, Icons.analytics_outlined, 'Laporan'),
                 _buildDrawerItem(6, Icons.account_circle_outlined, 'Pengguna'),
+                const Divider(color: Colors.white24),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.white70),
+                  title: const Text('Logout', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    final authProvider = context.read<AuthProvider>();
+                    showDialog(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        title: const Text('Logout'),
+                        content: const Text('Apakah Anda yakin ingin keluar dari akun admin?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Batal')),
+                          ElevatedButton(
+                            onPressed: () {
+                              authProvider.logout();
+                              Navigator.pop(dialogCtx);
+                              Navigator.pushReplacementNamed(context, '/login');
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusBahaya, foregroundColor: Colors.white),
+                            child: const Text('Keluar'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -128,7 +155,7 @@ class _MainNavigationState extends State<MainNavigation> {
       DashboardScreen(onRefresh: refresh),
       StatusScreen(onRefresh: refresh),
       const DaruratScreen(),
-      const EdukasiScreen(),
+      ProfileScreen(onLogout: refresh),
     ];
 
     return Scaffold(
@@ -152,7 +179,7 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Dashboard'),
             BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Peta'),
             BottomNavigationBarItem(icon: Icon(Icons.emergency_outlined), activeIcon: Icon(Icons.emergency), label: 'Darurat'),
-            BottomNavigationBarItem(icon: Icon(Icons.school_outlined), activeIcon: Icon(Icons.school), label: 'Edukasi'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
           ],
         ),
       ),

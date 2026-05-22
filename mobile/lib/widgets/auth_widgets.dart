@@ -132,7 +132,7 @@ class AuthButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: bgColor,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: bgColor.withValues(alpha: 0.6),
+          disabledBackgroundColor: bgColor.withOpacity(0.6),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           elevation: 0,
         ),
@@ -154,9 +154,9 @@ class ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.statusBahaya.withValues(alpha: 0.08),
+        color: AppTheme.statusBahaya.withOpacity(0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.statusBahaya.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.statusBahaya.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -179,9 +179,9 @@ class SuccessBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.statusNormal.withValues(alpha: 0.08),
+        color: AppTheme.statusNormal.withOpacity(0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.statusNormal.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.statusNormal.withOpacity(0.3)),
       ),
       child: Row(
         children: [

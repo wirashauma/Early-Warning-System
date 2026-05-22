@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class NotifikasiPage extends StatelessWidget {
   const NotifikasiPage({super.key});
@@ -8,33 +9,38 @@ class NotifikasiPage extends StatelessWidget {
       {
         'title': 'Peringatan Kenaikan Debit Air',
         'status': 'Oren',
-        'desc': 'Waspada kenaikan debit air di sektor hilir. Mohon siaga dan pantau instruksi lanjutan.',
+        'desc':
+            'Waspada kenaikan debit air di sektor hilir. Mohon siaga dan pantau instruksi lanjutan.',
         'time': '3 Mei 2026, 21.20',
         'isNew': true,
-        'color': Colors.orange,
+        'color': AppTheme.statusWaspada,
       },
       {
         'title': 'Peringatan Kenaikan Debit Air',
         'status': 'Oren',
-        'desc': 'Waspada kenaikan debit air di sektor hilir. Mohon siaga dan pantau instruksi lanjutan.',
+        'desc':
+            'Waspada kenaikan debit air di sektor hilir. Mohon siaga dan pantau instruksi lanjutan.',
         'time': '3 Mei 2026, 21.15',
         'isNew': true,
-        'color': Colors.orange,
+        'color': AppTheme.statusWaspada,
       },
       {
         'title': 'Sistem Aktif',
         'status': 'Kuning',
-        'desc': 'Notifikasi dari EWS Flood Guard sudah masuk ke perangkat Anda.',
+        'desc':
+            'Notifikasi dari EWS Flood Guard sudah masuk ke perangkat Anda.',
         'time': '26 Apr 2026, 23.18',
         'isNew': false,
-        'color': const Color(0xFFD97706),
+        'color': AppTheme.statusWaspada,
       },
     ];
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text("Notifikasi Peringatan",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text(
+          "Notifikasi Peringatan",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -49,11 +55,18 @@ class NotifikasiPage extends StatelessWidget {
               children: [
                 const Text(
                   "Belum dibaca: 2",
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 TextButton(
                   onPressed: () {},
-                  child: const Text("Tandai semua dibaca", style: TextStyle(fontSize: 13)),
+                  child: const Text(
+                    "Tandai semua dibaca",
+                    style: TextStyle(fontSize: 13),
+                  ),
                 ),
               ],
             ),
@@ -87,7 +100,7 @@ class NotifikasiPage extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -106,25 +119,35 @@ class NotifikasiPage extends StatelessWidget {
                   style: TextStyle(
                     color: item['color'],
                     fontWeight: FontWeight.bold,
-                    fontSize: 10
+                    fontSize: 10,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               if (item['isNew'])
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    "Baru",
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
                 ),
-                child: const Text(
-                  "Baru",
-                  style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 10),
-                ),
-              ),
               const Spacer(),
-              Text(item['time'], style: const TextStyle(color: Colors.grey, fontSize: 10)),
+              Text(
+                item['time'],
+                style: const TextStyle(color: Colors.grey, fontSize: 10),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -135,7 +158,11 @@ class NotifikasiPage extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             item['desc'],
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.4),
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 13,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -144,11 +171,13 @@ class NotifikasiPage extends StatelessWidget {
               onPressed: () {},
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFFE2E8F0)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: const Text(
                 "Buka Detail",
-                style: TextStyle(color: Colors.black87, fontSize: 12)
+                style: TextStyle(color: Colors.black87, fontSize: 12),
               ),
             ),
           ),

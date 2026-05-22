@@ -4,11 +4,12 @@ class AppTheme {
   static const Color primaryBlue = Color(0xFF1E40AF);
   static const Color accentBlue = Color(0xFF3B82F6);
   static const Color lightBlue = Color(0xFFEFF6FF);
+  static const Color slateBlue = Color(0xFF0EA5E9);
   static const Color darkBg = Color(0xFF1E293B);
 
   static const Color statusNormal = Color(0xFF22C55E);
-  static const Color statusWaspada = Color(0xFFF59E0B);
-  static const Color statusSiaga = Color(0xFFF97316);
+  static const Color statusWaspada = Color(0xFF3B82F6);
+  static const Color statusSiaga = Color(0xFF0EA5E9);
   static const Color statusBahaya = Color(0xFFEF4444);
 
   static const Color textDark = Color(0xFF1E293B);

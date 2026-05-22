@@ -8,6 +8,7 @@ class AdminProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isAdmin = false;
   Map<String, dynamic> _dashboardStats = {};
+  List<dynamic> _sensors = [];
   List<dynamic> _users = [];
 
   AdminProvider({ApiService? apiService}) {
@@ -18,6 +19,7 @@ class AdminProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAdmin => _isAdmin;
   Map<String, dynamic> get dashboardStats => _dashboardStats;
+  List<dynamic> get sensors => _sensors;
   List<dynamic> get users => _users;
 
   void clearError() {
@@ -46,6 +48,9 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _dashboardStats = await adminService.getDashboardStats();
+      if (_dashboardStats.containsKey('sensors')) {
+        _sensors = _dashboardStats['sensors'] as List<dynamic>;
+      }
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -97,9 +102,12 @@ class AdminProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      return await adminService.getSensors();
+      final response = await adminService.getSensors();
+      _sensors = response;
+      return _sensors;
     } catch (e) {
       _errorMessage = 'Gagal memuat data sensor: $e';
+      _sensors = [];
       return [];
     } finally {
       _isLoading = false;

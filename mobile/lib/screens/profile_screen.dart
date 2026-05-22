@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/auth_provider.dart';
-import '../models/auth_service.dart';
 import '../models/user_model.dart';
 import '../widgets/auth_widgets.dart';
 import 'login_screen.dart';
@@ -15,23 +15,18 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _auth = AuthProvider();
   bool _notifFlood = true;
   bool _notifStatus = true;
   bool _notifEmail = false;
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.currentUser;
+
     return Scaffold(
       backgroundColor: AppTheme.pageBg,
-      body: ListenableBuilder(
-        listenable: _auth,
-        builder: (context, _) {
-          final user = AuthService.instance.currentUser;
-          if (user == null) return _buildNotLoggedIn(context);
-          return _buildProfile(context, user);
-        },
-      ),
+      body: user == null ? _buildNotLoggedIn(context) : _buildProfile(context, user),
     );
   }
 
@@ -65,7 +60,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => LoginScreen(
-                    onLoginSuccess: () => setState(() {}),
+                    onLoginSuccess: () {
+                      if (Navigator.canPop(context)) Navigator.pop(context);
+                      setState(() {});
+                    },
                   )),
                 ).then((_) => setState(() {})),
               ),
@@ -74,7 +72,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 label: 'Daftar Akun Baru',
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  MaterialPageRoute(builder: (_) => RegisterScreen(
+                    onLoginSuccess: () {
+                      if (Navigator.canPop(context)) Navigator.pop(context);
+                      setState(() {});
+                    },
+                  )),
                 ).then((_) => setState(() {})),
                 isOutlined: true,
               ),
@@ -373,26 +376,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 14),
                 AuthTextField(label: 'Alamat', hint: 'Alamat tinggal Anda', controller: addressCtrl, maxLines: 2),
                 const SizedBox(height: 24),
-                ListenableBuilder(
-                  listenable: _auth,
-                  builder: (context, _) => AuthButton(
-                    label: 'Simpan Perubahan',
-                    isLoading: _auth.isLoading,
-                    onPressed: () async {
-                      if (!formKey.currentState!.validate()) return;
-                      final ok = await _auth.updateProfile(
-                        name: nameCtrl.text, phone: phoneCtrl.text, address: addressCtrl.text,
+                AuthButton(
+                  label: 'Simpan Perubahan',
+                  isLoading: context.watch<AuthProvider>().isLoading,
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final authProvider = context.read<AuthProvider>();
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    final ok = await authProvider.updateProfile(
+                      name: nameCtrl.text, phone: phoneCtrl.text, address: addressCtrl.text,
+                    );
+                    if (!mounted) return;
+                    if (ok) {
+                      Navigator.pop(sheetCtx);
+                      setState(() {});
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(content: Text('Profil berhasil diperbarui'), backgroundColor: AppTheme.statusNormal),
                       );
-                      if (!context.mounted) return;
-                      if (ok) {
-                        Navigator.pop(sheetCtx);
-                        setState(() {});
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Profil berhasil diperbarui'), backgroundColor: AppTheme.statusNormal),
-                        );
-                      }
-                    },
-                  ),
+                    }
+                  },
                 ),
                 const SizedBox(height: 8),
               ],
@@ -404,6 +406,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -414,10 +418,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              _auth.logout();
+              authProvider.logout();
               setState(() {});
               widget.onLogout?.call();
-              ScaffoldMessenger.of(context).showSnackBar(
+              scaffoldMessenger.showSnackBar(
                 const SnackBar(content: Text('Berhasil keluar dari akun'), backgroundColor: AppTheme.statusNormal),
               );
             },
@@ -518,7 +522,7 @@ class _SwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged, activeThumbColor: AppTheme.primaryBlue),
+          Switch(value: value, onChanged: onChanged, activeColor: AppTheme.primaryBlue),
         ],
       ),
     );

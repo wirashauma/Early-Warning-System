@@ -139,47 +139,58 @@ export default function AdminThresholdsPage() {
 
 
   return (
-    <main className="space-y-6">
-      <Card className="relative overflow-hidden border border-slate-200 bg-linear-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-xl shadow-blue-950/10">
-        <div className="absolute -right-6 top-6 h-28 w-28 rounded-3xl border border-white/15 bg-white/10 blur-[1px]" />
-        <div className="relative z-10 space-y-3 p-1">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-blue-50/95 backdrop-blur">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_0_4px_rgba(134,239,172,0.18)]" />
-            IoT Threshold Center
+    <main className="space-y-6 bg-slate-50/60">
+      <section className="flex flex-col gap-4 border-b border-slate-200/70 pb-5 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+            <span className="inline-block h-2 w-2 rounded-full bg-cyan-500" />
+            Threshold Settings
           </div>
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Ambang Batas (Threshold Settings)</h1>
-            <p className="max-w-3xl text-sm text-blue-50/95 md:text-base">
-              Atur level ketinggian air dan curah hujan per sensor untuk logika notifikasi otomatis, sambil memantau konteks IoT real-time dalam satu tampilan.
-            </p>
+          <div className="flex items-start gap-3">
+            <div className="mt-1 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M4 8h8" strokeLinecap="round" />
+                <path d="M14 8h6" strokeLinecap="round" />
+                <circle cx="17" cy="8" r="2.25" />
+                <path d="M4 16h4" strokeLinecap="round" />
+                <path d="M10 16h10" strokeLinecap="round" />
+                <circle cx="7" cy="16" r="2.25" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Ambang Batas</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Kelola level ketinggian air dan curah hujan dengan tampilan yang lebih ringkas, modern, dan mudah dipindai.
+              </p>
+            </div>
           </div>
         </div>
-      </Card>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border border-slate-200 bg-white/90 shadow-sm shadow-slate-200/50 backdrop-blur">
-          <p className="text-sm text-slate-500">Sensor Terkonfigurasi</p>
-          <div className="mt-2 flex items-end gap-2">
-            <p className="text-3xl font-bold text-slate-900">{sensorCount}</p>
-            <span className="mb-1 text-xs font-medium text-emerald-600">Aktif</span>
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Sensor Terkonfigurasi</p>
+          <div className="mt-3 flex items-end gap-3">
+            <p className="text-3xl font-bold tracking-tight text-slate-800">{sensorCount}</p>
+            <span className="mb-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Aktif</span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">Sudah memiliki rule threshold</p>
+          <p className="mt-2 text-xs text-slate-500">Sudah memiliki rule threshold</p>
         </Card>
-        <Card className="border border-slate-200 bg-white/90 shadow-sm shadow-slate-200/50 backdrop-blur">
-          <p className="text-sm text-slate-500">Auto Broadcast Aktif</p>
-          <div className="mt-2 flex items-end gap-2">
-            <p className="text-3xl font-bold text-blue-600">{autoBroadcastCount}</p>
-            <span className="mb-1 text-xs font-medium text-blue-500">Siaga</span>
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Auto Broadcast Aktif</p>
+          <div className="mt-3 flex items-end gap-3">
+            <p className="text-3xl font-bold tracking-tight text-slate-800">{autoBroadcastCount}</p>
+            <span className="mb-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Siaga</span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">Sensor siap kirim peringatan otomatis</p>
+          <p className="mt-2 text-xs text-slate-500">Sensor siap kirim peringatan otomatis</p>
         </Card>
-        <Card className="border border-slate-200 bg-white/90 shadow-sm shadow-slate-200/50 backdrop-blur">
-          <p className="text-sm text-slate-500">Mode Konfigurasi</p>
-          <div className="mt-2 flex items-end gap-2">
-            <p className="truncate text-2xl font-bold text-cyan-700">Global</p>
-            <span className="mb-1 text-xs font-medium text-cyan-500">EWS</span>
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Mode Konfigurasi</p>
+          <div className="mt-3 flex items-end gap-3">
+            <p className="truncate text-3xl font-bold tracking-tight text-slate-800">Global</p>
+            <span className="mb-1 rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">EWS</span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">Berlaku untuk seluruh sensor</p>
+          <p className="mt-2 text-xs text-slate-500">Berlaku untuk seluruh sensor</p>
         </Card>
       </div>
 
@@ -194,202 +205,252 @@ export default function AdminThresholdsPage() {
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto w-full">
-        <Card className="rounded-2xl border border-slate-100 bg-white/90 shadow-md shadow-slate-200/40 backdrop-blur">
-          <div className="mb-4 flex items-start gap-3">
-            <div className="rounded-2xl bg-blue-50 p-2.5 text-blue-700 shadow-sm">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v18" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 8c2-3 5-4 7-4s5 1 7 4" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 16c2 3 5 4 7 4s5-1 7-4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      <div className="mx-auto w-full max-w-4xl">
+        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <div className="mb-6 flex items-start gap-3 border-b border-slate-100 pb-4">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 shadow-sm">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M12 3v18" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5 8c2-3 5-4 7-4s5 1 7 4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5 16c2 3 5 4 7 4s5-1 7-4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Form Pengaturan Ambang Batas</h2>
-              <p className="text-sm text-slate-500">Pastikan konfigurasi level air dan hujan sesuai kondisi lapangan tiap sensor.</p>
+              <p className="mt-1 text-sm text-slate-500">Pastikan konfigurasi level air dan hujan sesuai kondisi lapangan tiap sensor.</p>
             </div>
           </div>
 
-          <form id="threshold-settings-form" onSubmit={handleSubmit} className="space-y-6">
-              <p className="text-sm text-slate-600">
-                Pengaturan ini disimpan di database dan diterapkan sebagai threshold global. {iotLastUpdated ? `Pembaruan IoT terakhir: ${new Date(iotLastUpdated).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}.` : ""}
-              </p>
+          <form id="threshold-settings-form" onSubmit={handleSubmit} className="space-y-8">
+            <p className="text-sm leading-6 text-slate-600">
+              Pengaturan ini disimpan di database dan diterapkan sebagai threshold global. {iotLastUpdated ? `Pembaruan IoT terakhir: ${new Date(iotLastUpdated).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}.` : ""}
+            </p>
 
-              <div className="space-y-4 rounded-2xl border border-emerald-100 bg-linear-to-br from-emerald-50/80 to-white p-4 shadow-sm">
+            <section className="space-y-5">
+              <div className="border-b border-slate-100 pb-2">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-800">Konfigurasi Ketinggian Air</h2>
-                    <p className="text-xs text-slate-500">Gunakan warna hijau/amber/rose sebagai isyarat risiko pada range level.</p>
+                    <h3 className="text-base font-semibold text-slate-900">Konfigurasi Ketinggian Air</h3>
+                    <p className="mt-1 text-xs text-slate-500">Gunakan indikator warna untuk membedakan tingkat risiko pada input.</p>
                   </div>
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">cm</span>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block text-sm text-slate-700">
-                    <span className="mb-1.5 block font-medium text-slate-700">Level Normal (Hijau) Maks</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-emerald-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.normalMax}
-                        onChange={(event) => setForm((prev) => ({ ...prev, normalMax: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-14 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
-                    </div>
-                  </label>
-
-                  <label className="block text-sm text-slate-700">
-                    <span className="mb-1.5 block font-medium text-slate-700">Level Waspada Min</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-amber-300 focus-within:ring-2 focus-within:ring-amber-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-amber-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.waspadaMin}
-                        onChange={(event) => setForm((prev) => ({ ...prev, waspadaMin: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-14 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
-                    </div>
-                  </label>
-
-                  <label className="block text-sm text-slate-700">
-                    <span className="mb-1.5 block font-medium text-slate-700">Level Waspada Maks</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-amber-300 focus-within:ring-2 focus-within:ring-amber-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-amber-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.waspadaMax}
-                        onChange={(event) => setForm((prev) => ({ ...prev, waspadaMax: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-14 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
-                    </div>
-                  </label>
-
-                  <label className="block text-sm text-slate-700">
-                    <span className="mb-1.5 block font-medium text-slate-700">Level Bahaya (Merah) Min</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-rose-300 focus-within:ring-2 focus-within:ring-rose-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-rose-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.bahayaMin}
-                        onChange={(event) => setForm((prev) => ({ ...prev, bahayaMin: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-14 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
-                    </div>
-                  </label>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">cm</span>
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-slate-100 bg-linear-to-br from-sky-50/70 to-white p-4 shadow-sm">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Normal
+                    </span>
+                    Level Normal Maks
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.normalMax}
+                      onChange={(event) => setForm((prev) => ({ ...prev, normalMax: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
+                  </div>
+                </label>
+
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      Waspada
+                    </span>
+                    Level Waspada Min
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.waspadaMin}
+                      onChange={(event) => setForm((prev) => ({ ...prev, waspadaMin: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
+                  </div>
+                </label>
+
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      Waspada
+                    </span>
+                    Level Waspada Maks
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.waspadaMax}
+                      onChange={(event) => setForm((prev) => ({ ...prev, waspadaMax: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
+                  </div>
+                </label>
+
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
+                      <span className="h-2 w-2 rounded-full bg-rose-500" />
+                      Bahaya
+                    </span>
+                    Level Bahaya Min
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.bahayaMin}
+                      onChange={(event) => setForm((prev) => ({ ...prev, bahayaMin: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
+                  </div>
+                </label>
+              </div>
+            </section>
+
+            <section className="space-y-5">
+              <div className="border-b border-slate-100 pb-2">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-800">Konfigurasi Curah Hujan</h2>
-                    <p className="text-xs text-slate-500">Membantu pemetaan intensitas hujan untuk trigger alert otomatis.</p>
+                    <h3 className="text-base font-semibold text-slate-900">Konfigurasi Curah Hujan</h3>
+                    <p className="mt-1 text-xs text-slate-500">Membantu pemetaan intensitas hujan untuk trigger alert otomatis.</p>
                   </div>
-                  <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">mm/jam</span>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block text-sm text-slate-700">
-                    <span className="mb-1.5 block font-medium text-slate-700">Ringan (Maks)</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-emerald-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.ringanMax}
-                        onChange={(event) => setForm((prev) => ({ ...prev, ringanMax: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-20 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">mm/jam</span>
-                    </div>
-                  </label>
-
-                  <label className="block text-sm text-slate-700">
-                    <span className="mb-1.5 block font-medium text-slate-700">Sedang (Maks)</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-amber-300 focus-within:ring-2 focus-within:ring-amber-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-amber-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.sedangMax}
-                        onChange={(event) => setForm((prev) => ({ ...prev, sedangMax: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-20 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">mm/jam</span>
-                    </div>
-                  </label>
-
-                  <label className="block text-sm text-slate-700 md:col-span-2">
-                    <span className="mb-1.5 block font-medium text-slate-700">Lebat (Min)</span>
-                    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-rose-300 focus-within:ring-2 focus-within:ring-rose-200/70">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-rose-500" />
-                      <input
-                        type="number"
-                        step="0.1"
-                        inputMode="decimal"
-                        value={form.lebatMin}
-                        onChange={(event) => setForm((prev) => ({ ...prev, lebatMin: Number(event.target.value) }))}
-                        className="h-12 w-full bg-transparent px-4 py-2 pl-5 pr-20 text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">mm/jam</span>
-                    </div>
-                  </label>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">mm/jam</span>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-amber-200 bg-linear-to-r from-amber-50 via-white to-rose-50 p-4 shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 shadow-sm">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 9v4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="1"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Ringan
+                    </span>
+                    Curah Hujan Maks
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.ringanMax}
+                      onChange={(event) => setForm((prev) => ({ ...prev, ringanMax: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 pr-20 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">mm/jam</span>
                   </div>
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900">Auto-Broadcast saat Level Bahaya</h3>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Pengaturan kritikal untuk mengaktifkan penyebaran otomatis ketika threshold bahaya tercapai.</p>
-                    </div>
+                </label>
 
-                    <button
-                      type="button"
-                      onClick={toggleAutoBroadcast}
-                      aria-label="Toggle auto broadcast"
-                      className={`inline-flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-all sm:w-auto sm:min-w-[320px] ${form.autoBroadcast ? "border-blue-200 bg-blue-50/70" : "border-slate-200 bg-white"}`}
-                    >
-                      <span>
-                        <span className="block text-sm font-medium text-slate-800">Aktifkan Auto-Broadcast</span>
-                        <span className="block text-xs text-slate-500">Trigger notifikasi otomatis untuk status bahaya</span>
-                      </span>
-                      <span className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form.autoBroadcast ? "bg-blue-600" : "bg-slate-300"}`}>
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${form.autoBroadcast ? "translate-x-6" : "translate-x-1"}`} />
-                      </span>
-                    </button>
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      Sedang
+                    </span>
+                    Curah Hujan Maks
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.sedangMax}
+                      onChange={(event) => setForm((prev) => ({ ...prev, sedangMax: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 pr-20 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">mm/jam</span>
                   </div>
+                </label>
+
+                <label className="block text-sm text-slate-700 md:col-span-2">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
+                      <span className="h-2 w-2 rounded-full bg-rose-500" />
+                      Bahaya
+                    </span>
+                    Curah Hujan Min
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.lebatMin}
+                      onChange={(event) => setForm((prev) => ({ ...prev, lebatMin: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 pr-20 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">mm/jam</span>
+                  </div>
+                </label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 shadow-sm">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                    <path d="M12 9v4" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="12" cy="17" r="1" />
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Auto-Broadcast saat Level Bahaya</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Pengaturan kritikal untuk mengaktifkan penyebaran otomatis ketika threshold bahaya tercapai.</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={toggleAutoBroadcast}
+                    aria-label="Toggle auto broadcast"
+                    className={`inline-flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left shadow-sm transition-all sm:w-auto sm:min-w-[320px] ${form.autoBroadcast ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                  >
+                    <span>
+                      <span className="block text-sm font-medium text-slate-800">Aktifkan Auto-Broadcast</span>
+                      <span className="block text-xs text-slate-500">Trigger notifikasi otomatis untuk status bahaya</span>
+                    </span>
+                    <span className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form.autoBroadcast ? "bg-cyan-600" : "bg-slate-300"}`}>
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${form.autoBroadcast ? "translate-x-6" : "translate-x-1"}`} />
+                    </span>
+                  </button>
                 </div>
               </div>
+            </section>
 
-              <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2">
-                <button
-                  type="button"
-                  onClick={openSaveConfirmation}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-900/15 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-lg"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 12h14" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 5v14" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Simpan Konfigurasi
-                </button>
-                {saved && <p className="text-sm text-emerald-600">Perubahan ambang batas berhasil disimpan.</p>}
-              </div>
-            </form>
-          </Card>
-        </div>
+            <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2">
+              <button
+                type="button"
+                onClick={openSaveConfirmation}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <path d="M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 5v14" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Simpan Konfigurasi
+              </button>
+              {saved && <p className="text-sm text-emerald-600">Perubahan ambang batas berhasil disimpan.</p>}
+            </div>
+          </form>
+        </Card>
+      </div>
 
       {confirmSaveOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -398,7 +459,7 @@ export default function AdminThresholdsPage() {
           <div className="relative z-10 w-full max-w-lg rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-950/20">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 shadow-sm">
-                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 9v4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="1"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 9v4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="17" r="1"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-slate-900">Konfirmasi Perubahan Ambang Batas</h3>
@@ -421,7 +482,7 @@ export default function AdminThresholdsPage() {
                 onClick={() => void handleSaveThresholds()}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-900/15 transition hover:bg-blue-700 hover:shadow-lg"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 12h14" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 5v14" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 5v14" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Ya, Simpan Perubahan
               </button>
             </div>

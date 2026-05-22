@@ -75,8 +75,8 @@ export function PublicRealtimeDashboardSection() {
   const thermometerPercent = Math.min(100, Math.round((latest.levelCm / 250) * 100));
 
   return (
-    <section id="realtime-dashboard" className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-6 py-14">
+    <section id="realtime-dashboard" className="scroll-mt-24 bg-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-20 md:py-24">
         <div className="mb-8 max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Fitur Utama Publik</p>
           <h2 className="mt-2 text-3xl font-bold text-slate-900">Real-Time Dashboard Pemantauan Banjir</h2>

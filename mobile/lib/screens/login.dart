@@ -17,6 +17,11 @@ class _LoginPageState extends State<LoginPage> {
   final _passCtrl = TextEditingController();
   final _auth = AuthProvider();
 
+  static const _quickAdminEmail = 'admin@ews.com';
+  static const _quickAdminPassword = 'Admin123!';
+  static const _quickUserEmail = 'user1@ews.com';
+  static const _quickUserPassword = 'User12345!';
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -35,7 +40,9 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_auth.errorMessage ?? 'Login gagal. Silakan coba lagi.'),
+          content: Text(
+            _auth.errorMessage ?? 'Login gagal. Silakan coba lagi.',
+          ),
           backgroundColor: AppTheme.statusBahaya,
         ),
       );
@@ -51,11 +58,19 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_auth.errorMessage ?? 'Login Google gagal. Silakan coba lagi.'),
+          content: Text(
+            _auth.errorMessage ?? 'Login Google gagal. Silakan coba lagi.',
+          ),
           backgroundColor: AppTheme.statusBahaya,
         ),
       );
     }
+  }
+
+  Future<void> _handleQuickLogin(String email, String password) async {
+    _emailCtrl.text = email;
+    _passCtrl.text = password;
+    await _handleLogin();
   }
 
   @override
@@ -89,8 +104,10 @@ class _LoginPageState extends State<LoginPage> {
                             keyboardType: TextInputType.emailAddress,
                             prefixIcon: Icons.email_outlined,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Email wajib diisi';
-                              if (!v.contains('@')) return 'Format email tidak valid';
+                              if (v == null || v.isEmpty)
+                                return 'Email wajib diisi';
+                              if (!v.contains('@'))
+                                return 'Format email tidak valid';
                               return null;
                             },
                           ),
@@ -102,8 +119,10 @@ class _LoginPageState extends State<LoginPage> {
                             isPassword: true,
                             prefixIcon: Icons.lock_outline,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Password wajib diisi';
-                              if (v.length < 6) return 'Password minimal 6 karakter';
+                              if (v == null || v.isEmpty)
+                                return 'Password wajib diisi';
+                              if (v.length < 6)
+                                return 'Password minimal 6 karakter';
                               return null;
                             },
                           ),
@@ -114,14 +133,65 @@ class _LoginPageState extends State<LoginPage> {
                             isLoading: _auth.isLoading,
                           ),
                           const SizedBox(height: 16),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Quick Login',
+                              style: TextStyle(
+                                color: AppTheme.textGrey,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          AuthButton(
+                            label: 'Masuk sebagai Admin',
+                            onPressed: () => _handleQuickLogin(
+                              _quickAdminEmail,
+                              _quickAdminPassword,
+                            ),
+                            isLoading: _auth.isLoading,
+                            isOutlined: true,
+                            color: AppTheme.accentBlue,
+                          ),
+                          const SizedBox(height: 10),
+                          AuthButton(
+                            label: 'Masuk sebagai User',
+                            onPressed: () => _handleQuickLogin(
+                              _quickUserEmail,
+                              _quickUserPassword,
+                            ),
+                            isLoading: _auth.isLoading,
+                            isOutlined: true,
+                            color: AppTheme.primaryBlue,
+                          ),
+                          const SizedBox(height: 16),
                           Row(
                             children: [
-                              Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+                              Expanded(
+                                child: Divider(
+                                  color: AppTheme.textGrey.withOpacity(0.3),
+                                ),
                               ),
-                              Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  'atau',
+                                  style: TextStyle(
+                                    color: AppTheme.textGrey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Divider(
+                                  color: AppTheme.textGrey.withOpacity(0.3),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -130,19 +200,31 @@ class _LoginPageState extends State<LoginPage> {
                             isLoading: _auth.isLoading,
                           ),
                           const SizedBox(height: 24),
-                          _buildQuickLogin(),
-                          const SizedBox(height: 24),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text('Belum punya akun? ', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+                              const Text(
+                                'Belum punya akun? ',
+                                style: TextStyle(
+                                  color: AppTheme.textGrey,
+                                  fontSize: 14,
+                                ),
+                              ),
                               GestureDetector(
                                 onTap: () => Navigator.pushReplacement(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => const RegisterScreen(),
+                                  ),
                                 ),
-                                child: const Text('Daftar Sekarang',
-                                    style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold, fontSize: 14)),
+                                child: const Text(
+                                  'Daftar Sekarang',
+                                  style: TextStyle(
+                                    color: AppTheme.primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -156,95 +238,6 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuickLogin() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.accentBlue.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.bolt_outlined, color: AppTheme.accentBlue, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                'DEMO LOGIN CEPAT',
-                style: TextStyle(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickLoginChip(
-                  label: 'Admin BPBD',
-                  icon: Icons.admin_panel_settings_outlined,
-                  color: AppTheme.primaryBlue,
-                  email: 'admin@ews.com',
-                  pass: 'Admin123!',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickLoginChip(
-                  label: 'User Warga',
-                  icon: Icons.person_outline_outlined,
-                  color: AppTheme.accentBlue,
-                  email: 'user1@ews.com',
-                  pass: 'User12345!',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickLoginChip({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required String email,
-    required String pass,
-  }) {
-    return OutlinedButton.icon(
-      onPressed: () async {
-        setState(() {
-          _emailCtrl.text = email;
-          _passCtrl.text = pass;
-        });
-        await _handleLogin();
-      },
-      icon: Icon(icon, size: 15, color: color),
-      label: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 11.5,
-        ),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        side: BorderSide(color: color.withValues(alpha: 0.25)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        backgroundColor: Colors.white,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
@@ -268,14 +261,29 @@ class _LoginPageState extends State<LoginPage> {
               color: AppTheme.accentBlue,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.login_outlined, color: Colors.white, size: 28),
+            child: const Icon(
+              Icons.login_outlined,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
           const SizedBox(height: 16),
-          const Text('Selamat Datang', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text(
+            'Selamat Datang',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 6),
-          const Text('EWS Flood Guard', style: TextStyle(color: Colors.white70, fontSize: 14)),
+          const Text(
+            'EWS Flood Guard',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
           const SizedBox(height: 8),
-          const Text('Sistem Peringatan Dini Banjir Real-Time', 
+          const Text(
+            'Sistem Peringatan Dini Banjir Real-Time',
             style: TextStyle(color: Colors.white60, fontSize: 12),
             textAlign: TextAlign.center,
           ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
+import '../models/admin_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
 import '../models/sensor_model.dart';
@@ -19,6 +21,8 @@ class _StatusScreenState extends State<StatusScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  bool _hasInstalledSensors(AdminProvider admin) => (admin.dashboardStats['totalSensors'] ?? 0) > 0 || admin.sensors.isNotEmpty;
+
   // Koordinat sensor untuk pemetaan
   static const List<Map<String, dynamic>> _coords = [
     {'colorVal': 0xFFE53E3E, 'lat': -0.9570, 'lng': 100.3530},
@@ -26,13 +30,17 @@ class _StatusScreenState extends State<StatusScreen> {
     {'colorVal': 0xFF38A169, 'lat': -0.9430, 'lng': 100.3700},
   ];
 
-  List<SensorData> get _filtered => dummySensors.where((s) {
-    final matchFilter = _filter == 'Semua' || s.status == _filter;
-    final matchSearch = _searchQuery.isEmpty ||
-        s.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        s.location.toLowerCase().contains(_searchQuery.toLowerCase());
-    return matchFilter && matchSearch;
-  }).toList();
+  List<Map<String, dynamic>> _filtered(AdminProvider admin) {
+    final sensors = admin.sensors.cast<Map<String, dynamic>>();
+    return sensors.where((s) {
+      final status = s['status']?.toString() ?? 'Normal';
+      final name = s['name']?.toString() ?? '';
+      final location = s['name']?.toString() ?? '';
+      final matchFilter = _filter == 'Semua' || status == _filter;
+      final matchSearch = _searchQuery.isEmpty || name.toLowerCase().contains(_searchQuery.toLowerCase()) || location.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchFilter && matchSearch;
+    }).toList();
+  }
 
   @override
   void dispose() {
@@ -42,25 +50,42 @@ class _StatusScreenState extends State<StatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final risky = dummySensors.where((s) => s.status != 'Normal').length;
-    final lastUpdate = dummySensors.map((s) => s.lastUpdate).reduce((a, b) => a.isAfter(b) ? a : b);
+    final adminProvider = context.watch<AdminProvider>();
+    final hasSensors = _hasInstalledSensors(adminProvider);
+    final sensorsList = adminProvider.sensors.cast<Map<String, dynamic>>();
+    final waterLevels = adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
+    final risky = (adminProvider.dashboardStats['recentAlerts'] as List<dynamic>?)?.length ?? 0;
+    final lastUpdate = () {
+      if (!hasSensors || waterLevels.isEmpty) return DateTime.now();
+      final parsed = waterLevels
+          .map((w) => w['updatedAt']?.toString())
+          .where((s) => s != null)
+          .map((s) => DateTime.tryParse(s!))
+          .where((d) => d != null)
+          .cast<DateTime>()
+          .toList();
+      if (parsed.isEmpty) return DateTime.now();
+      return parsed.reduce((a, b) => a.isAfter(b) ? a : b);
+    }();
     final ts = '${lastUpdate.day} Mar ${lastUpdate.year}, ${lastUpdate.hour.toString().padLeft(2, '0')}.${lastUpdate.minute.toString().padLeft(2, '0')}';
+    final hasFocus = _focusedIndex != null && _focusedIndex! < sensorsList.length;
+    final focusedName = hasFocus ? sensorsList[_focusedIndex!]['name']?.toString() ?? '-' : '-';
 
     return Scaffold(
       appBar: EWSAppBar(onRefresh: widget.onRefresh),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(risky, ts),
-            _buildMap(),
-            _buildSensorList(),
+            _buildHeader(adminProvider, risky, ts, hasSensors, focusedName),
+            _buildMap(adminProvider, sensorsList),
+            _buildSensorList(adminProvider),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(int risky, String ts) {
+  Widget _buildHeader(AdminProvider adminProvider, int risky, String ts, bool hasSensors, String focusedName) {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.white,
@@ -82,9 +107,9 @@ class _StatusScreenState extends State<StatusScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 2.2,
             children: [
-              _StatBox(label: 'Total Sensor', value: '${dummySensors.length}'),
+              _StatBox(label: 'Total Sensor', value: '${adminProvider.dashboardStats['totalSensors'] ?? adminProvider.sensors.length}'),
               _StatBox(label: 'Sensor Berisiko', value: '$risky', valueColor: risky > 0 ? AppTheme.statusBahaya : AppTheme.textDark),
-              _StatBox(label: 'Konektivitas', value: '${dummySensors.length}/${dummySensors.length}'),
+              _StatBox(label: 'Konektivitas', value: hasSensors ? '${adminProvider.sensors.length}/${adminProvider.sensors.length}' : '0/0'),
               _StatBox(label: 'Pembaruan Terakhir', value: ts, small: true),
             ],
           ),
@@ -96,8 +121,7 @@ class _StatusScreenState extends State<StatusScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text('Fokus: ${_focusedIndex != null ? dummySensors[_focusedIndex!].name : '-'}',
-                  style: const TextStyle(fontSize: 11)),
+              child: Text('Fokus: $focusedName', style: const TextStyle(fontSize: 11)),
             ),
           ]),
         ],
@@ -105,7 +129,7 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  Widget _buildMap() {
+  Widget _buildMap(AdminProvider adminProvider, List<Map<String, dynamic>> sensorsList) {
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(16),
@@ -135,7 +159,7 @@ class _StatusScreenState extends State<StatusScreen> {
                 clipBehavior: Clip.hardEdge,
                 child: FlutterMap(
                   options: MapOptions(
-                    center: _focusedIndex != null
+                    center: _focusedIndex != null && _focusedIndex! < _coords.length
                         ? LatLng(_coords[_focusedIndex!]['lat'] as double, _coords[_focusedIndex!]['lng'] as double)
                         : const LatLng(-0.9490, 100.3610),
                     zoom: 14.5,
@@ -145,31 +169,34 @@ class _StatusScreenState extends State<StatusScreen> {
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.ews_flood_guard',
                     ),
-                    MarkerLayer(
-                      markers: dummySensors.asMap().entries.map((entry) {
+                        MarkerLayer(
+                          markers: sensorsList.asMap().entries.map((entry) {
                         final i = entry.key;
                         final s = entry.value;
                         final isFocused = _focusedIndex == i;
+                        final lat = (s['latitude'] is num) ? (s['latitude'] as num).toDouble() : _coords[i % _coords.length]['lat'] as double;
+                        final lng = (s['longitude'] is num) ? (s['longitude'] as num).toDouble() : _coords[i % _coords.length]['lng'] as double;
+                        final statusColor = (s['status']?.toString() == null) ? AppTheme.statusNormal : AppTheme.statusNormal;
                         return Marker(
-                          point: LatLng(_coords[i]['lat'] as double, _coords[i]['lng'] as double),
+                          point: LatLng(lat, lng),
                           width: 44, height: 44,
                           builder: (ctx) => GestureDetector(
                             onTap: () => setState(() => _focusedIndex = isFocused ? null : i),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
-                                color: s.statusColor, shape: BoxShape.circle,
+                                color: statusColor, shape: BoxShape.circle,
                                 border: Border.all(color: isFocused ? Colors.white : Colors.transparent, width: 3),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: s.statusColor.withValues(alpha: 0.5), 
+                                    color: statusColor.withOpacity(0.5), 
                                     blurRadius: isFocused ? 10 : 4
                                   )
                                 ],
                               ),
                               child: Center(
                                 child: Text(
-                                  s.name.length > 7 ? s.name[7] : 'S', 
+                                  (s['name']?.toString() ?? 'S').substring(0, 1).toUpperCase(), 
                                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)
                                 )
                               ),
@@ -188,16 +215,18 @@ class _StatusScreenState extends State<StatusScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('DETAIL FOKUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textGrey)),
                 const SizedBox(height: 8),
-                if (_focusedIndex == null)
+                if (!_hasInstalledSensors(adminProvider))
+                  const Text('Belum ada sensor terpasang.', style: TextStyle(fontSize: 12, color: AppTheme.textGrey))
+                else if (_focusedIndex == null)
                   const Text('Pilih titik di peta.', style: TextStyle(fontSize: 12, color: AppTheme.textGrey))
                 else ...[
-                  Text(dummySensors[_focusedIndex!].name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(sensorsList[_focusedIndex!]['name']?.toString() ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 4),
-                  Text('${dummySensors[_focusedIndex!].waterLevel.toInt()} cm',
-                      style: TextStyle(color: dummySensors[_focusedIndex!].statusColor, fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text('${(sensorsList[_focusedIndex!]['waterLevel'] is num ? (sensorsList[_focusedIndex!]['waterLevel'] as num).toInt() : 0)} cm',
+                      style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 15)),
                   const SizedBox(height: 4),
-                  Text(dummySensors[_focusedIndex!].status,
-                      style: TextStyle(color: dummySensors[_focusedIndex!].statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                  Text(sensorsList[_focusedIndex!]['status']?.toString() ?? '-',
+                      style: TextStyle(color: AppTheme.textDark, fontSize: 11, fontWeight: FontWeight.w600)),
                 ],
               ]),
             ),
@@ -207,7 +236,7 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  Widget _buildSensorList() {
+  Widget _buildSensorList(AdminProvider adminProvider) {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(16),
@@ -250,10 +279,17 @@ class _StatusScreenState extends State<StatusScreen> {
             )).toList()),
           ),
           const SizedBox(height: 12),
-          if (_filtered.isEmpty)
+          if (_filtered(adminProvider).isEmpty)
             const Center(child: Text('Sensor tidak ditemukan.'))
           else
-            ..._filtered.map((s) => _SensorCard(sensor: s)),
+            ..._filtered(adminProvider).map((s) => _SensorCard(sensor: SensorData(
+              name: s['name']?.toString() ?? '-',
+              location: s['location']?.toString() ?? '-',
+              waterLevel: (s['waterLevel'] is num) ? (s['waterLevel'] as num).toDouble() : 0.0,
+              rainfall: (s['rainfall'] is num) ? (s['rainfall'] as num).toDouble() : 0.0,
+              status: s['status']?.toString() ?? 'Normal',
+              lastUpdate: DateTime.tryParse(s['updatedAt']?.toString() ?? '') ?? DateTime.now(),
+            ))),
         ],
       ),
     );

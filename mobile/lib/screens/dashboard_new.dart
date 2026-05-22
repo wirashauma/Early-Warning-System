@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/sensor_model.dart';
+import 'package:provider/provider.dart';
+import '../models/admin_provider.dart';
 import '../widgets/ews_appbar.dart';
 
 class DashboardScreenNew extends StatefulWidget {
@@ -12,9 +14,35 @@ class DashboardScreenNew extends StatefulWidget {
 
 class _DashboardScreenNewState extends State<DashboardScreenNew> {
   int _selectedSensorIndex = 0;
-  SensorData get _selectedSensor => dummySensors[_selectedSensorIndex];
+
+  bool _hasInstalledSensors(AdminProvider admin) => (admin.dashboardStats['totalSensors'] ?? 0) > 0 || admin.sensors.isNotEmpty;
+
+  SensorData _selectedSensor(AdminProvider admin) {
+    final waterLevels = admin.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
+    if (waterLevels.isNotEmpty && _selectedSensorIndex < waterLevels.length) {
+      final m = waterLevels[_selectedSensorIndex] as Map<String, dynamic>;
+      return SensorData(
+        name: m['sensorId']?.toString() ?? 'Sensor',
+        location: m['location']?.toString() ?? '-',
+        waterLevel: (m['waterLevel'] is num) ? (m['waterLevel'] as num).toDouble() : 0.0,
+        rainfall: (m['rainfall'] is num) ? (m['rainfall'] as num).toDouble() : 0.0,
+        status: m['status']?.toString() ?? 'Normal',
+        lastUpdate: DateTime.tryParse(m['updatedAt']?.toString() ?? '') ?? DateTime.now(),
+      );
+    }
+    return SensorData(
+      name: 'Belum Ada Sensor',
+      location: '-',
+      waterLevel: 0,
+      rainfall: 0,
+      status: 'Normal',
+      lastUpdate: DateTime.now(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final adminProvider = context.watch<AdminProvider>();
     return Scaffold(
       appBar: EWSAppBar(onRefresh: widget.onRefresh),
       backgroundColor: AppTheme.pageBg,
@@ -22,10 +50,10 @@ class _DashboardScreenNewState extends State<DashboardScreenNew> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildHeroBanner(),
-            _buildStatsGrid(),
-            _buildSensorSection(),
-            _buildRecommendationSection(),
+            _buildHeroBanner(adminProvider),
+            _buildStatsGrid(adminProvider),
+            _buildSensorSection(adminProvider),
+            _buildRecommendationSection(adminProvider),
             _buildStatusLegend(),
             const SizedBox(height: 32),
           ],
@@ -56,8 +84,8 @@ class _DashboardScreenNewState extends State<DashboardScreenNew> {
     );
   }
 
-  Widget _buildHeroBanner() {
-    final sensor = _selectedSensor;
+  Widget _buildHeroBanner(AdminProvider admin) {
+    final sensor = _selectedSensor(admin);
     final statusColor = sensor.statusColor;
     final statusLabel = sensor.status.toUpperCase();
     return Container(
@@ -141,8 +169,8 @@ class _DashboardScreenNewState extends State<DashboardScreenNew> {
     );
   }
 
-  Widget _buildStatsGrid() {
-    final sensor = _selectedSensor;
+  Widget _buildStatsGrid(AdminProvider admin) {
+    final sensor = _selectedSensor(admin);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: GridView.count(
@@ -185,7 +213,7 @@ class _DashboardScreenNewState extends State<DashboardScreenNew> {
     );
   }
 
-  Widget _buildSensorSection() {
+  Widget _buildSensorSection(AdminProvider admin) {
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(16),
@@ -217,62 +245,85 @@ class _DashboardScreenNewState extends State<DashboardScreenNew> {
             ],
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: dummySensors.asMap().entries.map((e) {
-                final isSelected = e.key == _selectedSensorIndex;
-                final sensor = e.value;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedSensorIndex = e.key),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.lightBlue : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.accentBlue : const Color(0xFFE2E8F0),
-                          width: isSelected ? 2 : 1,
+          if (!_hasInstalledSensors(admin))
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Text(
+                'Belum ada sensor terpasang. Data sensor akan muncul setelah perangkat aktif.',
+                style: TextStyle(fontSize: 13, color: AppTheme.textGrey, height: 1.5),
+              ),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: (admin.sensors.cast<Map<String, dynamic>>()).asMap().entries.map((e) {
+                  final isSelected = e.key == _selectedSensorIndex;
+                  final sensorMap = e.value;
+                  final sensor = SensorData(
+                    name: sensorMap['name']?.toString() ?? 'Sensor',
+                    location: sensorMap['latitude']?.toString() ?? '-',
+                    waterLevel: (sensorMap['waterLevel'] is num) ? (sensorMap['waterLevel'] as num).toDouble() : 0.0,
+                    rainfall: (sensorMap['rainfall'] is num) ? (sensorMap['rainfall'] as num).toDouble() : 0.0,
+                    status: sensorMap['status']?.toString() ?? 'Normal',
+                    lastUpdate: DateTime.tryParse(sensorMap['updatedAt']?.toString() ?? '') ?? DateTime.now(),
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedSensorIndex = e.key),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppTheme.lightBlue : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? AppTheme.accentBlue : const Color(0xFFE2E8F0),
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              sensor.name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? AppTheme.primaryBlue : AppTheme.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: sensor.statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            sensor.name,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? AppTheme.primaryBlue : AppTheme.textDark,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: sensor.statusColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
-                );
-              }).toList(),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildRecommendationSection() {
-    final sensor = _selectedSensor;
+  Widget _buildRecommendationSection(AdminProvider admin) {
+    final sensor = _selectedSensor(admin);
     final statusColor = sensor.statusColor;
     final recommendations = _getRecommendations(sensor.status);
     return Container(

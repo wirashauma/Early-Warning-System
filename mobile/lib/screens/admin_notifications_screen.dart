@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class AdminNotificationsScreen extends StatelessWidget {
   const AdminNotificationsScreen({super.key});
@@ -17,7 +18,7 @@ class AdminNotificationsScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 _buildInboxBadge('Belum Dibaca', '5', Colors.red),
                 const SizedBox(width: 8),
-                _buildInboxBadge('Alert Aktif', '2', Colors.orange),
+                _buildInboxBadge('Alert Aktif', '2', AppTheme.statusWaspada),
               ],
             ),
           ),
@@ -25,7 +26,7 @@ class AdminNotificationsScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                _buildNotifyCard('Peringatan Kenaikan Debit Air', 'Status: Waspada\nSaluran: WhatsApp & Push', '17 Mei 2026, 14.20', Colors.orange),
+                _buildNotifyCard('Peringatan Kenaikan Debit Air', 'Status: Waspada\nSaluran: WhatsApp & Push', '17 Mei 2026, 14.20', AppTheme.statusWaspada),
                 _buildNotifyCard('Notifikasi Penormalan Level Air', 'Status: Aman\nSaluran: Push Notification', '16 Mei 2026, 09.11', Colors.green),
                 _buildNotifyCard('System Alert: Sensor Offline Detected', 'Perangkat SNS-WL-03 terputus', '15 Mei 2026, 23.45', Colors.redAccent),
               ],

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card } from "@/components/ui/Card";
 import { Reveal } from "@/components/ui/Reveal";
+import { EducationFAQ } from "@/components/landing/EducationFAQ";
 import { PublicRealtimeDashboardSection } from "@/components/landing/PublicRealtimeDashboardSection";
 import { AuthRedirectWrapper } from "@/components/AuthRedirectWrapper";
 import api from "@/lib/api";
@@ -51,40 +52,6 @@ const statusLegend = [
     threshold: "≥ 200 cm",
     action: "Segera evakuasi ke titik aman terdekat dan ikuti arahan petugas.",
     icon: "🚨",
-  },
-];
-
-const evacuationGuide = [
-  "Pantau notifikasi resmi dan ikuti instruksi petugas saat status merah aktif.",
-  "Matikan listrik utama rumah dan amankan dokumen penting ke tempat kedap air.",
-  "Bawa tas siaga, bantu lansia/anak, lalu bergerak ke titik evakuasi terdekat.",
-  "Tetap di jalur aman dan hindari menerobos arus banjir atau kabel listrik terbuka.",
-];
-
-const emergencyKit = [
-  "Dokumen penting (KTP, KK, surat berharga)",
-  "Obat pribadi, P3K, dan masker",
-  "Air minum, makanan siap saji, perlengkapan bayi",
-  "Senter, powerbank, peluit, dan baterai cadangan",
-  "Pakaian ganti dan perlengkapan kebersihan dasar",
-];
-
-const faqs = [
-  {
-    q: "Bagaimana data sensor diperbarui?",
-    a: "Data sensor dikirim berkala ke sistem dan ditampilkan hampir real-time pada dashboard publik.",
-  },
-  {
-    q: "Apa peran admin dalam sistem EWS?",
-    a: "Admin mengelola sensor, memvalidasi data/alert, dan memastikan informasi darurat dikirim tepat waktu.",
-  },
-  {
-    q: "Apa yang harus dilakukan saat status Kuning atau Oranye?",
-    a: "Siapkan dokumen penting, tas siaga, dan pantau terus pembaruan status dari dashboard maupun petugas.",
-  },
-  {
-    q: "Apakah tombol darurat bisa langsung menelepon?",
-    a: "Ya, tombol menggunakan fitur one-click call, terutama efektif pada perangkat mobile.",
   },
 ];
 
@@ -275,57 +242,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="education-faq" className="bg-slate-50">
-          <div className="mx-auto w-full max-w-6xl px-6 py-16">
-            <Reveal className="mb-10 max-w-3xl">
-              <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Flood Education & FAQ</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Panduan Keselamatan dan Persiapan Darurat</h2>
-            </Reveal>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Reveal>
-                <Card className="h-full border-blue-100">
-                  <h3 className="text-lg font-semibold text-slate-900">Panduan Evakuasi Saat Status Merah</h3>
-                  <ol className="mt-4 space-y-3 text-sm text-slate-700">
-                    {evacuationGuide.map((item, index) => (
-                      <li key={item} className="flex gap-3">
-                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-                          {index + 1}
-                        </span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </Card>
-              </Reveal>
-
-              <Reveal delayMs={120}>
-                <Card className="h-full border-blue-100">
-                  <h3 className="text-lg font-semibold text-slate-900">Daftar Barang Darurat Wajib</h3>
-                  <ul className="mt-4 space-y-2 text-sm text-slate-700">
-                    {emergencyKit.map((item) => (
-                      <li key={item} className="flex gap-2">
-                        <span className="mt-1 inline-block h-2 w-2 rounded-full bg-blue-600" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              </Reveal>
-            </div>
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {faqs.map((item, index) => (
-                <Reveal key={item.q} delayMs={70 * (index + 1)}>
-                  <Card className="h-full">
-                    <h3 className="text-base font-semibold text-slate-900">{item.q}</h3>
-                    <p className="mt-2 text-sm text-slate-600">{item.a}</p>
-                  </Card>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        <EducationFAQ />
 
       </main>
     </AuthRedirectWrapper>

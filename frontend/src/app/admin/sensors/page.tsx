@@ -24,6 +24,16 @@ interface SensorFormState {
   type: SensorType;
 }
 
+interface SensorMutationPayload {
+  sensorId: string;
+  name: string;
+  type: SensorType;
+  latitude: number;
+  longitude: number;
+  batteryLevel: number;
+  connectivity: "ONLINE" | "OFFLINE";
+}
+
 const emptyForm: SensorFormState = {
   id: "",
   name: "",
@@ -77,6 +87,21 @@ function iconButtonClass(isDestructive = false) {
       ? "border-rose-200 bg-white text-rose-700 hover:bg-rose-50"
       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
   );
+}
+
+function getErrorMessage(err: unknown) {
+  if (err instanceof Error) {
+    return err.message;
+  }
+
+  if (typeof err === "object" && err !== null && "message" in err) {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+
+  return "";
 }
 
 function StatIcon({ kind }: { kind: "total" | "conn" | "risk" | "battery" }) {
@@ -210,7 +235,7 @@ export default function AdminSensorsPage() {
     setOpen(true);
   };
 
-  const handleAddSubmit = async (payload: any) => {
+  const handleAddSubmit = async (payload: SensorMutationPayload) => {
     setSavedMessage(null);
     setErrorMessage(null);
     try {
@@ -218,8 +243,8 @@ export default function AdminSensorsPage() {
       setSavedMessage("Sensor baru berhasil ditambahkan.");
       setOpen(false);
       reload();
-    } catch (err: any) {
-      const rawMsg = err?.response?.data?.message || err?.message || "";
+    } catch (err: unknown) {
+      const rawMsg = getErrorMessage(err);
       let friendlyMsg = "Gagal menambahkan sensor baru.";
       if (rawMsg.includes("Unique constraint failed") || rawMsg.includes("sensor_id")) {
         friendlyMsg = "ID Perangkat (MAC Address/UUID) sudah terdaftar. Silakan gunakan ID unik yang lain.";
@@ -230,7 +255,7 @@ export default function AdminSensorsPage() {
     }
   };
 
-  const handleEditSubmit = async (id: string, payload: any) => {
+  const handleEditSubmit = async (id: string, payload: SensorMutationPayload) => {
     setSavedMessage(null);
     setErrorMessage(null);
     try {
@@ -238,8 +263,8 @@ export default function AdminSensorsPage() {
       setSavedMessage("Data sensor berhasil diperbarui.");
       setOpen(false);
       reload();
-    } catch (err: any) {
-      const rawMsg = err?.response?.data?.message || err?.message || "";
+    } catch (err: unknown) {
+      const rawMsg = getErrorMessage(err);
       let friendlyMsg = "Gagal memperbarui sensor.";
       if (rawMsg.includes("Unique constraint failed") || rawMsg.includes("sensor_id")) {
         friendlyMsg = "ID Perangkat (MAC Address/UUID) sudah terdaftar. Silakan gunakan ID unik yang lain.";
@@ -264,7 +289,7 @@ export default function AdminSensorsPage() {
 
   const submitForm = async (event: FormEvent) => {
     event.preventDefault();
-    const payload = {
+    const payload: SensorMutationPayload = {
       sensorId: form.id,
       name: form.name,
       type: form.type,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../models/admin_provider.dart';
+import '../theme/app_theme.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -115,7 +118,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   childAspectRatio: 1.3,
                   children: [
                     _buildMetricCard('Sensor Aktif', '$onlineSensors', 'Total sensor: $totalSensors', Icons.sensors, Colors.blue, const Color(0xFFEFF6FF)),
-                    _buildMetricCard('Status Waspada', '$warningCount', 'Sensor dalam status alert', Icons.warning_amber_rounded, Colors.orange, const Color(0xFFFFF7ED)),
+                    _buildMetricCard('Status Waspada', '$warningCount', 'Sensor dalam status alert', Icons.warning_rounded, AppTheme.statusWaspada, const Color(0xFFEFF6FF)),
                     _buildMetricCard('Status Bahaya', '$dangerCount', 'Perlu respons segera', Icons.gpp_bad_outlined, Colors.pink, const Color(0xFFFFF1F2)),
                     _buildMetricCard('Curah Hujan', '${avgRainfall.toStringAsFixed(1)} mm/jam', 'Rata-rata data', Icons.cloud_queue, Colors.cyan, const Color(0xFFECFEFF)),
                     _buildMetricCard('Puncak Tinggi Air', '${maxLevelCm.toInt()} cm', 'Pembacaan tertinggi', Icons.water_drop_outlined, Colors.teal, const Color(0xFFF0FDF4)),
@@ -138,13 +141,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   width: double.infinity,
                   height: 180,
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFEF3C7))),
-                  child: const Center(
-                    child: Text(
-                      'Peta Google belum aktif.\nIsi nilai GOOGLE_MAPS_API_KEY pada file konfigurasi environment .env backend & frontend.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.6),
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+                  child: FlutterMap(
+                    options: MapOptions(
+                      center: LatLng(-0.9490, 100.3610),
+                      zoom: 11.5,
                     ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.ews_flood_guard',
+                      ),
+                    ],
                   ),
                 )
               ],

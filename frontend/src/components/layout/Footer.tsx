@@ -4,7 +4,7 @@ const productLinks = [
   { label: "Dashboard Real-Time", href: "/#realtime-dashboard" },
   { label: "Dashboard", href: "/dashboard" },
   { label: "Peta Sensor", href: "/map" },
-  { label: "Edukasi & FAQ", href: "/#education-faq" },
+  { label: "Edukasi & FAQ", href: "/#edukasi" },
 ];
 
 const companyLinks = [

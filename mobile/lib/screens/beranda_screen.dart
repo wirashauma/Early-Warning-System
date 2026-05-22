@@ -116,9 +116,9 @@ class BerandaScreen extends StatelessWidget {
   Widget _buildAdminStatsSection() {
     // Sinkronisasi data manifest dari berkas seed.ts (3 Perangkat Water Level + 2 Rain Gauge = 5 Sensor Aktif)
     final adminStats = [
-      {'value': '5', 'label': 'Sensor Terpasang', 'icon': Icons.sensors, 'color': AppTheme.primaryBlue},
-      {'value': 'ONLINE', 'label': 'Konektivitas Global', 'icon': Icons.cloud_done, 'color': Colors.green},
-      {'value': '0', 'label': 'Status Waspada', 'icon': Icons.warning_amber_rounded, 'color': Colors.orange},
+      {'value': '0', 'label': 'Sensor Terpasang', 'icon': Icons.sensors, 'color': AppTheme.primaryBlue},
+      {'value': 'NON-AKTIF', 'label': 'Konektivitas Global', 'icon': Icons.cloud_off, 'color': Colors.grey},
+      {'value': '0', 'label': 'Status Waspada', 'icon': Icons.warning_rounded, 'color': AppTheme.statusWaspada},
       {'value': '0', 'label': 'Status Bahaya', 'icon': Icons.notifications_active, 'color': Colors.redAccent},
     ];
 

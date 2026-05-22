@@ -19,6 +19,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
 
+  static const _quickAdminEmail = 'admin@ews.com';
+  static const _quickAdminPassword = 'Admin123!';
+  static const _quickUserEmail = 'user1@ews.com';
+  static const _quickUserPassword = 'User12345!';
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -28,16 +33,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final authProvider = context.read<AuthProvider>();
     final ok = await authProvider.login(_emailCtrl.text, _passCtrl.text);
-    
+
     if (!mounted) return;
     if (ok) {
       // FIX UTAMA: Cukup panggil callback dari main.dart.
       // Hapus Navigator.pop dari sini agar tidak menabrak rute /home atau /admin.
       widget.onLoginSuccess?.call();
     }
+  }
+
+  Future<void> _handleQuickLogin(String email, String password) async {
+    _emailCtrl.text = email;
+    _passCtrl.text = password;
+    await _handleLogin();
   }
 
   @override
@@ -64,7 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: 'Masukkan email Anda',
                         controller: _emailCtrl,
                         prefixIcon: Icons.email_outlined,
-                        validator: (v) => v!.isEmpty ? 'Email wajib diisi' : null,
+                        validator: (v) =>
+                            v!.isEmpty ? 'Email wajib diisi' : null,
                       ),
                       const SizedBox(height: 16),
                       AuthTextField(
@@ -73,21 +85,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passCtrl,
                         isPassword: true,
                         prefixIcon: Icons.lock_outline,
-                        validator: (v) => v!.isEmpty ? 'Password wajib diisi' : null,
+                        validator: (v) =>
+                            v!.isEmpty ? 'Password wajib diisi' : null,
                       ),
-                      
+
                       // Link Lupa Password
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordScreen(),
+                            ),
                           ),
-                          child: const Text('Lupa Password?', style: TextStyle(color: AppTheme.accentBlue)),
+                          child: const Text(
+                            'Lupa Password?',
+                            style: TextStyle(color: AppTheme.accentBlue),
+                          ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 12),
                       AuthButton(
                         label: 'Masuk',
@@ -95,14 +113,63 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: globalAuth.isLoading,
                       ),
                       const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Quick Login',
+                          style: TextStyle(
+                            color: AppTheme.textGrey,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      AuthButton(
+                        label: 'Masuk sebagai Admin',
+                        onPressed: () => _handleQuickLogin(
+                          _quickAdminEmail,
+                          _quickAdminPassword,
+                        ),
+                        isLoading: globalAuth.isLoading,
+                        isOutlined: true,
+                        color: AppTheme.accentBlue,
+                      ),
+                      const SizedBox(height: 10),
+                      AuthButton(
+                        label: 'Masuk sebagai User',
+                        onPressed: () => _handleQuickLogin(
+                          _quickUserEmail,
+                          _quickUserPassword,
+                        ),
+                        isLoading: globalAuth.isLoading,
+                        isOutlined: true,
+                        color: AppTheme.primaryBlue,
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
-                          Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
+                          Expanded(
+                            child: Divider(
+                              color: AppTheme.textGrey.withValues(alpha: 0.3),
+                            ),
+                          ),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+                            child: Text(
+                              'atau',
+                              style: TextStyle(
+                                color: AppTheme.textGrey,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
-                          Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
+                          Expanded(
+                            child: Divider(
+                              color: AppTheme.textGrey.withValues(alpha: 0.3),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -118,23 +185,31 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: globalAuth.isLoading,
                       ),
                       const SizedBox(height: 24),
-                      _buildQuickLogin(),
-                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Belum punya akun? ', style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
+                          const Text(
+                            'Belum punya akun? ',
+                            style: TextStyle(
+                              color: AppTheme.textGrey,
+                              fontSize: 14,
+                            ),
+                          ),
                           GestureDetector(
                             onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => RegisterScreen(onLoginSuccess: widget.onLoginSuccess)),
+                              MaterialPageRoute(
+                                builder: (_) => RegisterScreen(
+                                  onLoginSuccess: widget.onLoginSuccess,
+                                ),
+                              ),
                             ),
                             child: const Text(
                               'Daftar Sekarang',
                               style: TextStyle(
-                                color: AppTheme.primaryBlue, 
-                                fontWeight: FontWeight.bold, 
-                                fontSize: 14
+                                color: AppTheme.primaryBlue,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
                               ),
                             ),
                           ),
@@ -152,95 +227,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildQuickLogin() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.accentBlue.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.bolt_outlined, color: AppTheme.accentBlue, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                'DEMO LOGIN CEPAT',
-                style: TextStyle(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickLoginChip(
-                  label: 'Admin BPBD',
-                  icon: Icons.admin_panel_settings_outlined,
-                  color: AppTheme.primaryBlue,
-                  email: 'admin@ews.com',
-                  pass: 'Admin123!',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickLoginChip(
-                  label: 'User Warga',
-                  icon: Icons.person_outline_outlined,
-                  color: AppTheme.accentBlue,
-                  email: 'user1@ews.com',
-                  pass: 'User12345!',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickLoginChip({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required String email,
-    required String pass,
-  }) {
-    return OutlinedButton.icon(
-      onPressed: () async {
-        setState(() {
-          _emailCtrl.text = email;
-          _passCtrl.text = pass;
-        });
-        await _handleLogin();
-      },
-      icon: Icon(icon, size: 15, color: color),
-      label: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 11.5,
-        ),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        side: BorderSide(color: color.withValues(alpha: 0.25)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        backgroundColor: Colors.white,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-    );
-  }
-
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -254,7 +240,14 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Icon(Icons.water_drop, color: Colors.white, size: 48),
           SizedBox(height: 16),
-          Text('Login', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(
+            'Login',
+            style: TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );

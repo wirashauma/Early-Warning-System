@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/auth_provider.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_sensors_screen.dart';
 import 'admin_thresholds_screen.dart';
@@ -72,10 +74,6 @@ class _AdminNavigationState extends State<AdminNavigation> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
-            onPressed: () => setState(() {}),
-          ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -139,7 +137,31 @@ class _AdminNavigationState extends State<AdminNavigation> {
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.white70),
                 title: const Text('Keluar Aplikasi', style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+                onTap: () {
+                  final authProvider = context.read<AuthProvider>();
+                  showDialog(
+                    context: context,
+                    builder: (dialogCtx) => AlertDialog(
+                      title: const Text('Peringatan'),
+                      content: const Text('Apakah Anda ingin keluar?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          child: const Text('Tidak'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            authProvider.logout();
+                            Navigator.pop(dialogCtx);
+                            Navigator.pushReplacementNamed(context, '/login');
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
+                          child: const Text('Ya, keluar'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
             ],
