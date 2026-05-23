@@ -34,6 +34,8 @@ class SensorData {
 }
 
 class SensorModel {
+  static const Duration onlineThreshold = Duration(minutes: 3);
+
   final String id;
   final String sensorId;
   final String name;
@@ -43,7 +45,9 @@ class SensorModel {
   final int? batteryLevel;
   final String connectivity; // ONLINE, OFFLINE, MAINTENANCE
   final DateTime? installedAt;
+  final DateTime? lastSeenAt;
   final DateTime? lastActiveAt;
+  final DateTime? updatedAt;
   final bool isActive;
 
   SensorModel({
@@ -56,41 +60,107 @@ class SensorModel {
     this.batteryLevel,
     required this.connectivity,
     this.installedAt,
+    this.lastSeenAt,
     this.lastActiveAt,
+    this.updatedAt,
     required this.isActive,
   });
 
+  static DateTime? parseTimestamp(dynamic raw) {
+    if (raw == null) return null;
+
+    if (raw is DateTime) {
+      return raw.toLocal();
+    }
+
+    if (raw is num) {
+      final value = raw.toInt();
+      final milliseconds = value.abs() < 1000000000000 ? value * 1000 : value;
+      return DateTime.fromMillisecondsSinceEpoch(
+        milliseconds,
+        isUtc: true,
+      ).toLocal();
+    }
+
+    final parsed = DateTime.tryParse(raw.toString());
+    return parsed?.toLocal();
+  }
+
+  static bool isTimestampOnline(
+    dynamic raw, {
+    DateTime? now,
+    Duration threshold = onlineThreshold,
+  }) {
+    final timestamp = parseTimestamp(raw);
+    if (timestamp == null) return false;
+
+    final reference = now ?? DateTime.now();
+    return reference.difference(timestamp).inMilliseconds <=
+        threshold.inMilliseconds;
+  }
+
+  static String _normalizeConnectivity(dynamic raw) {
+    final value = raw == null ? '' : raw.toString().trim().toUpperCase();
+    if (value == 'ONLINE' || value == 'OFFLINE' || value == 'MAINTENANCE') {
+      return value;
+    }
+    return 'UNKNOWN';
+  }
+
+  static bool _parseBool(dynamic raw, {bool fallback = false}) {
+    if (raw == null) return fallback;
+    if (raw is bool) return raw;
+    return raw.toString().toLowerCase() == 'true';
+  }
+
+  DateTime? get effectiveLastSeenAt => lastSeenAt ?? lastActiveAt ?? updatedAt;
+
+  bool get isOnline => isTimestampOnline(effectiveLastSeenAt);
+
+  String get displayConnectivity => isOnline ? 'ONLINE' : 'OFFLINE';
+
   factory SensorModel.fromJson(Map<String, dynamic> json) {
     final id = json['id']?.toString() ?? '';
-    final sensorId = json['sensor_id']?.toString() ?? json['sensorId']?.toString() ?? '';
+    final sensorId =
+        json['sensor_id']?.toString() ?? json['sensorId']?.toString() ?? '';
     final name = json['name']?.toString() ?? '';
     final type = json['type']?.toString() ?? 'WATER_LEVEL';
-    
-    double lat = 0.0;
-    if (json['latitude'] is num) {
-      lat = (json['latitude'] as num).toDouble();
-    }
-    double lng = 0.0;
-    if (json['longitude'] is num) {
-      lng = (json['longitude'] as num).toDouble();
-    }
+
+    final latitudeRaw = json['latitude'];
+    final longitudeRaw = json['longitude'];
+    final lat = latitudeRaw is num
+        ? latitudeRaw.toDouble()
+        : double.tryParse(latitudeRaw?.toString() ?? '') ?? 0.0;
+    final lng = longitudeRaw is num
+        ? longitudeRaw.toDouble()
+        : double.tryParse(longitudeRaw?.toString() ?? '') ?? 0.0;
 
     final batteryRaw = json['battery_level'] ?? json['batteryLevel'];
     final batteryLevel = batteryRaw is num ? batteryRaw.toInt() : null;
 
-    final connectivity = json['connectivity']?.toString() ?? 'ONLINE';
+    final connectivity = _normalizeConnectivity(
+      json['connectivity'] ??
+          json['connectivityStatus'] ??
+          json['connectivity_status'] ??
+          json['status'],
+    );
 
     final installedAtRaw = json['installed_at'] ?? json['installedAt'];
-    final installedAt = installedAtRaw != null
-        ? DateTime.tryParse(installedAtRaw.toString())?.toLocal()
-        : null;
+    final installedAt = parseTimestamp(installedAtRaw);
+
+    final lastSeenAtRaw = json['last_seen_at'] ?? json['lastSeenAt'];
+    final lastSeenAt = parseTimestamp(lastSeenAtRaw);
 
     final lastActiveAtRaw = json['last_active_at'] ?? json['lastActiveAt'];
-    final lastActiveAt = lastActiveAtRaw != null
-        ? DateTime.tryParse(lastActiveAtRaw.toString())?.toLocal()
-        : null;
+    final lastActiveAt = parseTimestamp(lastActiveAtRaw);
 
-    final isActive = json['is_active'] ?? json['isActive'] ?? true;
+    final updatedAtRaw = json['updated_at'] ?? json['updatedAt'];
+    final updatedAt = parseTimestamp(updatedAtRaw);
+
+    final isActive = _parseBool(
+      json['is_active'] ?? json['isActive'],
+      fallback: true,
+    );
 
     return SensorModel(
       id: id,
@@ -102,8 +172,10 @@ class SensorModel {
       batteryLevel: batteryLevel,
       connectivity: connectivity,
       installedAt: installedAt,
+      lastSeenAt: lastSeenAt,
       lastActiveAt: lastActiveAt,
-      isActive: isActive is bool ? isActive : (isActive.toString().toLowerCase() == 'true'),
+      updatedAt: updatedAt,
+      isActive: isActive,
     );
   }
 
@@ -118,23 +190,22 @@ class SensorModel {
       'battery_level': batteryLevel,
       'connectivity': connectivity,
       'installed_at': installedAt?.toIso8601String(),
+      'last_seen_at': lastSeenAt?.toIso8601String(),
       'last_active_at': lastActiveAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
       'is_active': isActive,
     };
   }
 
   Color get connectivityColor {
     switch (connectivity.toUpperCase()) {
-      case 'ONLINE':
-        return const Color(0xFF22C55E); // Green
-      case 'OFFLINE':
-        return const Color(0xFFEF4444); // Red
       case 'MAINTENANCE':
         return const Color(0xFFEAB308); // Yellow
+      case 'ONLINE':
+      case 'OFFLINE':
+        return isOnline ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
       default:
-        return const Color(0xFF94A3B8); // Slate
+        return isOnline ? const Color(0xFF22C55E) : const Color(0xFF94A3B8);
     }
   }
 }
-
-

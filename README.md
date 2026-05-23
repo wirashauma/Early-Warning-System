@@ -25,7 +25,7 @@ Early-Warning-System/
 cd frontend
 npm install
 npm run dev
-# → http://localhost:3000
+# → http://localhost:4100
 ```
 
 ### Backend (NestJS)
@@ -34,7 +34,7 @@ cd backend
 npm install
 cp .env.example .env   # Configure your environment
 npm run start:dev
-# → http://localhost:3001
+# → http://localhost:4101
 ```
 
 ### Mobile (Flutter)

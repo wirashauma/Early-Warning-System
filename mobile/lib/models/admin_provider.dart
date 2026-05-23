@@ -22,6 +22,18 @@ class AdminProvider extends ChangeNotifier {
   List<dynamic> get sensors => _sensors;
   List<dynamic> get users => _users;
 
+  int get onlineSensorsCount => (_dashboardStats['onlineSensors'] as int?) ?? 0;
+  int get offlineSensorsCount =>
+      (_dashboardStats['offlineSensors'] as int?) ?? 0;
+  int get warningCount => (_dashboardStats['warningCount'] as int?) ?? 0;
+  int get dangerCount => (_dashboardStats['dangerCount'] as int?) ?? 0;
+  double get avgRainfall =>
+      (_dashboardStats['avgRainfall'] as num?)?.toDouble() ?? 0.0;
+  double get maxWaterLevelCm =>
+      (_dashboardStats['maxWaterLevelCm'] as num?)?.toDouble() ?? 0.0;
+  String get globalStatus =>
+      (_dashboardStats['globalStatus'] as String?) ?? 'Aman';
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();
@@ -43,16 +55,34 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<void> loadDashboardStats() async {
+    debugPrint('[AdminProvider] loadDashboardStats() start');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      _dashboardStats = await adminService.getDashboardStats();
+      final stats = await adminService.getDashboardStats();
+      debugPrint('[AdminProvider] dashboard stats loaded: $stats');
+      _dashboardStats = stats;
       if (_dashboardStats.containsKey('sensors')) {
         _sensors = _dashboardStats['sensors'] as List<dynamic>;
+      } else {
+        _sensors = [];
       }
+      debugPrint(
+        '[AdminProvider] sensors=${_sensors.length}, online=$onlineSensorsCount, offline=$offlineSensorsCount, warning=$warningCount, danger=$dangerCount, global=$globalStatus',
+      );
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _dashboardStats = {};
+      _sensors = [];
+      debugPrint('[AdminProvider] loadDashboardStats ApiException: $e');
+      rethrow;
     } catch (e) {
       _errorMessage = e.toString();
+      _dashboardStats = {};
+      _sensors = [];
+      debugPrint('[AdminProvider] loadDashboardStats error: $e');
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -152,6 +182,9 @@ class AdminProvider extends ChangeNotifier {
     required double longitude,
     required int batteryLevel,
     required String connectivity,
+    String? type,
+    String? riverName,
+    int? zeroCalibrationCm,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -164,6 +197,9 @@ class AdminProvider extends ChangeNotifier {
         longitude: longitude,
         batteryLevel: batteryLevel,
         connectivity: connectivity,
+        type: type,
+        riverName: riverName,
+        zeroCalibrationCm: zeroCalibrationCm,
       );
       return true;
     } catch (e) {

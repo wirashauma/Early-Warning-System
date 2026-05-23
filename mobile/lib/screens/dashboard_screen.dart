@@ -4,9 +4,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart'; // Ditambahkan untuk membaca state login global
 import '../models/auth_provider.dart'; // Ditambahkan untuk membedakan Admin/User
 import '../models/admin_provider.dart';
+import '../models/sensor_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
-import '../models/sensor_model.dart';
 import 'main_navigation.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -53,6 +53,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      debugPrint('[DashboardScreen] initState -> loadDashboardStats()');
+      final provider = context.read<AdminProvider>();
+      try {
+        await provider.loadDashboardStats();
+      } catch (e) {
+        debugPrint('[DashboardScreen] loadDashboardStats failed: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat dashboard: $e'),
+            backgroundColor: AppTheme.statusBahaya,
+          ),
+        );
+      }
+    });
+  }
+
   static const List<Map<String, dynamic>> _sensorLocations = [
     {
       'label': 'H1',
@@ -78,43 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ];
 
   // Simulasi manifes data sensor dari database seed backend Anda khusus untuk tampilan Admin
-  final List<Map<String, String>> _adminSensorsData = [
-    {
-      'id': 'EWS-WL-001',
-      'name': 'Sensor Hulu Batang Arau',
-      'type': 'WATER_LEVEL',
-      'status': 'ONLINE',
-      'battery': '88%',
-    },
-    {
-      'id': 'EWS-WL-002',
-      'name': 'Sensor Tengah Batang Arau',
-      'type': 'WATER_LEVEL',
-      'status': 'ONLINE',
-      'battery': '76%',
-    },
-    {
-      'id': 'EWS-WL-003',
-      'name': 'Sensor Hilir Batang Arau',
-      'type': 'WATER_LEVEL',
-      'status': 'ONLINE',
-      'battery': '59%',
-    },
-    {
-      'id': 'EWS-RF-001',
-      'name': 'Rain Gauge Padang Barat',
-      'type': 'RAINFALL',
-      'status': 'ONLINE',
-      'battery': '83%',
-    },
-    {
-      'id': 'EWS-RF-002',
-      'name': 'Rain Gauge Padang Utara',
-      'type': 'RAINFALL',
-      'status': 'ONLINE',
-      'battery': '71%',
-    },
-  ];
+  // Admin sensor list is driven by backend via AdminProvider.sensors
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // 2. Jika Admin, langsung tampilkan inventaris manajemen infrastruktur IoT petugas
     if (isAdmin) {
-      return _buildAdminDashboard();
+      return _buildAdminDashboard(adminProvider);
     }
 
     // 3. Jika User biasa, render layout grafik peta bawaan asli Anda
@@ -136,6 +122,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            if (adminProvider.errorMessage != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  adminProvider.errorMessage!,
+                  style: const TextStyle(
+                    color: Color(0xFFB91C1C),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             _buildStatusBanner(adminProvider),
             _buildMetricCards(adminProvider),
             _buildSensorMonitor(adminProvider),
@@ -152,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // =========================================================================
   // TAMPILAN KHUSUS MANAJEMEN ALAT IOT (HANYA KELUAR JIKA LOGIN SEBAGAI ADMIN)
   // =========================================================================
-  Widget _buildAdminDashboard() {
+  Widget _buildAdminDashboard(AdminProvider adminProvider) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: EWSAppBar(onRefresh: widget.onRefresh),
@@ -197,7 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'Total: ${_adminSensorsData.length}',
+                    'Total: ${adminProvider.sensors.length}',
                     style: const TextStyle(
                       color: AppTheme.primaryBlue,
                       fontSize: 11,
@@ -211,10 +216,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _adminSensorsData.length,
+              itemCount: adminProvider.sensors.length,
               itemBuilder: (context, index) {
-                final sensor = _adminSensorsData[index];
-                final isWater = sensor['type'] == 'WATER_LEVEL';
+                final raw = adminProvider.sensors[index];
+                final sensor = raw is Map<String, dynamic> ? raw : {};
+                final type = (sensor['type'] ?? sensor['sensor_type'] ?? '')
+                    .toString();
+                final isWater = type.toUpperCase().contains('WATER');
+                final sensorId =
+                    sensor['sensorId'] ??
+                    sensor['sensor_id'] ??
+                    sensor['id'] ??
+                    '';
+                final sensorName = sensor['name'] ?? '';
+                final battery =
+                    sensor['battery_level'] ?? sensor['batteryLevel'] ?? null;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -231,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            sensor['id']!,
+                            sensorId.toString(),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
@@ -240,7 +256,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            sensor['name']!,
+                            sensorName.toString(),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -257,7 +273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                sensor['type']!,
+                                type.toString(),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: AppTheme.textGrey,
@@ -272,7 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                sensor['battery']!,
+                                battery != null ? battery.toString() : '-',
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: AppTheme.textGrey,
@@ -293,7 +309,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          sensor['status']!,
+                          (sensor['connectivity'] ??
+                                  sensor['status'] ??
+                                  'UNKNOWN')
+                              .toString(),
                           style: const TextStyle(
                             color: Color(0xFF10B981),
                             fontSize: 10,
@@ -359,45 +378,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final waterLevels =
         adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
-    Map<String, dynamic>? worstMap;
+    // Web parity: Danger if any sensor has DANGER, else Waspada if any has ALERT/WARNING, else Aman
+    final hasDanger = waterLevels.any(
+      (w) =>
+          (w is Map &&
+          (w['status'] ?? w['status']?.toString()) != null &&
+          (w['status']?.toString().toUpperCase() == 'DANGER')),
+    );
+    final hasAlert =
+        !hasDanger &&
+        waterLevels.any(
+          (w) =>
+              (w is Map &&
+              (w['status'] ?? w['status']?.toString()) != null &&
+              [
+                'ALERT',
+                'WARNING',
+              ].contains(w['status']?.toString().toUpperCase())),
+        );
+    final globalLabel = hasDanger
+        ? 'Bahaya'
+        : hasAlert
+        ? 'Waspada'
+        : 'Aman';
+    final color = hasDanger
+        ? AppTheme.statusBahaya
+        : hasAlert
+        ? AppTheme.statusWaspada
+        : AppTheme.statusNormal;
+    // last update timestamp - use latest recorded timestamp across waterLevels
+    DateTime u = DateTime.now();
     if (waterLevels.isNotEmpty) {
-      worstMap =
-          waterLevels.reduce((a, b) {
-                final al = (a is Map && a['waterLevel'] is num)
-                    ? (a['waterLevel'] as num).toDouble()
-                    : 0.0;
-                final bl = (b is Map && b['waterLevel'] is num)
-                    ? (b['waterLevel'] as num).toDouble()
-                    : 0.0;
-                return al >= bl ? a : b;
-              })
-              as Map<String, dynamic>?;
-    }
-    final worst = worstMap != null
-        ? SensorData(
-            name: worstMap['sensorId']?.toString() ?? 'Sensor',
-            location: worstMap['location']?.toString() ?? '-',
-            waterLevel: (worstMap['waterLevel'] is num)
-                ? (worstMap['waterLevel'] as num).toDouble()
-                : 0.0,
-            rainfall: (worstMap['rainfall'] is num)
-                ? (worstMap['rainfall'] as num).toDouble()
-                : 0.0,
-            status: worstMap['status']?.toString() ?? 'Normal',
-            lastUpdate:
-                DateTime.tryParse(worstMap['updatedAt']?.toString() ?? '') ??
-                DateTime.now(),
+      final latestTs = waterLevels
+          .map(
+            (e) => e is Map
+                ? (e['recordedAt'] ??
+                      e['recorded_at'] ??
+                      e['updatedAt'] ??
+                      e['updated_at'])
+                : null,
           )
-        : SensorData(
-            name: 'Sensor Belum Tersedia',
-            location: '-',
-            waterLevel: 0,
-            rainfall: 0,
-            status: 'Normal',
-            lastUpdate: DateTime.now(),
-          );
-    final color = worst.statusColor;
-    final u = worst.lastUpdate;
+          .where((t) => t != null)
+          .map((t) => DateTime.tryParse(t.toString()))
+          .where((dt) => dt != null)
+          .map((dt) => dt!.toLocal())
+          .toList();
+      if (latestTs.isNotEmpty) {
+        latestTs.sort((a, b) => b.compareTo(a));
+        u = latestTs.first;
+      }
+    }
     final ts =
         '${u.day} Mei ${u.year}, ${u.hour.toString().padLeft(2, '0')}.${u.minute.toString().padLeft(2, '0')}';
 
@@ -419,7 +449,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            worst.status.toUpperCase(),
+            globalLabel.toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -455,41 +485,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildMetricCards(AdminProvider adminProvider) {
     final hasSensors = _hasInstalledSensors(adminProvider);
     final sensors = hasSensors ? adminProvider.sensors : [];
+    final totalSensors = sensors.length;
+    final onlineCount = sensors.where((s) {
+      if (s is! Map<String, dynamic>) return false;
+
+      return SensorModel.isTimestampOnline(
+        s['last_seen_at'] ??
+            s['lastSeenAt'] ??
+            s['last_active_at'] ??
+            s['lastActiveAt'] ??
+            s['updated_at'] ??
+            s['updatedAt'] ??
+            s['recorded_at'] ??
+            s['recordedAt'],
+      );
+    }).length;
+
     final waterLevelsList =
         adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
-    final maxWater = waterLevelsList.isNotEmpty
-        ? SensorData(
-            name: waterLevelsList.first['sensorId']?.toString() ?? 'Sensor',
-            location: waterLevelsList.first['location']?.toString() ?? '-',
-            waterLevel: (waterLevelsList
-                .map(
-                  (e) => (e is Map && e['waterLevel'] is num)
-                      ? (e['waterLevel'] as num).toDouble()
-                      : 0.0,
-                )
-                .reduce((a, b) => a > b ? a : b)),
-            rainfall: 0,
-            status: 'Normal',
-            lastUpdate: DateTime.now(),
+    double maxLevel = 0.0;
+    if (waterLevelsList.isNotEmpty) {
+      maxLevel = waterLevelsList
+          .map(
+            (e) => (e is Map && e['waterLevel'] is num)
+                ? (e['waterLevel'] as num).toDouble()
+                : 0.0,
           )
-        : SensorData(
-            name: 'Belum Tersedia',
-            location: '-',
-            waterLevel: 0,
-            rainfall: 0,
-            status: 'Normal',
-            lastUpdate: DateTime.now(),
-          );
+          .fold<double>(0.0, (prev, el) => el > prev ? el : prev);
+    }
+
     final avgRainfall = adminProvider.dashboardStats['avgRainfall'] ?? 0.0;
-    final risky =
-        (adminProvider.dashboardStats['recentAlerts'] as List<dynamic>?)
-            ?.length ??
-        0;
+
+    final dangerCount = waterLevelsList
+        .where(
+          (w) =>
+              (w is Map &&
+              (w['status'] ?? '').toString().toUpperCase() == 'DANGER'),
+        )
+        .length;
+    final alertCount = waterLevelsList
+        .where(
+          (w) =>
+              (w is Map &&
+              ([
+                'ALERT',
+                'WARNING',
+              ].contains((w['status'] ?? '').toString().toUpperCase()))),
+        )
+        .length;
+    final warningCount = 0; // Not used separately; kept for parity if needed
+    final riskCount = dangerCount + alertCount + warningCount;
     final cards = [
       {
         'label': 'Tinggi Air (Aktif)',
-        'value': hasSensors ? '${maxWater.waterLevel.toInt()} cm' : '0 cm',
-        'sub': hasSensors ? maxWater.name : 'Belum ada sensor terpasang',
+        'value': hasSensors ? '${maxLevel.toInt()} cm' : '0 cm',
+        'sub': hasSensors ? 'Puncak saat ini' : 'Belum ada sensor terpasang',
         'color': AppTheme.accentBlue,
       },
       {
@@ -504,13 +554,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
       {
         'label': 'Sensor Berisiko',
-        'value': '$risky',
-        'sub': 'Bahaya: 0 • Waspada: $risky',
-        'color': risky > 0 ? AppTheme.statusBahaya : AppTheme.statusNormal,
+        'value': '$riskCount',
+        'sub':
+            'Bahaya: $dangerCount • Siaga: $alertCount • Waspada: $warningCount',
+        'color': riskCount > 0 ? AppTheme.statusBahaya : AppTheme.statusNormal,
       },
       {
-        'label': 'Konektivitas',
-        'value': hasSensors ? '${sensors.length}/${sensors.length}' : '0/0',
+        'label': 'Sensor Aktif',
+        'value': hasSensors ? '$onlineCount/$totalSensors' : '0/0',
         'sub': hasSensors ? 'Sensor online aktif' : 'Tidak ada sensor',
         'color': AppTheme.statusNormal,
       },

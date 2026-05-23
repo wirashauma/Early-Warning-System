@@ -36,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
     if (ok) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
     if (ok) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

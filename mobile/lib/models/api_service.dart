@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,17 +19,21 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  String baseUrl = dotenv.env['API_URL']?.trim() ??
-      dotenv.env['API_BASE_URL']?.trim() ??
-      'http://10.0.2.2:3001/api';
+  String baseUrl =
+      (dotenv.env['API_URL']?.trim()) ??
+      (dotenv.env['API_BASE_URL']?.trim()) ??
+      (dotenv.env['NEXT_PUBLIC_API_URL']?.trim()) ??
+      'http://10.0.2.2:4101/api';
+
+  /// Request timeout in seconds
+  final int requestTimeoutSeconds =
+      int.tryParse(dotenv.env['API_TIMEOUT'] ?? '') ?? 10;
 
   String? accessToken;
   String? refreshToken;
 
   Map<String, String> get _headers {
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
+    final headers = <String, String>{'Content-Type': 'application/json'};
     if (accessToken != null) {
       headers['Authorization'] = 'Bearer $accessToken';
     }
@@ -36,7 +42,9 @@ class ApiService {
 
   Uri _buildUri(String path, [Map<String, String>? query]) {
     final normalizedPath = path.startsWith('/') ? path.substring(1) : path;
-    return Uri.parse('$baseUrl/$normalizedPath').replace(queryParameters: query);
+    return Uri.parse(
+      '$baseUrl/$normalizedPath',
+    ).replace(queryParameters: query);
   }
 
   dynamic _parseResponse(http.Response response) {
@@ -56,26 +64,70 @@ class ApiService {
 
   Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
     final uri = _buildUri(path, queryParams);
-    final response = await http.get(uri, headers: _headers);
-    return _parseResponse(response);
+    try {
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(Duration(seconds: requestTimeoutSeconds));
+      return _parseResponse(response);
+    } on Exception catch (e) {
+      if (e is http.ClientException ||
+          e is TimeoutException ||
+          e is SocketException) {
+        throw ApiException(0, 'Network error: ${e.toString()}');
+      }
+      rethrow;
+    }
   }
 
   Future<dynamic> post(String path, Object? body) async {
     final uri = _buildUri(path);
-    final response = await http.post(uri, headers: _headers, body: jsonEncode(body));
-    return _parseResponse(response);
+    try {
+      final response = await http
+          .post(uri, headers: _headers, body: jsonEncode(body))
+          .timeout(Duration(seconds: requestTimeoutSeconds));
+      return _parseResponse(response);
+    } on Exception catch (e) {
+      if (e is http.ClientException ||
+          e is TimeoutException ||
+          e is SocketException) {
+        throw ApiException(0, 'Network error: ${e.toString()}');
+      }
+      rethrow;
+    }
   }
 
   Future<dynamic> put(String path, Object? body) async {
     final uri = _buildUri(path);
-    final response = await http.put(uri, headers: _headers, body: jsonEncode(body));
-    return _parseResponse(response);
+    try {
+      final response = await http
+          .put(uri, headers: _headers, body: jsonEncode(body))
+          .timeout(Duration(seconds: requestTimeoutSeconds));
+      return _parseResponse(response);
+    } on Exception catch (e) {
+      if (e is http.ClientException ||
+          e is TimeoutException ||
+          e is SocketException) {
+        throw ApiException(0, 'Network error: ${e.toString()}');
+      }
+      rethrow;
+    }
   }
 
   Future<dynamic> delete(String path) async {
     final uri = _buildUri(path);
-    final response = await http.delete(uri, headers: _headers);
-    return _parseResponse(response);
+    try {
+      final response = await http
+          .delete(uri, headers: _headers)
+          .timeout(Duration(seconds: requestTimeoutSeconds));
+      return _parseResponse(response);
+    } on Exception catch (e) {
+      if (e is http.ClientException ||
+          e is TimeoutException ||
+          e is SocketException) {
+        throw ApiException(0, 'Network error: ${e.toString()}');
+      }
+      rethrow;
+    }
   }
 
   void setTokens({required String accessToken, required String refreshToken}) {
@@ -91,9 +143,10 @@ class ApiService {
   // Authentication
   Future<Map<String, dynamic>> login(String email, String password) async {
     return await post('auth/login', {
-      'email': email.trim().toLowerCase(),
-      'password': password,
-    }) as Map<String, dynamic>;
+          'email': email.trim().toLowerCase(),
+          'password': password,
+        })
+        as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> register(
@@ -114,18 +167,23 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> googleLogin(String idToken) async {
-    return await post('auth/google-login', {'idToken': idToken}) as Map<String, dynamic>;
+    return await post('auth/google-login', {'idToken': idToken})
+        as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> refreshSession(String refreshToken) async {
-    return await post('auth/refresh', {'refreshToken': refreshToken}) as Map<String, dynamic>;
+    return await post('auth/refresh', {'refreshToken': refreshToken})
+        as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> me() async {
     return await get('auth/me') as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> updateProfile(String name, {String? avatar}) async {
+  Future<Map<String, dynamic>> updateProfile(
+    String name, {
+    String? avatar,
+  }) async {
     final body = <String, dynamic>{'name': name.trim()};
     if (avatar != null) {
       body['avatar'] = avatar;
@@ -154,14 +212,19 @@ class ApiService {
     if (endDate != null) queryParams['endDate'] = endDate;
     if (interval != null) queryParams['interval'] = interval;
 
-    final response = await get('water-levels/history', queryParams: queryParams);
-    
+    final response = await get(
+      'water-levels/history',
+      queryParams: queryParams,
+    );
+
     // In our NestJS architecture, success response is either { status: 'success', data: [...] }
     // or just direct [...] depending on how the data was nested, but `get()` automatically
     // returns response['data'] if the key exists (lines 45-47 in _parseResponse!).
     // Therefore, we can cast or map directly.
     final list = response as List<dynamic>? ?? [];
-    return list.map((item) => WaterLevelLog.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => WaterLevelLog.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<RainfallLog>> fetchRainfallHistory({
@@ -183,7 +246,9 @@ class ApiService {
 
     final response = await get('rainfall/history', queryParams: queryParams);
     final list = response as List<dynamic>? ?? [];
-    return list.map((item) => RainfallLog.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => RainfallLog.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<FlowRateLog>> fetchFlowRateHistory({
@@ -205,29 +270,40 @@ class ApiService {
 
     final response = await get('flow-rate/history', queryParams: queryParams);
     final list = response as List<dynamic>? ?? [];
-    return list.map((item) => FlowRateLog.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => FlowRateLog.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<AlertModel>> fetchActiveAlerts() async {
     final response = await get('alerts/active');
     final list = response as List<dynamic>? ?? [];
-    return list.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
-  Future<List<AlertModel>> fetchAlertHistory({int page = 1, int limit = 10}) async {
+  Future<List<AlertModel>> fetchAlertHistory({
+    int page = 1,
+    int limit = 10,
+  }) async {
     final Map<String, String> queryParams = {
       'page': page.toString(),
       'limit': limit.toString(),
     };
     final response = await get('alerts/history', queryParams: queryParams);
-    
+
     // Paginated responses might have a meta or list inside data
     if (response is Map<String, dynamic> && response.containsKey('alerts')) {
       final list = response['alerts'] as List<dynamic>? ?? [];
-      return list.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
+          .toList();
     }
     final list = response as List<dynamic>? ?? [];
-    return list.map((item) => AlertModel.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<SensorModel>> fetchSensors({int page = 1, int limit = 20}) async {
@@ -236,12 +312,16 @@ class ApiService {
       'limit': limit.toString(),
     };
     final response = await get('sensors', queryParams: queryParams);
-    
+
     if (response is Map<String, dynamic> && response.containsKey('sensors')) {
       final list = response['sensors'] as List<dynamic>? ?? [];
-      return list.map((item) => SensorModel.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => SensorModel.fromJson(item as Map<String, dynamic>))
+          .toList();
     }
     final list = response as List<dynamic>? ?? [];
-    return list.map((item) => SensorModel.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => SensorModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 }

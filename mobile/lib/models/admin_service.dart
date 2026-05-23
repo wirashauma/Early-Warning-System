@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import 'sensor_model.dart';
 
 class AdminService extends ChangeNotifier {
   final ApiService _apiService;
@@ -13,13 +14,15 @@ class AdminService extends ChangeNotifier {
   Future<bool> checkAdminStatus(String userId) async {
     try {
       final response = await _apiService.get('/auth/me');
-      final user = response; // ApiService langsung mengembalikan data atau jsonBody
-      
+      final user =
+          response; // ApiService langsung mengembalikan data atau jsonBody
+
       // Amankan pengecekan role agar mendeteksi 'admin', 'Admin', maupun 'ADMIN'
-      _isAdmin = user is Map<String, dynamic> && 
-                 user['role'] != null && 
-                 user['role'].toString().toUpperCase() == 'ADMIN';
-                 
+      _isAdmin =
+          user is Map<String, dynamic> &&
+          user['role'] != null &&
+          user['role'].toString().toUpperCase() == 'ADMIN';
+
       notifyListeners();
       return _isAdmin;
     } catch (e) {
@@ -39,6 +42,8 @@ class AdminService extends ChangeNotifier {
     try {
       final response = await _apiService.get('/sensors');
       return response is List<dynamic> ? response : (response['items'] ?? []);
+    } on ApiException {
+      rethrow;
     } catch (e) {
       throw Exception('Gagal mengambil data sensor: $e');
     }
@@ -75,15 +80,24 @@ class AdminService extends ChangeNotifier {
     required double longitude,
     required int batteryLevel,
     required String connectivity,
+    String? type,
+    String? riverName,
+    int? zeroCalibrationCm,
   }) async {
     try {
-      return await _apiService.put('/sensors/$id', {
+      final body = {
         'name': name,
         'latitude': latitude,
         'longitude': longitude,
         'batteryLevel': batteryLevel,
         'connectivity': connectivity,
-      });
+      };
+      if (type != null) body['type'] = type;
+      if (riverName != null) body['riverName'] = riverName;
+      if (zeroCalibrationCm != null)
+        body['zeroCalibrationCm'] = zeroCalibrationCm;
+
+      return await _apiService.put('/sensors/$id', body);
     } catch (e) {
       throw Exception('Gagal mengupdate sensor: $e');
     }
@@ -103,6 +117,8 @@ class AdminService extends ChangeNotifier {
     try {
       final response = await _apiService.get('/users');
       return response is List<dynamic> ? response : [];
+    } on ApiException {
+      rethrow;
     } catch (e) {
       throw Exception('Gagal mengambil data pengguna: $e');
     }
@@ -237,6 +253,8 @@ class AdminService extends ChangeNotifier {
         return response['items'] ?? [];
       }
       return response is List<dynamic> ? response : [];
+    } on ApiException {
+      rethrow;
     } catch (e) {
       throw Exception('Gagal mengambil riwayat alert: $e');
     }
@@ -247,6 +265,8 @@ class AdminService extends ChangeNotifier {
     try {
       final response = await _apiService.get('/water-levels/current');
       return response is List<dynamic> ? response : [];
+    } on ApiException {
+      rethrow;
     } catch (e) {
       throw Exception('Gagal mengambil level air: $e');
     }
@@ -257,6 +277,8 @@ class AdminService extends ChangeNotifier {
     try {
       final response = await _apiService.get('/rainfall/current');
       return response is List<dynamic> ? response : [];
+    } on ApiException {
+      rethrow;
     } catch (e) {
       throw Exception('Gagal mengambil data hujan: $e');
     }
@@ -269,22 +291,75 @@ class AdminService extends ChangeNotifier {
       final waterLevels = await getWaterLevelsCurrent();
       final rainfall = await getRainfallCurrent();
       final alerts = await getAlertHistory(limit: 10);
-      final online = sensors.where((s) => s is Map<String, dynamic> && s['connectivity'] == 'ONLINE').length;
+      final online = sensors.where((s) {
+        if (s is! Map<String, dynamic>) return false;
+
+        return SensorModel.isTimestampOnline(
+          s['last_seen_at'] ??
+              s['lastSeenAt'] ??
+              s['last_active_at'] ??
+              s['lastActiveAt'] ??
+              s['updated_at'] ??
+              s['updatedAt'] ??
+              s['recorded_at'] ??
+              s['recordedAt'],
+        );
+      }).length;
       final offline = sensors.length - online;
-      
+
       final avgRainfall = rainfall.isEmpty
           ? 0.0
-          : rainfall.fold<double>(0, (sum, r) => sum + (r is Map<String, dynamic> ? (r['rainfall'] ?? 0) : 0)) / rainfall.length;
-          
+          : rainfall.fold<double>(
+                  0,
+                  (sum, r) =>
+                      sum +
+                      (r is Map<String, dynamic> ? (r['rainfall'] ?? 0) : 0),
+                ) /
+                rainfall.length;
+
+      final warningCount = waterLevels.where((w) {
+        final status = (w is Map<String, dynamic> ? (w['status'] ?? '') : '')
+            .toString()
+            .toUpperCase();
+        return status == 'WARNING' || status == 'ALERT';
+      }).length;
+
+      final dangerCount = waterLevels.where((w) {
+        final status = (w is Map<String, dynamic> ? (w['status'] ?? '') : '')
+            .toString()
+            .toUpperCase();
+        return status == 'DANGER';
+      }).length;
+
+      final maxWaterLevelCm = waterLevels.fold<double>(0, (max, item) {
+        final level = item is Map<String, dynamic> ? item['waterLevel'] : null;
+        if (level is num && level.toDouble() > max) {
+          return level.toDouble();
+        }
+        return max;
+      });
+
+      final globalStatus = dangerCount > 0
+          ? 'Bahaya'
+          : warningCount > 0
+          ? 'Waspada'
+          : 'Aman';
+
       return {
         'totalSensors': sensors.length,
         'onlineSensors': online,
         'offlineSensors': offline,
         'avgRainfall': (avgRainfall * 10).toInt() / 10,
+        'warningCount': warningCount,
+        'dangerCount': dangerCount,
+        'maxWaterLevelCm': maxWaterLevelCm,
+        'globalStatus': globalStatus,
         'sensors': sensors,
         'waterLevels': waterLevels,
         'recentAlerts': alerts,
       };
+    } on ApiException {
+      rethrow;
     } catch (e) {
       throw Exception('Gagal mengambil statistik dashboard: $e');
     }

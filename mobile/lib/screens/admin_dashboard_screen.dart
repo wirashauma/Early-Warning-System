@@ -13,15 +13,24 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  bool _initialized = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialized) {
-      _initialized = true;
-      context.read<AdminProvider>().loadDashboardStats();
-    }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await context.read<AdminProvider>().loadDashboardStats();
+      } catch (e) {
+        debugPrint('[AdminDashboardScreen] loadDashboardStats failed: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat dasbor admin: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -30,25 +39,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final stats = adminProvider.dashboardStats;
 
     final totalSensors = stats['totalSensors'] ?? 0;
-    final onlineSensors = stats['onlineSensors'] ?? 0;
-    final offlineSensors = stats['offlineSensors'] ?? 0;
-    final avgRainfall = stats['avgRainfall'] ?? 0.0;
+    final onlineSensors = adminProvider.onlineSensorsCount;
+    final offlineSensors = adminProvider.offlineSensorsCount;
+    final avgRainfall = adminProvider.avgRainfall;
     final waterLevels = stats['waterLevels'] as List<dynamic>? ?? [];
-    final recentAlerts = stats['recentAlerts'] as List<dynamic>? ?? [];
-    
+
     final maxLevelCm = waterLevels.fold<double>(0.0, (prev, item) {
-      final level = item is Map<String, dynamic> ? (item['waterLevel'] ?? 0) : 0;
-      return (level is num && level.toDouble() > prev) ? level.toDouble() : prev;
+      final level = item is Map<String, dynamic>
+          ? (item['waterLevel'] ?? 0)
+          : 0;
+      return (level is num && level.toDouble() > prev)
+          ? level.toDouble()
+          : prev;
     });
-    
-    final dangerCount = recentAlerts.where((item) => item is Map<String, dynamic> && (item['severity'] == 'DANGER' || item['severity'] == 'critical')).length;
-    final warningCount = recentAlerts.where((item) => item is Map<String, dynamic> && (item['severity'] == 'WARNING' || item['severity'] == 'warning')).length;
-    
-    final currentStatus = dangerCount > 0
-        ? 'Bahaya'
-        : warningCount > 0
-            ? 'Waspada'
-            : 'Aman';
+
+    final dangerCount = adminProvider.dangerCount;
+    final warningCount = adminProvider.warningCount;
+    final currentStatus = adminProvider.globalStatus;
 
     // Status Badge Color Logic
     final Color statusBg;
@@ -117,7 +124,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               actions: [
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE0F2FE),
                     borderRadius: BorderRadius.circular(20),
@@ -138,7 +148,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   backgroundColor: Color(0xFF0066FF),
                   child: Text(
                     'A',
-                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -150,10 +164,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: TextField(
                     decoration: InputDecoration(
                       hintText: 'Cari sensor, notifikasi, atau laporan...',
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF64748B),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFFF1F5F9),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
@@ -165,26 +185,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
             ),
-            
+
             // Dashboard Content
             SliverPadding(
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  if (adminProvider.errorMessage != null) ...[
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        adminProvider.errorMessage!,
+                        style: const TextStyle(
+                          color: Color(0xFFB91C1C),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                   // Hero Welcome Card with Deep/Premium Gradient
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF1E3A8A), Color(0xFF312E81), Color(0xFF4F46E5)],
+                        colors: [
+                          Color(0xFF1E3A8A),
+                          Color(0xFF312E81),
+                          Color(0xFF4F46E5),
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF312E81).withValues(alpha: 0.25),
+                          color: const Color(
+                            0xFF312E81,
+                          ).withValues(alpha: 0.25),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -222,20 +268,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           children: [
                             const Text(
                               'Status global saat ini: ',
-                              style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Poppins'),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontFamily: 'Poppins',
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: statusBg,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: statusBorder, width: 1),
+                                border: Border.all(
+                                  color: statusBorder,
+                                  width: 1,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(statusIcon, color: statusTextCol, size: 14),
+                                  Icon(
+                                    statusIcon,
+                                    color: statusTextCol,
+                                    size: 14,
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     currentStatus.toUpperCase(),
@@ -255,9 +315,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 20),
-                  
+
                   // Metric Stats Section (GridView)
                   adminProvider.isLoading
                       ? const SizedBox(
@@ -283,7 +343,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             _buildMetricCard(
                               label: 'Status Waspada',
                               value: '$warningCount',
-                              sub: warningCount > 0 ? 'Sensor dalam status alert' : 'Sistem terpantau aman',
+                              sub: warningCount > 0
+                                  ? 'Sensor dalam status alert'
+                                  : 'Sistem terpantau aman',
                               icon: Icons.warning_rounded,
                               iconColor: AppTheme.statusWaspada,
                               iconBg: const Color(0xFFFFFBEB),
@@ -292,7 +354,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             _buildMetricCard(
                               label: 'Status Bahaya',
                               value: '$dangerCount',
-                              sub: dangerCount > 0 ? 'Perlu respons segera' : 'Tidak ada ancaman',
+                              sub: dangerCount > 0
+                                  ? 'Perlu respons segera'
+                                  : 'Tidak ada ancaman',
                               icon: Icons.gpp_bad_outlined,
                               iconColor: Colors.pink,
                               iconBg: const Color(0xFFFFF1F2),
@@ -317,7 +381,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             _buildMetricCard(
                               label: 'Sensor Offline',
                               value: '$offlineSensors',
-                              sub: offlineSensors > 0 ? 'Perlu pengecekan alat' : 'Semua sensor online',
+                              sub: offlineSensors > 0
+                                  ? 'Perlu pengecekan alat'
+                                  : 'Semua sensor online',
                               icon: Icons.wifi_off_rounded,
                               iconColor: Colors.purple,
                               iconBg: const Color(0xFFF5F3FF),
@@ -325,14 +391,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           ],
                         ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Clean section divider
                   const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                  
+
                   const SizedBox(height: 20),
-                  
+
                   // Map Header Section
                   Row(
                     children: [
@@ -356,9 +422,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 14),
-                  
+
                   // Premium Map Card
                   Container(
                     width: double.infinity,
@@ -394,17 +460,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             children: [
                               TileLayer(
-                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                userAgentPackageName: 'com.example.ews_flood_guard',
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName:
+                                    'com.example.ews_flood_guard',
                               ),
                             ],
                           ),
                         ),
                         const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           child: Row(
                             children: [
-                              Icon(Icons.info_outline, size: 14, color: Color(0xFF64748B)),
+                              Icon(
+                                Icons.info_outline,
+                                size: 14,
+                                color: Color(0xFF64748B),
+                              ),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -520,17 +595,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 sub,
                 style: TextStyle(
                   fontSize: 10,
-                  color: isDanger 
-                      ? const Color(0xFFEF4444) 
-                      : (isWarning ? const Color(0xFFD97706) : const Color(0xFF94A3B8)),
+                  color: isDanger
+                      ? const Color(0xFFEF4444)
+                      : (isWarning
+                            ? const Color(0xFFD97706)
+                            : const Color(0xFF94A3B8)),
                   fontFamily: 'Poppins',
-                  fontWeight: isDanger || isWarning ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isDanger || isWarning
+                      ? FontWeight.w600
+                      : FontWeight.normal,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-          )
+          ),
         ],
       ),
     );

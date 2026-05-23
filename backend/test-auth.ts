@@ -2,7 +2,7 @@ const axios = require('axios');
 
 async function testRegister() {
   try {
-    const response = await axios.post('http://localhost:3001/api/auth/register', {
+    const response = await axios.post('http://localhost:4001/api/auth/register', {
       email: 'test@example.com',
       password: 'password123',
       name: 'Test User'
@@ -15,7 +15,7 @@ async function testRegister() {
 
 async function testLogin() {
   try {
-    const response = await axios.post('http://localhost:3001/api/auth/login', {
+    const response = await axios.post('http://localhost:4001/api/auth/login', {
       email: 'test@example.com',
       password: 'password123'
     });
@@ -28,7 +28,7 @@ async function testLogin() {
 async function testGoogleLogin() {
   try {
     // This would normally use a real Firebase ID token
-    const response = await axios.post('http://localhost:3001/api/auth/google-login', {
+    const response = await axios.post('http://localhost:4001/api/auth/google-login', {
       idToken: 'fake_token_for_testing'
     });
     console.log('✅ Google login successful:', response.data);

@@ -4,9 +4,12 @@ import { API_URL } from "@/constants";
 const ACCESS_TOKEN_KEY = "ews_access_token";
 const REFRESH_TOKEN_KEY = "ews_refresh_token";
 const AUTH_USER_KEY = "ews_user_data";
+const SERVER_API_URL = "http://127.0.0.1:4101/api";
+
+const baseURL = typeof window !== "undefined" ? API_URL : SERVER_API_URL;
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL,
   timeout: 15_000,
   headers: {
     "Content-Type": "application/json",
