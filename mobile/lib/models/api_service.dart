@@ -130,6 +130,14 @@ class ApiService {
     }
   }
 
+  Future<dynamic> updateUser(String id, Map<String, dynamic> data) async {
+    return await put('/users/$id', data);
+  }
+
+  Future<dynamic> deleteUser(String id) async {
+    return await delete('/users/$id');
+  }
+
   void setTokens({required String accessToken, required String refreshToken}) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
@@ -306,6 +314,37 @@ class ApiService {
         .toList();
   }
 
+  /// Convenience wrapper to send broadcast alerts
+  Future<dynamic> sendBroadcastAlert({
+    required String title,
+    required String message,
+    required String severity,
+    required List<String> channels,
+    String? targetArea,
+    bool? pushEnabled,
+  }) async {
+    final body = {
+      'title': title,
+      'message': message,
+      'severity': severity,
+      'channels': channels,
+    };
+    if (targetArea != null) body['targetArea'] = targetArea;
+    if (pushEnabled != null) body['pushEnabled'] = pushEnabled;
+
+    return await post('alerts/broadcast', body);
+  }
+
+  /// Subscribe device push token to backend (register FCM token)
+  Future<dynamic> subscribePushToken({
+    required String token,
+    String? targetArea,
+  }) async {
+    final body = {'token': token};
+    if (targetArea != null) body['targetArea'] = targetArea;
+    return await post('alerts/subscribe', body);
+  }
+
   Future<List<SensorModel>> fetchSensors({int page = 1, int limit = 20}) async {
     final Map<String, String> queryParams = {
       'page': page.toString(),
@@ -323,5 +362,42 @@ class ApiService {
     return list
         .map((item) => SensorModel.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Download a generated report file (PDF or Excel) from the backend.
+  /// Returns the raw bytes of the file.
+  Future<List<int>> downloadReport({
+    required String type, // water_level | rainfall | combined
+    required String startDate,
+    required String endDate,
+    required String format, // pdf | excel
+  }) async {
+    final queryParams = {
+      'type': type,
+      'startDate': startDate,
+      'endDate': endDate,
+      'format': format,
+    };
+    final uri = _buildUri('reports/generate', queryParams);
+
+    try {
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(Duration(seconds: requestTimeoutSeconds));
+
+      if (response.statusCode >= 400) {
+        _parseResponse(response); // will throw ApiException
+        throw ApiException(response.statusCode, 'Failed to download report');
+      }
+
+      return response.bodyBytes;
+    } on Exception catch (e) {
+      if (e is http.ClientException ||
+          e is TimeoutException ||
+          e is SocketException) {
+        throw ApiException(0, 'Network error: ${e.toString()}');
+      }
+      rethrow;
+    }
   }
 }

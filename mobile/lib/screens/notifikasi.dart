@@ -1,39 +1,51 @@
-import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'dart:async';
 
-class NotifikasiPage extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../theme/app_theme.dart';
+import '../models/admin_provider.dart';
+import '../models/alert_model.dart';
+import '../services/notification_service.dart';
+
+class NotifikasiPage extends StatefulWidget {
   const NotifikasiPage({super.key});
   @override
+  State<NotifikasiPage> createState() => _NotifikasiPageState();
+}
+
+class _NotifikasiPageState extends State<NotifikasiPage> {
+  StreamSubscription? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    // load initial history
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        context.read<AdminProvider>().loadAlertHistory();
+      } catch (_) {}
+    });
+
+    // listen to incoming foreground messages to refresh list
+    _sub = NotificationService.instance.onMessageStream.listen((message) {
+      try {
+        context.read<AdminProvider>().loadAlertHistory();
+      } catch (_) {}
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    await context.read<AdminProvider>().loadAlertHistory();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> notifications = [
-      {
-        'title': 'Peringatan Kenaikan Debit Air',
-        'status': 'Oren',
-        'desc':
-            'Waspada kenaikan debit air di sektor hilir. Mohon siaga dan pantau instruksi lanjutan.',
-        'time': '3 Mei 2026, 21.20',
-        'isNew': true,
-        'color': AppTheme.statusWaspada,
-      },
-      {
-        'title': 'Peringatan Kenaikan Debit Air',
-        'status': 'Oren',
-        'desc':
-            'Waspada kenaikan debit air di sektor hilir. Mohon siaga dan pantau instruksi lanjutan.',
-        'time': '3 Mei 2026, 21.15',
-        'isNew': true,
-        'color': AppTheme.statusWaspada,
-      },
-      {
-        'title': 'Sistem Aktif',
-        'status': 'Kuning',
-        'desc':
-            'Notifikasi dari EWS Flood Guard sudah masuk ke perangkat Anda.',
-        'time': '26 Apr 2026, 23.18',
-        'isNew': false,
-        'color': AppTheme.statusWaspada,
-      },
-    ];
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -45,49 +57,77 @@ class NotifikasiPage extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            color: Colors.white,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Consumer<AdminProvider>(
+        builder: (context, provider, _) {
+          final List<AlertModel> list = provider.alertHistory;
+          return RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: Column(
               children: [
-                const Text(
-                  "Belum dibaca: 2",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  color: Colors.white,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Belum dibaca: ${list.where((a) => a.sentAt.isAfter(DateTime.now().subtract(const Duration(days: 7)))).length}",
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text(
+                          "Tandai semua dibaca",
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    "Tandai semua dibaca",
-                    style: TextStyle(fontSize: 13),
-                  ),
+                const Divider(height: 1),
+                Expanded(
+                  child: provider.isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : list.isEmpty
+                      ? const Center(child: Text('Belum ada notifikasi'))
+                      : ListView.builder(
+                          itemCount: list.length,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          itemBuilder: (context, index) {
+                            final alert = list[index];
+                            return _buildNotificationCardFromModel(alert);
+                          },
+                        ),
                 ),
               ],
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.builder(
-              itemCount: notifications.length,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              itemBuilder: (context, index) {
-                final item = notifications[index];
-                return _buildNotificationCard(item);
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildNotificationCard(Map<String, dynamic> item) {
+  Widget _buildNotificationCardFromModel(AlertModel alert) {
+    final severity = alert.severity.toUpperCase();
+    final tag = severity == 'DANGER'
+        ? 'Bahaya'
+        : severity == 'WARNING'
+        ? 'Waspada'
+        : 'Aman';
+    final color = severity == 'DANGER'
+        ? Colors.red
+        : severity == 'WARNING'
+        ? AppTheme.statusWaspada
+        : Colors.green;
+    final dateStr = alert.sentAt.toLocal().toString().split('.').first;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
@@ -97,7 +137,7 @@ class NotifikasiPage extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withOpacity(0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -111,53 +151,34 @@ class NotifikasiPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (item['color'] as Color).withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  item['status'],
+                  tag,
                   style: TextStyle(
-                    color: item['color'],
+                    color: color,
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              if (item['isNew'])
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    "Baru",
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
               const Spacer(),
               Text(
-                item['time'],
+                dateStr,
                 style: const TextStyle(color: Colors.grey, fontSize: 10),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            item['title'],
+            alert.title.isNotEmpty ? alert.title : alert.message,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           const SizedBox(height: 6),
           Text(
-            item['desc'],
+            alert.message,
             style: const TextStyle(
               color: Color(0xFF64748B),
               fontSize: 13,

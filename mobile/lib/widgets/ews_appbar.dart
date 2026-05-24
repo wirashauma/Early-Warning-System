@@ -35,12 +35,17 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
             alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: AppTheme.textDark),
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: AppTheme.textDark,
+                ),
                 onPressed: () {
                   // INI KUNCINYA: Navigasi ke halaman notifikasi
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const NotifikasiPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const NotifikasiPage(),
+                    ),
                   );
                 },
               ),
@@ -60,49 +65,67 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
         ),
-        
+
         if (isLoggedIn)
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileScreen(
-                    onLogout: () {
-                      onRefresh?.call();
-                    },
-                  ),
-                ),
-              ).then((_) => onRefresh?.call());
-            },
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 15,
-                    backgroundColor: AppTheme.primaryBlue,
-                    child: Text(
-                      user?.name.isNotEmpty == true
-                          ? user!.name[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: PopupMenuButton<String>(
+              onSelected: (val) {
+                if (val == 'profile') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(
+                        onLogout: () {
+                          onRefresh?.call();
+                        },
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    user?.name.split(' ').first ?? 'Profil',
-                    style: const TextStyle(
-                      color: AppTheme.textDark,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                  ).then((_) => onRefresh?.call());
+                } else if (val == 'logout') {
+                  // perform logout
+                  try {
+                    // AuthService logout clears tokens and current user
+                    AuthService.instance.logout();
+                  } catch (_) {}
+                  onRefresh?.call();
+                  // Navigate to login screen
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'profile', child: Text('Profil')),
+                const PopupMenuItem(value: 'logout', child: Text('Logout')),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: AppTheme.primaryBlue,
+                      child: Text(
+                        user?.name.isNotEmpty == true
+                            ? user!.name[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      user?.name.split(' ').first ?? 'Profil',
+                      style: const TextStyle(
+                        color: AppTheme.textDark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           )
@@ -112,9 +135,8 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => LoginScreen(
-                    onLoginSuccess: () => onRefresh?.call(),
-                  ),
+                  builder: (_) =>
+                      LoginScreen(onLoginSuccess: () => onRefresh?.call()),
                 ),
               ).then((_) => onRefresh?.call());
             },

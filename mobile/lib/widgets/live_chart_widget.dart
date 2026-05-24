@@ -51,10 +51,7 @@ class LiveTelemetryChart extends StatelessWidget {
             const SizedBox(height: 4),
             const Text(
               'Sensor akan memancarkan telemetri secara real-time.',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF94A3B8),
-              ),
+              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
         ),
@@ -72,9 +69,13 @@ class LiveTelemetryChart extends StatelessWidget {
     }
 
     // Calculate dynamic Y range
-    double maxY = sortedData.map((e) => e.waterLevel).reduce((a, b) => a > b ? a : b);
-    double minY = sortedData.map((e) => e.waterLevel).reduce((a, b) => a < b ? a : b);
-    
+    double maxY = sortedData
+        .map((e) => e.waterLevel)
+        .reduce((a, b) => a > b ? a : b);
+    double minY = sortedData
+        .map((e) => e.waterLevel)
+        .reduce((a, b) => a < b ? a : b);
+
     // Provide padding for visual neatness
     maxY = (maxY + 20).clamp(100.0, 500.0);
     minY = (minY - 10).clamp(0.0, 400.0);
@@ -148,10 +149,8 @@ class LiveTelemetryChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: const Color(0xFFF1F5F9),
-                    strokeWidth: 1,
-                  ),
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: const Color(0xFFF1F5F9), strokeWidth: 1),
                 ),
                 titlesData: FlTitlesData(
                   show: true,
@@ -169,9 +168,11 @@ class LiveTelemetryChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
                         if (idx >= 0 && idx < sortedData.length) {
-                          final timeStr = DateFormat('HH:mm').format(sortedData[idx].recordedAt);
+                          final timeStr = DateFormat(
+                            'HH:mm',
+                          ).format(sortedData[idx].recordedAt);
                           return SideTitleWidget(
-                            axisSide: meta.axisSide,
+                            meta: meta,
                             space: 6,
                             child: Text(
                               timeStr,
@@ -193,7 +194,7 @@ class LiveTelemetryChart extends StatelessWidget {
                       reservedSize: 32,
                       getTitlesWidget: (value, meta) {
                         return SideTitleWidget(
-                          axisSide: meta.axisSide,
+                          meta: meta,
                           space: 6,
                           child: Text(
                             '${value.toInt()}',
@@ -215,12 +216,15 @@ class LiveTelemetryChart extends StatelessWidget {
                 maxY: maxY,
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
-                    tooltipBgColor: const Color(0xFF0F172A).withValues(alpha: 0.9),
-                    tooltipRoundedRadius: 8,
+                    tooltipBorderRadius: BorderRadius.circular(8),
+                    getTooltipColor: (touchedSpot) =>
+                        const Color(0xFF0F172A).withOpacity(0.9),
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((spot) {
                         final log = sortedData[spot.spotIndex];
-                        final formattedTime = DateFormat('HH:mm:ss').format(log.recordedAt);
+                        final formattedTime = DateFormat(
+                          'HH:mm:ss',
+                        ).format(log.recordedAt);
                         return LineTooltipItem(
                           '${spot.y.toStringAsFixed(1)} cm\n',
                           const TextStyle(
@@ -252,12 +256,13 @@ class LiveTelemetryChart extends StatelessWidget {
                     isStrokeCapRound: true,
                     dotData: FlDotData(
                       show: spots.length <= 15,
-                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                        radius: 4,
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        strokeColor: const Color(0xFF3B82F6),
-                      ),
+                      getDotPainter: (spot, percent, barData, index) =>
+                          FlDotCirclePainter(
+                            radius: 4,
+                            color: Colors.white,
+                            strokeWidth: 2,
+                            strokeColor: const Color(0xFF3B82F6),
+                          ),
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -281,12 +286,14 @@ class LiveTelemetryChart extends StatelessWidget {
             children: [
               _buildStatIndicator(
                 label: 'MIN',
-                value: '${sortedData.map((e) => e.waterLevel).reduce((a, b) => a < b ? a : b).toInt()} cm',
+                value:
+                    '${sortedData.map((e) => e.waterLevel).reduce((a, b) => a < b ? a : b).toInt()} cm',
                 color: const Color(0xFF64748B),
               ),
               _buildStatIndicator(
                 label: 'RATA-RATA',
-                value: '${(sortedData.map((e) => e.waterLevel).reduce((a, b) => a + b) / sortedData.length).toInt()} cm',
+                value:
+                    '${(sortedData.map((e) => e.waterLevel).reduce((a, b) => a + b) / sortedData.length).toInt()} cm',
                 color: const Color(0xFF3B82F6),
               ),
               _buildStatIndicator(

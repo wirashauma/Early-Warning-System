@@ -13,6 +13,7 @@ import 'models/auth_provider.dart';
 import 'models/admin_provider.dart';
 import 'providers/telemetry_provider.dart';
 import 'services/supabase_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
 FirebaseOptions _firebaseOptionsFromEnv() {
@@ -21,17 +22,21 @@ FirebaseOptions _firebaseOptionsFromEnv() {
   return FirebaseOptions(
     apiKey: dotenv.env['FIREBASE_API_KEY']?.trim() ?? defaultOptions.apiKey,
     appId: dotenv.env['FIREBASE_APP_ID']?.trim() ?? defaultOptions.appId,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']?.trim() ??
+    messagingSenderId:
+        dotenv.env['FIREBASE_MESSAGING_SENDER_ID']?.trim() ??
         defaultOptions.messagingSenderId,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']?.trim() ??
-        defaultOptions.projectId,
-    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']?.trim() ??
-        defaultOptions.authDomain,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']?.trim() ??
+    projectId:
+        dotenv.env['FIREBASE_PROJECT_ID']?.trim() ?? defaultOptions.projectId,
+    authDomain:
+        dotenv.env['FIREBASE_AUTH_DOMAIN']?.trim() ?? defaultOptions.authDomain,
+    storageBucket:
+        dotenv.env['FIREBASE_STORAGE_BUCKET']?.trim() ??
         defaultOptions.storageBucket,
-    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']?.trim() ??
+    measurementId:
+        dotenv.env['FIREBASE_MEASUREMENT_ID']?.trim() ??
         defaultOptions.measurementId,
-    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID']?.trim() ??
+    iosBundleId:
+        dotenv.env['FIREBASE_IOS_BUNDLE_ID']?.trim() ??
         defaultOptions.iosBundleId,
   );
 }
@@ -55,9 +60,13 @@ Future<void> main() async {
   }
 
   try {
-    await Firebase.initializeApp(
-      options: _firebaseOptionsFromEnv(),
-    );
+    await Firebase.initializeApp(options: _firebaseOptionsFromEnv());
+    // Initialize notification service (register token, listeners)
+    try {
+      await NotificationService.instance.init();
+    } catch (e) {
+      debugPrint('NotificationService init error: $e');
+    }
   } catch (e) {
     debugPrint("Firebase initialization error: $e");
   }
@@ -74,7 +83,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
-        ChangeNotifierProvider(create: (_) => TelemetryProvider()..loadInitialData()),
+        ChangeNotifierProvider(
+          create: (_) => TelemetryProvider()..loadInitialData(),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -84,24 +95,25 @@ class MyApp extends StatelessWidget {
         routes: {
           '/splash': (context) => const SplashScreen(),
           '/login': (context) => LoginScreen(
-                onLoginSuccess: () {
-                  // MENGAMBIL DATA AKUN YANG BARU LOGIN
-                  final auth = context.read<AuthProvider>();
-                  
-                  // CEK ROLE SECARA TEGAS (Mengantisipasi huruf besar/kecil,
-                  // variabel enum backend, atau role berformat USERROLE.ADMIN)
-                  final currentRole = auth.userRole.toString().toUpperCase();
-                  final isAdmin = currentRole == 'ADMIN' ||
-                      currentRole == 'SUPER_ADMIN' ||
-                      currentRole.contains('ADMIN');
+            onLoginSuccess: () {
+              // MENGAMBIL DATA AKUN YANG BARU LOGIN
+              final auth = context.read<AuthProvider>();
 
-                  if (isAdmin) {
-                    Navigator.pushReplacementNamed(context, '/admin');
-                  } else {
-                    Navigator.pushReplacementNamed(context, '/home');
-                  }
-                },
-              ),
+              // CEK ROLE SECARA TEGAS (Mengantisipasi huruf besar/kecil,
+              // variabel enum backend, atau role berformat USERROLE.ADMIN)
+              final currentRole = auth.userRole.toString().toUpperCase();
+              final isAdmin =
+                  currentRole == 'ADMIN' ||
+                  currentRole == 'SUPER_ADMIN' ||
+                  currentRole.contains('ADMIN');
+
+              if (isAdmin) {
+                Navigator.pushReplacementNamed(context, '/admin');
+              } else {
+                Navigator.pushReplacementNamed(context, '/home');
+              }
+            },
+          ),
           '/register': (context) => const RegisterScreen(),
           '/home': (context) => const MainNavigation(),
           '/admin': (context) => const AdminNavigation(),

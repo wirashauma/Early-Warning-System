@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'sensor_model.dart';
+import 'alert_model.dart';
 
 class AdminService extends ChangeNotifier {
   final ApiService _apiService;
@@ -228,31 +229,45 @@ class AdminService extends ChangeNotifier {
     required String severity,
     required List<String> channels,
     String? targetArea,
+    bool? pushEnabled,
   }) async {
     try {
-      return await _apiService.post('/alerts/broadcast', {
+      final body = {
         'title': title,
         'message': message,
         'severity': severity,
         'channels': channels,
-        'targetArea': targetArea,
-      });
+      };
+      if (targetArea != null) body['targetArea'] = targetArea;
+      if (pushEnabled != null) body['pushEnabled'] = pushEnabled;
+
+      return await _apiService.post('/alerts/broadcast', body);
     } catch (e) {
       throw Exception('Gagal mengirim broadcast: $e');
     }
   }
 
   /// Get alert history
-  Future<List<dynamic>> getAlertHistory({int page = 1, int limit = 50}) async {
+  Future<List<AlertModel>> getAlertHistory({
+    int page = 1,
+    int limit = 50,
+  }) async {
     try {
       final response = await _apiService.get(
         '/alerts/history',
         queryParams: {'page': page.toString(), 'limit': limit.toString()},
       );
+
+      List<dynamic> items = [];
       if (response is Map<String, dynamic> && response.containsKey('items')) {
-        return response['items'] ?? [];
+        items = response['items'] as List<dynamic>? ?? [];
+      } else if (response is List<dynamic>) {
+        items = response;
       }
-      return response is List<dynamic> ? response : [];
+
+      return items
+          .map((i) => AlertModel.fromJson(i as Map<String, dynamic>))
+          .toList();
     } on ApiException {
       rethrow;
     } catch (e) {

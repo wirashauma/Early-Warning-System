@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'admin_service.dart'; // FIX: Mengarah langsung ke file di folder yang sama
 import 'api_service.dart';
+import 'alert_model.dart';
 
 class AdminProvider extends ChangeNotifier {
   late AdminService adminService;
@@ -10,6 +11,7 @@ class AdminProvider extends ChangeNotifier {
   Map<String, dynamic> _dashboardStats = {};
   List<dynamic> _sensors = [];
   List<dynamic> _users = [];
+  List<AlertModel> _alertHistory = [];
 
   AdminProvider({ApiService? apiService}) {
     adminService = AdminService(apiService ?? ApiService());
@@ -21,6 +23,7 @@ class AdminProvider extends ChangeNotifier {
   Map<String, dynamic> get dashboardStats => _dashboardStats;
   List<dynamic> get sensors => _sensors;
   List<dynamic> get users => _users;
+  List<AlertModel> get alertHistory => _alertHistory;
 
   int get onlineSensorsCount => (_dashboardStats['onlineSensors'] as int?) ?? 0;
   int get offlineSensorsCount =>
@@ -90,11 +93,19 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<List<dynamic>> loadAlertHistory() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
-      return await adminService.getAlertHistory();
+      final list = await adminService.getAlertHistory();
+      _alertHistory = list;
+      return _alertHistory;
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -103,6 +114,8 @@ class AdminProvider extends ChangeNotifier {
     required String message,
     required String severity,
     required List<String> channels,
+    String? targetArea,
+    bool? pushEnabled,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -113,7 +126,13 @@ class AdminProvider extends ChangeNotifier {
         message: message,
         severity: severity,
         channels: channels,
+        targetArea: targetArea,
+        pushEnabled: pushEnabled,
       );
+
+      // refresh history after successful send
+      await loadAlertHistory();
+
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -348,6 +367,7 @@ class AdminProvider extends ChangeNotifier {
         institution: institution,
         password: password,
       );
+      await loadUsers();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -364,6 +384,7 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await adminService.deleteUser(id);
+      await loadUsers();
       return true;
     } catch (e) {
       _errorMessage = e.toString();

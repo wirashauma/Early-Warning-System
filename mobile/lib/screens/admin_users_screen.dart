@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/admin_provider.dart';
+import '../models/auth_provider.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -12,6 +13,457 @@ class AdminUsersScreen extends StatefulWidget {
 
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
   bool _loadedOnce = false;
+
+  Future<void> _confirmDeleteUser(
+    BuildContext context,
+    String id,
+    String name,
+  ) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Hapus Pengguna'),
+              content: Text(
+                'Apakah Anda yakin ingin menghapus pengguna "$name"?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Batal'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text(
+                    'Hapus',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    final provider = context.read<AdminProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Menghapus pengguna...')),
+    );
+
+    final success = await provider.deleteUser(id);
+    messenger.hideCurrentSnackBar();
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Pengguna berhasil dihapus.'
+              : provider.errorMessage ?? 'Gagal menghapus pengguna.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCreateUserSheet(BuildContext context) async {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+    final passwordController = TextEditingController();
+    String role = 'USER';
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tambah Pengguna',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Form(
+                    key: formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: nameController,
+                          decoration: const InputDecoration(labelText: 'Nama'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Nama wajib diisi.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: emailController,
+                          decoration: const InputDecoration(labelText: 'Email'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Email wajib diisi.';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Masukkan email yang valid.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                          ),
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Password wajib diisi.';
+                            }
+                            if (value.trim().length < 6) {
+                              return 'Password minimal 6 karakter.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'No. WA',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: role,
+                          decoration: const InputDecoration(labelText: 'Role'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'ADMIN',
+                              child: Text('Admin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'USER',
+                              child: Text('User'),
+                            ),
+                          ],
+                          onChanged: (selected) {
+                            if (selected != null) {
+                              setState(() => role = selected);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate()) {
+                                      return;
+                                    }
+                                    setState(() => isSubmitting = true);
+                                    final provider = context
+                                        .read<AdminProvider>();
+                                    final success = await provider.createUser(
+                                      name: nameController.text.trim(),
+                                      email: emailController.text.trim(),
+                                      password: passwordController.text.trim(),
+                                      role: role,
+                                      phone: phoneController.text.trim().isEmpty
+                                          ? null
+                                          : phoneController.text.trim(),
+                                    );
+                                    setState(() => isSubmitting = false);
+                                    if (success) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Pengguna baru berhasil ditambahkan.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      Navigator.of(context).pop();
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            provider.errorMessage ??
+                                                'Gagal membuat pengguna.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Tambah Pengguna'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+  }
+
+  Future<void> _showEditUserSheet(
+    BuildContext context,
+    Map<String, dynamic> user,
+  ) async {
+    final nameController = TextEditingController(
+      text: user['name']?.toString() ?? '',
+    );
+    final emailController = TextEditingController(
+      text: user['email']?.toString() ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: user['phone']?.toString() ?? '',
+    );
+    String role = (user['role']?.toString().toUpperCase() == 'ADMIN')
+        ? 'ADMIN'
+        : 'USER';
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Edit Pengguna',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Form(
+                    key: formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: nameController,
+                          decoration: const InputDecoration(labelText: 'Nama'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Nama wajib diisi.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: emailController,
+                          decoration: const InputDecoration(labelText: 'Email'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Email wajib diisi.';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Masukkan email yang valid.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'No. WA',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: role,
+                          decoration: const InputDecoration(labelText: 'Role'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'ADMIN',
+                              child: Text('Admin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'USER',
+                              child: Text('User'),
+                            ),
+                          ],
+                          onChanged: (selected) {
+                            if (selected != null) {
+                              setState(() => role = selected);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate()) {
+                                      return;
+                                    }
+                                    setState(() => isSubmitting = true);
+                                    final provider = context
+                                        .read<AdminProvider>();
+                                    final success = await provider.updateUser(
+                                      id: user['id']?.toString() ?? '',
+                                      name: nameController.text.trim(),
+                                      email: emailController.text.trim(),
+                                      role: role,
+                                      phone: phoneController.text.trim().isEmpty
+                                          ? null
+                                          : phoneController.text.trim(),
+                                      institution: user['institution']
+                                          ?.toString(),
+                                    );
+                                    setState(() => isSubmitting = false);
+                                    if (success) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Pengguna berhasil diperbarui.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      Navigator.of(context).pop();
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            provider.errorMessage ??
+                                                'Gagal memperbarui pengguna.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Simpan Perubahan'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+  }
+
+  Future<void> _showLogoutDialog(BuildContext context) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Keluar Aplikasi'),
+              content: const Text(
+                'Apakah Anda yakin ingin keluar dari aplikasi?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Batal'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text(
+                    'Keluar',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    context.read<AuthProvider>().logout();
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
 
   @override
   void didChangeDependencies() {
@@ -65,6 +517,30 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Manajemen Pengguna',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showCreateUserSheet(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah Pengguna'),
+                ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -203,7 +679,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     color: Color(0xFF64748B),
                                     size: 18,
                                   ),
-                                  onPressed: () {},
+                                  onPressed: () =>
+                                      _showEditUserSheet(context, u),
                                 ),
                                 IconButton(
                                   icon: const Icon(
@@ -211,7 +688,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     color: Colors.redAccent,
                                     size: 18,
                                   ),
-                                  onPressed: () {},
+                                  onPressed: () => _confirmDeleteUser(
+                                    context,
+                                    u['id']?.toString() ?? '',
+                                    name,
+                                  ),
                                 ),
                               ],
                             ),
@@ -220,6 +701,23 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       );
                     },
                   ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 16.0,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                ),
+                icon: const Icon(Icons.logout),
+                label: const Text('Keluar Aplikasi'),
+                onPressed: () => _showLogoutDialog(context),
+              ),
+            ),
           ),
         ],
       ),
