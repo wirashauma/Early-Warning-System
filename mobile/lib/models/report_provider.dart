@@ -99,34 +99,100 @@ class ReportProvider extends ChangeNotifier {
     final endIso = DateFormat("yyyy-MM-dd'T'23:59:59.000'Z'").format(endDate);
 
     try {
-      // Fetch per-type data (the ApiService supports sensorId filtering)
-      final wl = await _api.fetchWaterLevelHistory(
-        sensorId: selectedSensorId == 'all' ? null : selectedSensorId,
-        startDate: startIso,
-        endDate: endIso,
-        interval: 'hourly',
-        limit: 10000,
-      );
+      final List<WaterLevelLog> wlList = [];
+      final List<RainfallLog> rfList = [];
+      final List<FlowRateLog> frList = [];
 
-      final rf = await _api.fetchRainfallHistory(
-        sensorId: selectedSensorId == 'all' ? null : selectedSensorId,
-        startDate: startIso,
-        endDate: endIso,
-        interval: 'hourly',
-        limit: 10000,
-      );
+      if (selectedSensorId == 'all') {
+        for (final s in sensors) {
+          try {
+            if (s.type == 'WATER_LEVEL') {
+              final wl = await _api.fetchWaterLevelHistory(
+                sensorId: s.sensorId,
+                startDate: startIso,
+                endDate: endIso,
+                interval: 'hourly',
+                limit: 10000,
+              );
+              wlList.addAll(wl);
+            } else if (s.type == 'RAINFALL') {
+              final rf = await _api.fetchRainfallHistory(
+                sensorId: s.sensorId,
+                startDate: startIso,
+                endDate: endIso,
+                interval: 'hourly',
+                limit: 10000,
+              );
+              rfList.addAll(rf);
+            } else if (s.type == 'FLOW_RATE') {
+              final fr = await _api.fetchFlowRateHistory(
+                sensorId: s.sensorId,
+                startDate: startIso,
+                endDate: endIso,
+                interval: 'hourly',
+                limit: 10000,
+              );
+              frList.addAll(fr);
+            }
+          } catch (e) {
+            debugPrint('[ReportProvider] applyFilter error on ${s.sensorId}: $e');
+          }
+        }
+      } else {
+        final sensor = sensors.firstWhere(
+          (s) => s.sensorId == selectedSensorId || s.id == selectedSensorId,
+          orElse: () => SensorModel(
+            id: '',
+            sensorId: selectedSensorId,
+            name: '',
+            type: 'WATER_LEVEL',
+            latitude: 0.0,
+            longitude: 0.0,
+            connectivity: 'OFFLINE',
+            isActive: false,
+          ),
+        );
 
-      final fr = await _api.fetchFlowRateHistory(
-        sensorId: selectedSensorId == 'all' ? null : selectedSensorId,
-        startDate: startIso,
-        endDate: endIso,
-        interval: 'hourly',
-        limit: 10000,
-      );
+        if (sensor.sensorId.isNotEmpty) {
+          try {
+            if (sensor.type == 'WATER_LEVEL') {
+              final wl = await _api.fetchWaterLevelHistory(
+                sensorId: sensor.sensorId,
+                startDate: startIso,
+                endDate: endIso,
+                interval: 'hourly',
+                limit: 10000,
+              );
+              wlList.addAll(wl);
+            } else if (sensor.type == 'RAINFALL') {
+              final rf = await _api.fetchRainfallHistory(
+                sensorId: sensor.sensorId,
+                startDate: startIso,
+                endDate: endIso,
+                interval: 'hourly',
+                limit: 10000,
+              );
+              rfList.addAll(rf);
+            } else if (sensor.type == 'FLOW_RATE') {
+              final fr = await _api.fetchFlowRateHistory(
+                sensorId: sensor.sensorId,
+                startDate: startIso,
+                endDate: endIso,
+                interval: 'hourly',
+                limit: 10000,
+              );
+              frList.addAll(fr);
+            }
+          } catch (e) {
+            debugPrint('[ReportProvider] applyFilter error on ${sensor.sensorId}: $e');
+            rethrow;
+          }
+        }
+      }
 
-      waterLevels = wl;
-      rainfalls = rf;
-      flowRates = fr;
+      waterLevels = wlList;
+      rainfalls = rfList;
+      flowRates = frList;
 
       // Merge into rawRows by timestamp + sensor
       final Map<String, Map<String, dynamic>> map = {};

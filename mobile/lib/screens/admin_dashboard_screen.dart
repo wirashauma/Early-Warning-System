@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../models/admin_provider.dart';
+import '../models/sensor_model.dart';
 import '../theme/app_theme.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -180,7 +181,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ),
                     readOnly: true,
-                    onTap: () {},
+                    onTap: () {
+                      _showSearchDialog(context, adminProvider);
+                    },
                   ),
                 ),
               ),
@@ -465,6 +468,44 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 userAgentPackageName:
                                     'com.example.ews_flood_guard',
                               ),
+                              MarkerLayer(
+                                markers: adminProvider.sensors.map((sensor) {
+                                  if (sensor is! Map<String, dynamic>) {
+                                    return null;
+                                  }
+                                  final latVal = double.tryParse(sensor['latitude']?.toString() ?? '') ?? 0.0;
+                                  final lngVal = double.tryParse(sensor['longitude']?.toString() ?? '') ?? 0.0;
+                                  if (latVal == 0.0 || lngVal == 0.0) {
+                                    return null;
+                                  }
+                                  
+                                  final isOnline = _isSensorOnline(sensor);
+                                  final status = sensor['status']?.toString() ?? 'Normal';
+                                  final markerColor = isOnline
+                                      ? (status == 'Bahaya'
+                                          ? AppTheme.statusBahaya
+                                          : (status == 'Waspada'
+                                              ? AppTheme.statusWaspada
+                                              : AppTheme.statusNormal))
+                                      : Colors.grey;
+
+                                  return Marker(
+                                    point: LatLng(latVal, lngVal),
+                                    width: 40,
+                                    height: 40,
+                                    builder: (ctx) => GestureDetector(
+                                      onTap: () {
+                                        _showSensorDetailsDialog(context, sensor);
+                                      },
+                                      child: Icon(
+                                        Icons.location_on_rounded,
+                                        color: markerColor,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  );
+                                }).whereType<Marker>().toList(),
+                              ),
                             ],
                           ),
                         ),
@@ -612,6 +653,161 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  bool _isSensorOnline(Map<String, dynamic> sensor) {
+    return SensorModel.isTimestampOnline(
+      sensor['last_seen_at'] ??
+          sensor['lastSeenAt'] ??
+          sensor['last_active_at'] ??
+          sensor['lastActiveAt'] ??
+          sensor['updated_at'] ??
+          sensor['updatedAt'] ??
+          sensor['recorded_at'] ??
+          sensor['recordedAt'],
+    );
+  }
+
+  void _showSensorDetailsDialog(BuildContext context, Map<String, dynamic> sensor) {
+    final name = sensor['name']?.toString() ?? 'Sensor Tanpa Nama';
+    final sensorId = sensor['sensorId']?.toString() ?? sensor['id']?.toString() ?? '-';
+    final type = sensor['type']?.toString() ?? 'WATER_LEVEL';
+    final lat = sensor['latitude']?.toString() ?? '-';
+    final lng = sensor['longitude']?.toString() ?? '-';
+    final battery = sensor['batteryLevel']?.toString() ?? '-';
+    final connectivity = sensor['connectivity']?.toString() ?? 'OFFLINE';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.sensors, color: AppTheme.primaryBlue),
+            const SizedBox(width: 8),
+            Expanded(child: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('ID Sensor', sensorId),
+            _buildDetailRow('Tipe', type == 'WATER_LEVEL' ? 'Water Level' : 'Rain Gauge'),
+            _buildDetailRow('Koordinat', '$lat, $lng'),
+            _buildDetailRow('Baterai', '$battery%'),
+            _buildDetailRow('Konektivitas', connectivity.toUpperCase()),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSearchDialog(BuildContext context, AdminProvider provider) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (dialogCtx, setState) {
+            final filtered = provider.sensors.where((s) {
+              if (s is! Map<String, dynamic>) return false;
+              final name = s['name']?.toString().toLowerCase() ?? '';
+              final sid = s['sensorId']?.toString().toLowerCase() ?? s['id']?.toString().toLowerCase() ?? '';
+              return name.contains(query.toLowerCase()) || sid.contains(query.toLowerCase());
+            }).toList();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama atau ID sensor...',
+                        prefixIcon: const Icon(Icons.search),
+                        filled: true,
+                        fillColor: const Color(0xFFF1F5F9),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setState(() {
+                          query = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                      child: filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Text('Sensor tidak ditemukan', style: TextStyle(color: Colors.grey)),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filtered.length,
+                              itemBuilder: (lCtx, index) {
+                                final s = filtered[index];
+                                final name = s['name']?.toString() ?? 'Sensor';
+                                final sid = s['sensorId']?.toString() ?? s['id']?.toString() ?? '';
+                                return ListTile(
+                                  leading: const Icon(Icons.sensors, color: AppTheme.primaryBlue),
+                                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                  subtitle: Text('ID: $sid', style: const TextStyle(fontSize: 12)),
+                                  onTap: () {
+                                    Navigator.pop(ctx);
+                                    _showSensorDetailsDialog(context, s);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

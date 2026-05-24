@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../widgets/auth_widgets.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
+import 'edukasi_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -280,13 +281,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }),
       _MenuItem(Icons.help_outline, 'Bantuan & FAQ', 'Panduan penggunaan aplikasi', () {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Bantuan'),
-            content: const Text('Untuk bantuan, kunjungi tab Edukasi atau hubungi kami di support@ewsfloodguard.id'),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))],
-          ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EdukasiScreen()),
         );
       }),
       _MenuItem(Icons.shield_outlined, 'Kebijakan Privasi', 'Cara kami melindungi data Anda', () {

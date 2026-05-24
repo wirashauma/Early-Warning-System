@@ -86,13 +86,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       ),
       builder: (bottomSheetContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (sheetContext, setSheetState) {
             return Padding(
               padding: EdgeInsets.only(
                 left: 16,
                 right: 16,
                 top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -171,7 +171,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           ],
                           onChanged: (selected) {
                             if (selected != null) {
-                              setState(() => role = selected);
+                              setSheetState(() => role = selected);
                             }
                           },
                         ),
@@ -185,9 +185,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     if (!formKey.currentState!.validate()) {
                                       return;
                                     }
-                                    setState(() => isSubmitting = true);
-                                    final provider = context
-                                        .read<AdminProvider>();
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    final provider = context.read<AdminProvider>();
+                                    setSheetState(() => isSubmitting = true);
                                     final success = await provider.createUser(
                                       name: nameController.text.trim(),
                                       email: emailController.text.trim(),
@@ -197,12 +197,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                           ? null
                                           : phoneController.text.trim(),
                                     );
-                                    setState(() => isSubmitting = false);
+                                    setSheetState(() => isSubmitting = false);
                                     if (success) {
+                                      provider.loadUsers().catchError((e) {
+                                        debugPrint('loadUsers failed: $e');
+                                        return const <dynamic>[];
+                                      });
                                       if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
+                                        messenger.showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Pengguna baru berhasil ditambahkan.',
@@ -210,18 +212,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                           ),
                                         );
                                       }
-                                      Navigator.of(context).pop();
+                                      Navigator.of(sheetContext).pop();
                                     } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            provider.errorMessage ??
-                                                'Gagal membuat pengguna.',
+                                      if (mounted) {
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              provider.errorMessage ??
+                                                  'Gagal membuat pengguna.',
+                                            ),
                                           ),
-                                        ),
-                                      );
+                                        );
+                                      }
                                     }
                                   },
                             child: isSubmitting
@@ -280,13 +282,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       ),
       builder: (bottomSheetContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (sheetContext, setSheetState) {
             return Padding(
               padding: EdgeInsets.only(
                 left: 16,
                 right: 16,
                 top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -348,7 +350,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           ],
                           onChanged: (selected) {
                             if (selected != null) {
-                              setState(() => role = selected);
+                              setSheetState(() => role = selected);
                             }
                           },
                         ),
@@ -362,9 +364,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     if (!formKey.currentState!.validate()) {
                                       return;
                                     }
-                                    setState(() => isSubmitting = true);
-                                    final provider = context
-                                        .read<AdminProvider>();
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    final provider = context.read<AdminProvider>();
+                                    setSheetState(() => isSubmitting = true);
                                     final success = await provider.updateUser(
                                       id: user['id']?.toString() ?? '',
                                       name: nameController.text.trim(),
@@ -376,12 +378,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                       institution: user['institution']
                                           ?.toString(),
                                     );
-                                    setState(() => isSubmitting = false);
+                                    setSheetState(() => isSubmitting = false);
                                     if (success) {
+                                      provider.loadUsers().catchError((e) {
+                                        debugPrint('loadUsers failed: $e');
+                                        return const <dynamic>[];
+                                      });
                                       if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
+                                        messenger.showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Pengguna berhasil diperbarui.',
@@ -389,18 +393,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                           ),
                                         );
                                       }
-                                      Navigator.of(context).pop();
+                                      Navigator.of(sheetContext).pop();
                                     } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            provider.errorMessage ??
-                                                'Gagal memperbarui pengguna.',
+                                      if (mounted) {
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              provider.errorMessage ??
+                                                  'Gagal memperbarui pengguna.',
+                                            ),
                                           ),
-                                        ),
-                                      );
+                                        );
+                                      }
                                     }
                                   },
                             child: isSubmitting

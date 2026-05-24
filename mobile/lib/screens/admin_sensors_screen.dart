@@ -247,6 +247,139 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     }
   }
 
+  Future<void> _showCreateDialog(BuildContext context) async {
+    final idCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final latCtrl = TextEditingController();
+    final lngCtrl = TextEditingController();
+    final batteryCtrl = TextEditingController(text: '100');
+    String connectivity = 'ONLINE';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tambah Sensor Baru'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: idCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'ID Perangkat (sensorId)',
+                  hintText: 'contoh: SNS-WL-04',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Nama Lokasi'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: latCtrl,
+                decoration: const InputDecoration(labelText: 'Latitude'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: lngCtrl,
+                decoration: const InputDecoration(labelText: 'Longitude'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: batteryCtrl,
+                decoration: const InputDecoration(labelText: 'Baterai (%)'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 8),
+              StatefulBuilder(
+                builder: (context, setDialogState) {
+                  return DropdownButtonFormField<String>(
+                    value: connectivity,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'ONLINE', child: Text('Online')),
+                      DropdownMenuItem(
+                          value: 'OFFLINE', child: Text('Offline')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => connectivity = v);
+                      }
+                    },
+                    decoration:
+                        const InputDecoration(labelText: 'Status Koneksi'),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Tambah'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final sensorId = idCtrl.text.trim();
+      final name = nameCtrl.text.trim();
+
+      if (sensorId.isEmpty || name.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('ID Perangkat dan Nama Lokasi wajib diisi')),
+          );
+        }
+        return;
+      }
+
+      final lat = double.tryParse(latCtrl.text.trim()) ?? 0.0;
+      final lng = double.tryParse(lngCtrl.text.trim()) ?? 0.0;
+      final battery = int.tryParse(batteryCtrl.text.trim()) ?? 100;
+
+      final provider = context.read<AdminProvider>();
+      final success = await provider.createSensor(
+        sensorId: sensorId,
+        name: name,
+        latitude: lat,
+        longitude: lng,
+        batteryLevel: battery,
+        connectivity: connectivity,
+      );
+
+      if (success) {
+        await provider.loadSensors();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sensor baru berhasil ditambahkan')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  provider.errorMessage ?? 'Gagal menambahkan sensor'),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -414,7 +547,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF0066FF),
         child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () {},
+        onPressed: () => _showCreateDialog(context),
       ),
     );
   }

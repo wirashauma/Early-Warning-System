@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'user_model.dart';
 
@@ -170,7 +171,11 @@ class AuthService {
         );
       }
 
-      await _apiService.updateProfile(name);
+      await _apiService.updateProfile(
+        name,
+        phone: phone,
+        institution: address,
+      );
 
       _currentUser = _currentUser!.copyWith(
         name: name,
@@ -198,9 +203,17 @@ class AuthService {
     }
   }
 
-  void logout() {
-    _googleSignIn.signOut();
-    _firebaseAuth.signOut();
+  Future<void> logout() async {
+    try {
+      _apiService.post('auth/logout', {}).catchError((e) {
+        debugPrint('[AuthService] Backend logout failed: $e');
+        return null;
+      });
+    } catch (e) {
+      debugPrint('[AuthService] Backend logout error: $e');
+    }
+    await _googleSignIn.signOut();
+    await _firebaseAuth.signOut();
     _apiService.clearTokens();
     _currentUser = null;
   }

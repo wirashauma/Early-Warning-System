@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
 import 'main_navigation.dart';
+import 'edukasi_screen.dart';
 
 class DaruratScreen extends StatelessWidget {
   const DaruratScreen({super.key});
@@ -107,7 +109,12 @@ class DaruratScreen extends StatelessWidget {
               ),
               _NavPill(
                 label: 'Buka Panduan',
-                onTap: () => navIndexNotifier.value = 4,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EdukasiScreen()),
+                  );
+                },
               ),
             ],
           ),
@@ -447,9 +454,12 @@ class _ServiceCard extends StatelessWidget {
                       child: const Text('Batal'),
                     ),
                     ElevatedButton(
-                      onPressed: () {
-                        // Logika panggil telepon (Gunakan url_launcher)
+                      onPressed: () async {
                         Navigator.pop(dialogCtx);
+                        final uri = Uri(scheme: 'tel', path: service.phone);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: service.color,

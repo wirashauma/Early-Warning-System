@@ -86,7 +86,7 @@ export class AuthController {
   @HttpCode(200)
   async updateProfile(
     @Request() req: AuthenticatedRequest,
-    @Body() body: { name?: string; avatar?: string },
+    @Body() body: { name?: string; avatar?: string; phone?: string; institution?: string },
   ) {
     const data = await this.authService.updateProfile(req.user.id, body);
     return ok(data);

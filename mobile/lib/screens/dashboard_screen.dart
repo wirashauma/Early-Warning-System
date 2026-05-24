@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart'; // Ditambahkan untuk membaca state login global
+import 'package:fl_chart/fl_chart.dart';
 import '../models/auth_provider.dart'; // Ditambahkan untuk membedakan Admin/User
 import '../models/admin_provider.dart';
+import '../providers/telemetry_provider.dart';
 import '../models/sensor_model.dart';
+import '../models/api_service.dart';
+import '../models/water_level_log.dart';
+import '../models/rainfall_log.dart';
+import '../models/flow_rate_log.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
 import 'main_navigation.dart';
+import 'edukasi_screen.dart';
+import 'darurat_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -18,39 +26,88 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedSensorIndex = 0;
+  int _selectedChartTab = 0; // 0 = Tinggi Air, 1 = Curah Hujan, 2 = Debit
+  bool _loadingHistory = false;
+  List<WaterLevelLog> _wlHistory = [];
+  List<RainfallLog> _rfHistory = [];
+  List<FlowRateLog> _frHistory = [];
+  String? _historyError;
+  final ApiService _api = ApiService();
 
-  bool _hasInstalledSensors(AdminProvider admin) =>
-      (admin.dashboardStats['totalSensors'] ?? 0) > 0 ||
-      admin.sensors.isNotEmpty;
+  Future<void> _loadSensorHistory(String sensorId) async {
+    if (!mounted) return;
+    setState(() {
+      _loadingHistory = true;
+      _historyError = null;
+    });
 
-  SensorData _selected(AdminProvider admin) {
-    final waterLevels =
-        admin.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
-    if (waterLevels.isNotEmpty && _selectedSensorIndex < waterLevels.length) {
-      final m = waterLevels[_selectedSensorIndex] as Map<String, dynamic>;
-      return SensorData(
-        name: m['sensorId']?.toString() ?? 'Sensor',
-        location: m['location']?.toString() ?? '-',
-        waterLevel: (m['waterLevel'] is num)
-            ? (m['waterLevel'] as num).toDouble()
-            : 0.0,
-        rainfall: (m['rainfall'] is num)
-            ? (m['rainfall'] as num).toDouble()
-            : 0.0,
-        status: m['status']?.toString() ?? 'Normal',
-        lastUpdate:
-            DateTime.tryParse(m['updatedAt']?.toString() ?? '') ??
-            DateTime.now(),
-      );
+    try {
+      final now = DateTime.now();
+      final oneDayAgo = now.subtract(const Duration(hours: 24));
+      final startIso = oneDayAgo.toUtc().toIso8601String();
+      final endIso = now.toUtc().toIso8601String();
+
+      final results = await Future.wait([
+        _api.fetchWaterLevelHistory(
+          sensorId: sensorId,
+          startDate: startIso,
+          endDate: endIso,
+          limit: 100,
+        ).catchError((e) => <WaterLevelLog>[]),
+        _api.fetchRainfallHistory(
+          sensorId: sensorId,
+          startDate: startIso,
+          endDate: endIso,
+          limit: 100,
+        ).catchError((e) => <RainfallLog>[]),
+        _api.fetchFlowRateHistory(
+          sensorId: sensorId,
+          startDate: startIso,
+          endDate: endIso,
+          limit: 100,
+        ).catchError((e) => <FlowRateLog>[]),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _wlHistory = results[0] as List<WaterLevelLog>;
+        _rfHistory = results[1] as List<RainfallLog>;
+        _frHistory = results[2] as List<FlowRateLog>;
+        _loadingHistory = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _historyError = e.toString();
+        _loadingHistory = false;
+      });
     }
-    return SensorData(
-      name: 'Sensor Belum Tersedia',
-      location: '-',
-      waterLevel: 0,
-      rainfall: 0,
-      status: 'Normal',
-      lastUpdate: DateTime.now(),
-    );
+  }
+
+  bool _hasInstalledSensors(TelemetryProvider telemetry) =>
+      telemetry.sensors.isNotEmpty;
+
+  SensorModel? _selected(TelemetryProvider telemetry) {
+    if (telemetry.sensors.isNotEmpty && _selectedSensorIndex < telemetry.sensors.length) {
+      return telemetry.sensors[_selectedSensorIndex];
+    }
+    return null;
+  }
+
+  String _sensorStatus(SensorModel sensor) {
+    final raw = (sensor.status ?? '').toString().toUpperCase();
+    if (raw == 'DANGER' || raw == 'BAHAYA') return 'Bahaya';
+    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') return 'Waspada';
+    if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') return 'Normal';
+    return sensor.isOnline ? 'Normal' : 'Offline';
+  }
+
+  Color _sensorColor(SensorModel sensor) {
+    final status = _sensorStatus(sensor);
+    if (status == 'Bahaya') return AppTheme.statusBahaya;
+    if (status == 'Waspada') return AppTheme.statusWaspada;
+    if (status == 'Offline') return const Color(0xFF94A3B8);
+    return AppTheme.statusNormal;
   }
 
   @override
@@ -58,19 +115,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      debugPrint('[DashboardScreen] initState -> loadDashboardStats()');
-      final provider = context.read<AdminProvider>();
-      try {
-        await provider.loadDashboardStats();
-      } catch (e) {
-        debugPrint('[DashboardScreen] loadDashboardStats failed: $e');
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memuat dashboard: $e'),
-            backgroundColor: AppTheme.statusBahaya,
-          ),
-        );
+      final authProvider = context.read<AuthProvider>();
+      final String currentRole = authProvider.userRole.toString().toUpperCase();
+      final bool isAdmin = currentRole == 'ADMIN' || currentRole == 'USERROLE.ADMIN';
+      
+      if (isAdmin) {
+        debugPrint('[DashboardScreen] initState -> loadDashboardStats() for ADMIN');
+        final provider = context.read<AdminProvider>();
+        try {
+          await provider.loadDashboardStats();
+        } catch (e) {
+          debugPrint('[DashboardScreen] loadDashboardStats failed: $e');
+        }
+      } else {
+        debugPrint('[DashboardScreen] initState -> loadInitialData() for USER');
+        final telemetry = context.read<TelemetryProvider>();
+        try {
+          await telemetry.loadInitialData();
+          if (telemetry.sensors.isNotEmpty && _selectedSensorIndex < telemetry.sensors.length) {
+            final sensorId = telemetry.sensors[_selectedSensorIndex].sensorId;
+            _loadSensorHistory(sensorId);
+          }
+        } catch (e) {
+          debugPrint('[DashboardScreen] loadInitialData failed: $e');
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal memuat dashboard: $e'),
+              backgroundColor: AppTheme.statusBahaya,
+            ),
+          );
+        }
       }
     });
   }
@@ -106,23 +181,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     // 1. Ambil status peran dari AuthProvider
     final authProvider = context.watch<AuthProvider>();
-    final adminProvider = context.watch<AdminProvider>();
     final String currentRole = authProvider.userRole.toString().toUpperCase();
     final bool isAdmin =
         currentRole == 'ADMIN' || currentRole == 'USERROLE.ADMIN';
 
     // 2. Jika Admin, langsung tampilkan inventaris manajemen infrastruktur IoT petugas
     if (isAdmin) {
+      final adminProvider = context.watch<AdminProvider>();
       return _buildAdminDashboard(adminProvider);
     }
 
-    // 3. Jika User biasa, render layout grafik peta bawaan asli Anda
+    // 3. Jika User biasa, render layout grafik peta bawaan asli Anda bound to TelemetryProvider
+    final telemetryProvider = context.watch<TelemetryProvider>();
     return Scaffold(
       appBar: EWSAppBar(onRefresh: widget.onRefresh),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            if (adminProvider.errorMessage != null)
+            if (telemetryProvider.errorMessage != null)
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -133,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  adminProvider.errorMessage!,
+                  telemetryProvider.errorMessage!,
                   style: const TextStyle(
                     color: Color(0xFFB91C1C),
                     fontSize: 12,
@@ -141,12 +217,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-            _buildStatusBanner(adminProvider),
-            _buildMetricCards(adminProvider),
-            _buildSensorMonitor(adminProvider),
+            _buildStatusBanner(telemetryProvider),
+            _buildMetricCards(telemetryProvider),
+            _buildSensorMonitor(telemetryProvider),
             _buildActionPanel(),
-            _buildPriorityPanel(adminProvider),
-            _buildChartSection(adminProvider),
+            _buildPriorityPanel(telemetryProvider),
+            _buildChartSection(telemetryProvider),
             _buildEdukasiSection(),
           ],
         ),
@@ -335,8 +411,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // BLOK WIDGET USER WARGA (DIKUNCI DAN TIDAK DIUBAH SAMA SEKALI)
   // =========================================================================
 
-  Widget _buildStatusBanner(AdminProvider adminProvider) {
-    if (!_hasInstalledSensors(adminProvider)) {
+  Widget _buildStatusBanner(TelemetryProvider telemetryProvider) {
+    if (!_hasInstalledSensors(telemetryProvider)) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
@@ -376,25 +452,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final waterLevels =
-        adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
-    // Web parity: Danger if any sensor has DANGER, else Waspada if any has ALERT/WARNING, else Aman
-    final hasDanger = waterLevels.any(
-      (w) =>
-          (w is Map &&
-          (w['status'] ?? w['status']?.toString()) != null &&
-          (w['status']?.toString().toUpperCase() == 'DANGER')),
+    final sensors = telemetryProvider.sensors;
+    final hasDanger = sensors.any(
+      (s) =>
+          s.status != null &&
+          (s.status!.toUpperCase() == 'DANGER' || s.status!.toUpperCase() == 'BAHAYA'),
     );
     final hasAlert =
         !hasDanger &&
-        waterLevels.any(
-          (w) =>
-              (w is Map &&
-              (w['status'] ?? w['status']?.toString()) != null &&
-              [
-                'ALERT',
-                'WARNING',
-              ].contains(w['status']?.toString().toUpperCase())),
+        sensors.any(
+          (s) =>
+              s.status != null &&
+              ['ALERT', 'WARNING', 'WASPADA'].contains(s.status!.toUpperCase()),
         );
     final globalLabel = hasDanger
         ? 'Bahaya'
@@ -406,27 +475,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : hasAlert
         ? AppTheme.statusWaspada
         : AppTheme.statusNormal;
-    // last update timestamp - use latest recorded timestamp across waterLevels
+
     DateTime u = DateTime.now();
-    if (waterLevels.isNotEmpty) {
-      final latestTs = waterLevels
-          .map(
-            (e) => e is Map
-                ? (e['recordedAt'] ??
-                      e['recorded_at'] ??
-                      e['updatedAt'] ??
-                      e['updated_at'])
-                : null,
-          )
-          .where((t) => t != null)
-          .map((t) => DateTime.tryParse(t.toString()))
-          .where((dt) => dt != null)
-          .map((dt) => dt!.toLocal())
-          .toList();
-      if (latestTs.isNotEmpty) {
-        latestTs.sort((a, b) => b.compareTo(a));
-        u = latestTs.first;
-      }
+    final latestTs = sensors
+        .map((s) => s.effectiveLastSeenAt)
+        .where((t) => t != null)
+        .cast<DateTime>()
+        .toList();
+    if (latestTs.isNotEmpty) {
+      latestTs.sort((a, b) => b.compareTo(a));
+      u = latestTs.first;
     }
     final ts =
         '${u.day} Mei ${u.year}, ${u.hour.toString().padLeft(2, '0')}.${u.minute.toString().padLeft(2, '0')}';
@@ -482,59 +540,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildMetricCards(AdminProvider adminProvider) {
-    final hasSensors = _hasInstalledSensors(adminProvider);
-    final sensors = hasSensors ? adminProvider.sensors : [];
+  Widget _buildMetricCards(TelemetryProvider telemetryProvider) {
+    final hasSensors = _hasInstalledSensors(telemetryProvider);
+    final sensors = telemetryProvider.sensors;
     final totalSensors = sensors.length;
-    final onlineCount = sensors.where((s) {
-      if (s is! Map<String, dynamic>) return false;
+    final onlineCount = telemetryProvider.onlineSensorsCount;
 
-      return SensorModel.isTimestampOnline(
-        s['last_seen_at'] ??
-            s['lastSeenAt'] ??
-            s['last_active_at'] ??
-            s['lastActiveAt'] ??
-            s['updated_at'] ??
-            s['updatedAt'] ??
-            s['recorded_at'] ??
-            s['recordedAt'],
-      );
-    }).length;
-
-    final waterLevelsList =
-        adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
     double maxLevel = 0.0;
-    if (waterLevelsList.isNotEmpty) {
-      maxLevel = waterLevelsList
-          .map(
-            (e) => (e is Map && e['waterLevel'] is num)
-                ? (e['waterLevel'] as num).toDouble()
-                : 0.0,
-          )
+    if (sensors.isNotEmpty) {
+      maxLevel = sensors
+          .map((s) => s.waterLevel ?? 0.0)
           .fold<double>(0.0, (prev, el) => el > prev ? el : prev);
     }
 
-    final avgRainfall = adminProvider.dashboardStats['avgRainfall'] ?? 0.0;
+    double avgRainfall = 0.0;
+    if (sensors.isNotEmpty) {
+      final validRainfalls = sensors.map((s) => s.rainfall).where((r) => r != null).cast<double>().toList();
+      if (validRainfalls.isNotEmpty) {
+        avgRainfall = validRainfalls.reduce((a, b) => a + b) / validRainfalls.length;
+      }
+    }
 
-    final dangerCount = waterLevelsList
-        .where(
-          (w) =>
-              (w is Map &&
-              (w['status'] ?? '').toString().toUpperCase() == 'DANGER'),
-        )
-        .length;
-    final alertCount = waterLevelsList
-        .where(
-          (w) =>
-              (w is Map &&
-              ([
-                'ALERT',
-                'WARNING',
-              ].contains((w['status'] ?? '').toString().toUpperCase()))),
-        )
-        .length;
-    final warningCount = 0; // Not used separately; kept for parity if needed
-    final riskCount = dangerCount + alertCount + warningCount;
+    final dangerCount = telemetryProvider.dangerCount;
+    final warningCount = telemetryProvider.warningCount;
+    final riskCount = dangerCount + warningCount;
     final cards = [
       {
         'label': 'Tinggi Air (Aktif)',
@@ -556,7 +585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'label': 'Sensor Berisiko',
         'value': '$riskCount',
         'sub':
-            'Bahaya: $dangerCount • Siaga: $alertCount • Waspada: $warningCount',
+            'Bahaya: $dangerCount • Waspada: $warningCount',
         'color': riskCount > 0 ? AppTheme.statusBahaya : AppTheme.statusNormal,
       },
       {
@@ -620,10 +649,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSensorMonitor(AdminProvider adminProvider) {
-    final hasSensors = _hasInstalledSensors(adminProvider);
-    final waterLevelsList =
-        adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
+  Widget _buildSensorMonitor(TelemetryProvider telemetryProvider) {
+    final hasSensors = _hasInstalledSensors(telemetryProvider);
+    final sensors = telemetryProvider.sensors;
+    final selectedSensor = _selected(telemetryProvider);
+
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(16),
@@ -644,7 +674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          if (!hasSensors) ...[
+          if (!hasSensors || selectedSensor == null) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -705,20 +735,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 value: _selectedSensorIndex,
                 isExpanded: true,
                 underline: const SizedBox(),
-                items: (waterLevelsList)
+                items: sensors
                     .asMap()
                     .entries
                     .map(
                       (e) => DropdownMenuItem(
                         value: e.key,
                         child: Text(
-                          e.value['sensorId']?.toString() ?? 'Sensor',
+                          '${e.value.name} (${e.value.sensorId})',
                         ),
                       ),
                     )
                     .toList(),
                 onChanged: (i) {
-                  if (i != null) setState(() => _selectedSensorIndex = i);
+                  if (i != null) {
+                    setState(() => _selectedSensorIndex = i);
+                    if (sensors.isNotEmpty && i < sensors.length) {
+                      final sensorId = sensors[i].sensorId;
+                      _loadSensorHistory(sensorId);
+                    }
+                  }
                 },
               ),
             ),
@@ -727,28 +763,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _MetricBox(
                   label: 'STATUS',
-                  value: _selected(adminProvider).status,
-                  color: _selected(adminProvider).statusColor,
+                  value: _sensorStatus(selectedSensor),
+                  color: _sensorColor(selectedSensor),
                   flex: 2,
                 ),
                 const SizedBox(width: 8),
                 _MetricBox(
                   label: 'TINGGI AIR',
-                  value: '${_selected(adminProvider).waterLevel.toInt()} cm',
+                  value: '${(selectedSensor.waterLevel ?? 0.0).toInt()} cm',
                   color: AppTheme.textDark,
                   flex: 2,
                 ),
                 const SizedBox(width: 8),
                 _MetricBox(
                   label: 'KONEKSI',
-                  value: 'Online',
-                  color: AppTheme.statusNormal,
+                  value: selectedSensor.displayConnectivity,
+                  color: selectedSensor.isOnline
+                      ? AppTheme.statusNormal
+                      : AppTheme.statusBahaya,
                   flex: 2,
                 ),
                 const SizedBox(width: 8),
                 _MetricBox(
                   label: 'BATERAI',
-                  value: '87%',
+                  value: selectedSensor.batteryLevel != null ? '${selectedSensor.batteryLevel}%' : '-',
                   color: AppTheme.statusNormal,
                   flex: 2,
                 ),
@@ -758,14 +796,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _selected(
-                  adminProvider,
-                ).statusColor.withValues(alpha: 0.1),
+                color: _sensorColor(selectedSensor).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: _selected(
-                    adminProvider,
-                  ).statusColor.withValues(alpha: 0.3),
+                  color: _sensorColor(selectedSensor).withOpacity(0.3),
                 ),
               ),
               child: Column(
@@ -775,7 +809,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: _selected(adminProvider).statusColor,
+                        color: _sensorColor(selectedSensor),
                         size: 16,
                       ),
                       const SizedBox(width: 6),
@@ -784,14 +818,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          color: _selected(adminProvider).statusColor,
+                          color: _sensorColor(selectedSensor),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _actionDesc(_selected(adminProvider).status),
+                    _actionDesc(_sensorStatus(selectedSensor)),
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textGrey,
@@ -799,7 +833,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._actionPoints(_selected(adminProvider).status).map(
+                  ..._actionPoints(_sensorStatus(selectedSensor)).map(
                     (p) => Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
@@ -810,7 +844,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             height: 6,
                             margin: const EdgeInsets.only(top: 5, right: 8),
                             decoration: BoxDecoration(
-                              color: _selected(adminProvider).statusColor,
+                              color: _sensorColor(selectedSensor),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -829,7 +863,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          Text(
+          const Text(
             'Peta Sensor',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
@@ -850,16 +884,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 if (hasSensors)
                   MarkerLayer(
-                    markers: _sensorLocations.asMap().entries.map((entry) {
+                    markers: sensors.asMap().entries.map((entry) {
                       final i = entry.key;
                       final s = entry.value;
-                      final color = Color(s['colorVal'] as int);
+                      final color = _sensorColor(s);
                       return Marker(
-                        point: LatLng(s['lat'] as double, s['lng'] as double),
+                        point: LatLng(s.latitude, s.longitude),
                         width: 40,
                         height: 40,
                         builder: (context) => GestureDetector(
-                          onTap: () => setState(() => _selectedSensorIndex = i),
+                          onTap: () {
+                            setState(() => _selectedSensorIndex = i);
+                            _loadSensorHistory(s.sensorId);
+                          },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
@@ -873,14 +910,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: color.withValues(alpha: 0.5),
+                                  color: color.withOpacity(0.5),
                                   blurRadius: 6,
                                 ),
                               ],
                             ),
                             child: Center(
                               child: Text(
-                                s['label'] as String,
+                                s.name.substring(0, s.name.length > 2 ? 2 : s.name.length).toUpperCase(),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -901,64 +938,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildActionPanel() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Aksi Darurat & Pintasan',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          const Text(
-            'Akses cepat menu penting.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => navIndexNotifier.value = 3,
-              icon: const Icon(Icons.phone, size: 18),
-              label: const Text(
-                'Kontak Darurat',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.statusBahaya,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _ShortcutTile(
-            icon: Icons.map_outlined,
-            label: 'Buka Peta Sensor',
-            onTap: () => navIndexNotifier.value = 2,
-          ),
-          _ShortcutTile(
-            icon: Icons.menu_book_outlined,
-            label: 'Panduan Mitigasi',
-            onTap: () => navIndexNotifier.value = 4,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriorityPanel(AdminProvider adminProvider) {
-    if (!_hasInstalledSensors(adminProvider)) {
+  Widget _buildPriorityPanel(TelemetryProvider telemetryProvider) {
+    if (!_hasInstalledSensors(telemetryProvider)) {
       return Container(
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.all(16),
@@ -998,43 +979,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final waterLevels =
-        adminProvider.dashboardStats['waterLevels'] as List<dynamic>? ?? [];
-    SensorData worst;
-    if (waterLevels.isNotEmpty) {
-      final worstMap =
-          waterLevels.reduce((a, b) {
-                final al = (a is Map && a['waterLevel'] is num)
-                    ? (a['waterLevel'] as num).toDouble()
-                    : 0.0;
-                final bl = (b is Map && b['waterLevel'] is num)
-                    ? (b['waterLevel'] as num).toDouble()
-                    : 0.0;
-                return al >= bl ? a : b;
-              })
-              as Map<String, dynamic>;
-      worst = SensorData(
-        name: worstMap['sensorId']?.toString() ?? 'Sensor',
-        location: worstMap['location']?.toString() ?? '-',
-        waterLevel: (worstMap['waterLevel'] is num)
-            ? (worstMap['waterLevel'] as num).toDouble()
-            : 0.0,
-        rainfall: (worstMap['rainfall'] is num)
-            ? (worstMap['rainfall'] as num).toDouble()
-            : 0.0,
-        status: worstMap['status']?.toString() ?? 'Normal',
-        lastUpdate:
-            DateTime.tryParse(worstMap['updatedAt']?.toString() ?? '') ??
-            DateTime.now(),
-      );
+    final sensors = telemetryProvider.sensors;
+    SensorModel worst;
+    if (sensors.isNotEmpty) {
+      worst = sensors.reduce((a, b) {
+        final al = a.waterLevel ?? 0.0;
+        final bl = b.waterLevel ?? 0.0;
+        return al >= bl ? a : b;
+      });
     } else {
-      worst = SensorData(
+      worst = SensorModel(
+        id: '',
+        sensorId: '',
         name: 'Belum Tersedia',
-        location: '-',
-        waterLevel: 0,
-        rainfall: 0,
+        type: 'WATER_LEVEL',
+        latitude: 0,
+        longitude: 0,
+        connectivity: 'OFFLINE',
+        isActive: false,
+        waterLevel: 0.0,
+        rainfall: 0.0,
         status: 'Normal',
-        lastUpdate: DateTime.now(),
       );
     }
 
@@ -1073,15 +1038,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Sensor',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                Text(
+                  worst.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${worst.waterLevel.toInt()} cm • ${worst.status}',
+                  '${(worst.waterLevel ?? 0.0).toInt()} cm • ${_sensorStatus(worst)}',
                   style: TextStyle(
-                    color: worst.statusColor,
+                    color: _sensorColor(worst),
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -1103,35 +1068,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildChartSection(AdminProvider adminProvider) {
-    final hasSensors = _hasInstalledSensors(adminProvider);
-    final current = _selected(adminProvider).waterLevel;
-    final chartData = hasSensors
-        ? [
-            {'time': '08:00', 'level': (current * 0.72).roundToDouble()},
-            {'time': '10:00', 'level': (current * 0.85).roundToDouble()},
-            {'time': '12:00', 'level': (current * 0.93).roundToDouble()},
-            {'time': '14:00', 'level': (current * 1.05).roundToDouble()},
-            {'time': '16:00', 'level': current},
-          ]
-        : [
-            {'time': '08:00', 'level': 0.0},
-            {'time': '10:00', 'level': 0.0},
-            {'time': '12:00', 'level': 0.0},
-            {'time': '14:00', 'level': 0.0},
-            {'time': '16:00', 'level': 0.0},
-          ];
-    Color levelColor(double lvl) {
-      if (lvl < 150) return AppTheme.statusNormal;
-      if (lvl < 190) return AppTheme.statusWaspada;
-      if (lvl < 220) return AppTheme.statusSiaga;
-      return AppTheme.statusBahaya;
+  Widget _buildChartSection(TelemetryProvider telemetryProvider) {
+    final hasSensors = _hasInstalledSensors(telemetryProvider);
+    if (!hasSensors) {
+      return const SizedBox();
     }
 
-    final maxLevelInChart = chartData
-        .map((d) => d['level'] as double)
-        .reduce((a, b) => a > b ? a : b);
-    final u = _selected(adminProvider).lastUpdate;
+    final selectedSensor = _selected(telemetryProvider);
+    if (selectedSensor == null) {
+      return const SizedBox();
+    }
+    final waterLevel = selectedSensor.waterLevel ?? 0.0;
+    final rainfall = selectedSensor.rainfall ?? 0.0;
+
+    Widget activeChart;
+    Color chartColor;
+    String chartTitle;
+    String currentValStr;
+
+    if (_selectedChartTab == 0) {
+      activeChart = _buildFlChart(
+        _wlHistory,
+        (log) => (log as WaterLevelLog).waterLevel,
+        AppTheme.accentBlue,
+        'cm',
+      );
+      chartColor = AppTheme.accentBlue;
+      chartTitle = 'Tinggi Air';
+      currentValStr = '${waterLevel.toInt()} cm';
+    } else if (_selectedChartTab == 1) {
+      activeChart = _buildFlChart(
+        _rfHistory,
+        (log) => (log as RainfallLog).rainfall,
+        const Color(0xFF10B981),
+        'mm',
+      );
+      chartColor = const Color(0xFF10B981);
+      chartTitle = 'Curah Hujan';
+      currentValStr = '${rainfall.toStringAsFixed(1)} mm/jam';
+    } else {
+      activeChart = _buildFlChart(
+        _frHistory,
+        (log) => (log as FlowRateLog).flowRate,
+        const Color(0xFFF59E0B),
+        'LPM',
+      );
+      chartColor = const Color(0xFFF59E0B);
+      chartTitle = 'Debit Aliran';
+      final currentFlow = _frHistory.isNotEmpty ? _frHistory.last.flowRate : 0.0;
+      currentValStr = '${currentFlow.toStringAsFixed(1)} LPM';
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(16),
@@ -1147,7 +1134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Grafik Ketinggian Air',
+                'Grafik Telemetri Historis',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               Container(
@@ -1156,13 +1143,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.statusNormal.withValues(alpha: 0.1),
+                  color: chartColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Live: ${current.toInt()} cm',
-                  style: const TextStyle(
-                    color: AppTheme.statusNormal,
+                  'Live: $currentValStr',
+                  style: TextStyle(
+                    color: chartColor,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1170,54 +1157,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 140,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: chartData.map((d) {
-                final lvl = d['level'] as double;
-                final color = levelColor(lvl);
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${lvl.toInt()}',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.textGrey,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: 42,
-                      height: (lvl / maxLevelInChart * 100).clamp(8.0, 100.0),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.8),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      d['time'] as String,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.textGrey,
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildTabPill(0, 'Tinggi Air', AppTheme.accentBlue),
+              const SizedBox(width: 8),
+              _buildTabPill(1, 'Curah Hujan', const Color(0xFF10B981)),
+              const SizedBox(width: 8),
+              _buildTabPill(2, 'Debit Aliran', const Color(0xFFF59E0B)),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 160,
+            child: _loadingHistory
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(strokeWidth: 3),
+                        SizedBox(height: 10),
+                        Text(
+                          'Memuat data riwayat...',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textGrey),
+                        ),
+                      ],
+                    ),
+                  )
+                : _historyError != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Gagal memuat: $_historyError',
+                              style: const TextStyle(fontSize: 11, color: AppTheme.statusBahaya),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () {
+                                final sensors = telemetryProvider.sensors;
+                                if (sensors.isNotEmpty && _selectedSensorIndex < sensors.length) {
+                                  final sensorId = sensors[_selectedSensorIndex].sensorId;
+                                  _loadSensorHistory(sensorId);
+                                }
+                              },
+                              child: const Text('Coba Lagi', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      )
+                    : activeChart,
+          ),
+          const SizedBox(height: 10),
           Center(
             child: Text(
-              'Ketinggian Air (cm) - ${u.day} Mar ${u.year}',
-              style: const TextStyle(color: AppTheme.textGrey, fontSize: 11),
+              'Riwayat $chartTitle dalam 24 jam terakhir',
+              style: const TextStyle(color: AppTheme.textGrey, fontSize: 10),
             ),
           ),
           const SizedBox(height: 16),
@@ -1238,7 +1235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: TextStyle(fontSize: 11, color: AppTheme.textGrey),
                     ),
                     Text(
-                      '${_selected(adminProvider).rainfall} mm/jam',
+                      '${rainfall.toStringAsFixed(1)} mm/jam',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1246,9 +1243,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Text(
-                      _selected(adminProvider).rainfall < 5
+                      rainfall < 5
                           ? 'Ringan (0-5 mm/jam)'
-                          : 'Sedang (5-20 mm/jam)',
+                          : rainfall < 20
+                              ? 'Sedang (5-20 mm/jam)'
+                              : 'Lebat (>20 mm/jam)',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppTheme.textGrey,
@@ -1257,14 +1256,206 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
                 Icon(
-                  Icons.water_drop,
-                  color: AppTheme.accentBlue.withValues(alpha: 0.4),
-                  size: 40,
+                  Icons.thunderstorm_outlined,
+                  color: AppTheme.accentBlue.withOpacity(0.3),
+                  size: 38,
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionPanel() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Aksi Darurat & Pintasan',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const Text(
+            'Akses cepat menu penting.',
+            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DaruratScreen()),
+                );
+              },
+              icon: const Icon(Icons.phone, size: 18),
+              label: const Text(
+                'Kontak Darurat',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.statusBahaya,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _ShortcutTile(
+            icon: Icons.map_outlined,
+            label: 'Buka Peta Sensor',
+            onTap: () => navIndexNotifier.value = 1,
+          ),
+          _ShortcutTile(
+            icon: Icons.menu_book_outlined,
+            label: 'Panduan Mitigasi',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EdukasiScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildFlChart(List<dynamic> logs, double Function(dynamic) getValue, Color lineColor, String unit) {
+    if (logs.isEmpty) {
+      return const Center(
+        child: Text(
+          'Tidak ada data dalam 24 jam terakhir.',
+          style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+        ),
+      );
+    }
+
+    final spots = logs.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), getValue(e.value));
+    }).toList();
+
+    final values = spots.map((s) => s.y).toList();
+    final minY = values.reduce((a, b) => a < b ? a : b);
+    final maxY = values.reduce((a, b) => a > b ? a : b);
+    final rangeY = maxY - minY;
+    final paddingY = rangeY == 0 ? 5.0 : rangeY * 0.15;
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: const Color(0xFFE2E8F0),
+            strokeWidth: 1,
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${value.toInt()}',
+                  style: const TextStyle(fontSize: 8, color: AppTheme.textGrey),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx >= 0 && idx < logs.length && (idx % (logs.length ~/ 4 + 1) == 0 || idx == logs.length - 1)) {
+                  final rawTime = logs[idx].recordedAt;
+                  final time = rawTime is DateTime ? rawTime : DateTime.parse(rawTime.toString());
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 8, color: AppTheme.textGrey),
+                    ),
+                  );
+                }
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: const Border(
+            bottom: BorderSide(color: Color(0xFFE2E8F0)),
+            left: BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+        ),
+        minX: 0,
+        maxX: (logs.length - 1).toDouble(),
+        minY: (minY - paddingY).clamp(0.0, double.infinity),
+        maxY: maxY + paddingY,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: lineColor,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: lineColor.withOpacity(0.1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildTabPill(int index, String label, Color color) {
+    final active = _selectedChartTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedChartTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: active ? color : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: active ? Colors.white : AppTheme.textDark,
+            ),
+          ),
+        ),
       ),
     );
   }

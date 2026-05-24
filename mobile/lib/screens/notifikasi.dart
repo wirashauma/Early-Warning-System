@@ -23,14 +23,18 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         context.read<AdminProvider>().loadAlertHistory();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[NotifikasiPage] loadAlertHistory failed: $e');
+      }
     });
 
     // listen to incoming foreground messages to refresh list
     _sub = NotificationService.instance.onMessageStream.listen((message) {
       try {
         context.read<AdminProvider>().loadAlertHistory();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[NotifikasiPage] realtime refresh failed: $e');
+      }
     });
   }
 
@@ -82,7 +86,13 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Semua notifikasi telah ditandai dibaca.'),
+                            ),
+                          );
+                        },
                         child: const Text(
                           "Tandai semua dibaca",
                           style: TextStyle(fontSize: 13),
@@ -189,7 +199,33 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: Text(alert.title.isNotEmpty ? alert.title : 'Detail Peringatan'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Tingkat: $tag', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(alert.message, style: const TextStyle(height: 1.5)),
+                          const SizedBox(height: 12),
+                          Text('Waktu: $dateStr', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Tutup'),
+                      ),
+                    ],
+                  ),
+                );
+              },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFFE2E8F0)),
                 shape: RoundedRectangleBorder(

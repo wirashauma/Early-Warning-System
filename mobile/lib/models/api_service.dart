@@ -191,10 +191,18 @@ class ApiService {
   Future<Map<String, dynamic>> updateProfile(
     String name, {
     String? avatar,
+    String? phone,
+    String? institution,
   }) async {
     final body = <String, dynamic>{'name': name.trim()};
     if (avatar != null) {
       body['avatar'] = avatar;
+    }
+    if (phone != null) {
+      body['phone'] = phone.trim();
+    }
+    if (institution != null) {
+      body['institution'] = institution.trim();
     }
     return await put('auth/profile', body) as Map<String, dynamic>;
   }
@@ -225,11 +233,14 @@ class ApiService {
       queryParams: queryParams,
     );
 
-    // In our NestJS architecture, success response is either { status: 'success', data: [...] }
-    // or just direct [...] depending on how the data was nested, but `get()` automatically
-    // returns response['data'] if the key exists (lines 45-47 in _parseResponse!).
-    // Therefore, we can cast or map directly.
-    final list = response as List<dynamic>? ?? [];
+    final List<dynamic> list;
+    if (response is Map<String, dynamic> && response.containsKey('items')) {
+      list = response['items'] as List<dynamic>? ?? [];
+    } else if (response is List<dynamic>) {
+      list = response;
+    } else {
+      list = [];
+    }
     return list
         .map((item) => WaterLevelLog.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -253,7 +264,14 @@ class ApiService {
     if (interval != null) queryParams['interval'] = interval;
 
     final response = await get('rainfall/history', queryParams: queryParams);
-    final list = response as List<dynamic>? ?? [];
+    final List<dynamic> list;
+    if (response is Map<String, dynamic> && response.containsKey('items')) {
+      list = response['items'] as List<dynamic>? ?? [];
+    } else if (response is List<dynamic>) {
+      list = response;
+    } else {
+      list = [];
+    }
     return list
         .map((item) => RainfallLog.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -277,7 +295,14 @@ class ApiService {
     if (interval != null) queryParams['interval'] = interval;
 
     final response = await get('flow-rate/history', queryParams: queryParams);
-    final list = response as List<dynamic>? ?? [];
+    final List<dynamic> list;
+    if (response is Map<String, dynamic> && response.containsKey('items')) {
+      list = response['items'] as List<dynamic>? ?? [];
+    } else if (response is List<dynamic>) {
+      list = response;
+    } else {
+      list = [];
+    }
     return list
         .map((item) => FlowRateLog.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -301,14 +326,20 @@ class ApiService {
     };
     final response = await get('alerts/history', queryParams: queryParams);
 
-    // Paginated responses might have a meta or list inside data
-    if (response is Map<String, dynamic> && response.containsKey('alerts')) {
-      final list = response['alerts'] as List<dynamic>? ?? [];
-      return list
-          .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
-          .toList();
+    final List<dynamic> list;
+    if (response is Map<String, dynamic>) {
+      if (response.containsKey('alerts')) {
+        list = response['alerts'] as List<dynamic>? ?? [];
+      } else if (response.containsKey('items')) {
+        list = response['items'] as List<dynamic>? ?? [];
+      } else {
+        list = [];
+      }
+    } else if (response is List<dynamic>) {
+      list = response;
+    } else {
+      list = [];
     }
-    final list = response as List<dynamic>? ?? [];
     return list
         .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -352,13 +383,20 @@ class ApiService {
     };
     final response = await get('sensors', queryParams: queryParams);
 
-    if (response is Map<String, dynamic> && response.containsKey('sensors')) {
-      final list = response['sensors'] as List<dynamic>? ?? [];
-      return list
-          .map((item) => SensorModel.fromJson(item as Map<String, dynamic>))
-          .toList();
+    final List<dynamic> list;
+    if (response is Map<String, dynamic>) {
+      if (response.containsKey('sensors')) {
+        list = response['sensors'] as List<dynamic>? ?? [];
+      } else if (response.containsKey('items')) {
+        list = response['items'] as List<dynamic>? ?? [];
+      } else {
+        list = [];
+      }
+    } else if (response is List<dynamic>) {
+      list = response;
+    } else {
+      list = [];
     }
-    final list = response as List<dynamic>? ?? [];
     return list
         .map((item) => SensorModel.fromJson(item as Map<String, dynamic>))
         .toList();

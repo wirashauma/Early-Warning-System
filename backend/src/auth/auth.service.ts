@@ -25,6 +25,8 @@ interface RegisterPayload {
 interface UpdateProfilePayload {
   name?: string;
   avatar?: string | null;
+  phone?: string | null;
+  institution?: string | null;
 }
 
 interface JwtPayload {
@@ -50,6 +52,7 @@ interface PublicUserFields extends UserWithTokenFields {
   name: string;
   avatar?: string | null;
   institution?: string | null;
+  phone?: string | null;
 }
 
 @Injectable()
@@ -218,12 +221,18 @@ export class AuthService {
       throw new BadRequestException('Nama tidak boleh kosong.');
     }
 
-    const updateData: UpdateProfilePayload = {};
+    const updateData: any = {};
     if (nextName !== undefined) {
       updateData.name = nextName;
     }
     if (data.avatar !== undefined) {
       updateData.avatar = data.avatar;
+    }
+    if (data.phone !== undefined) {
+      updateData.phone = data.phone?.trim() || null;
+    }
+    if (data.institution !== undefined) {
+      updateData.institution = data.institution?.trim() || null;
     }
 
     const updatedUser = await this.prisma.user.update({
@@ -265,6 +274,7 @@ export class AuthService {
       role: user.role,
       avatar: user.avatar ?? null,
       institution: user.institution ?? null,
+      phone: user.phone ?? null,
     };
   }
 

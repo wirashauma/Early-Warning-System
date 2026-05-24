@@ -49,6 +49,10 @@ class SensorModel {
   final DateTime? lastActiveAt;
   final DateTime? updatedAt;
   final bool isActive;
+  final double? waterLevel;
+  final double? rainfall;
+  final double? flowRate;
+  final String? status;
 
   SensorModel({
     required this.id,
@@ -64,7 +68,43 @@ class SensorModel {
     this.lastActiveAt,
     this.updatedAt,
     required this.isActive,
+    this.waterLevel,
+    this.rainfall,
+    this.flowRate,
+    this.status,
   });
+
+  SensorModel copyWith({
+    double? waterLevel,
+    double? rainfall,
+    double? flowRate,
+    String? status,
+    String? connectivity,
+    int? batteryLevel,
+    DateTime? lastSeenAt,
+    DateTime? lastActiveAt,
+    DateTime? updatedAt,
+  }) {
+    return SensorModel(
+      id: id,
+      sensorId: sensorId,
+      name: name,
+      type: type,
+      latitude: latitude,
+      longitude: longitude,
+      batteryLevel: batteryLevel ?? this.batteryLevel,
+      connectivity: connectivity ?? this.connectivity,
+      installedAt: installedAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isActive: isActive,
+      waterLevel: waterLevel ?? this.waterLevel,
+      rainfall: rainfall ?? this.rainfall,
+      flowRate: flowRate ?? this.flowRate,
+      status: status ?? this.status,
+    );
+  }
 
   static DateTime? parseTimestamp(dynamic raw) {
     if (raw == null) return null;
@@ -162,6 +202,17 @@ class SensorModel {
       fallback: true,
     );
 
+    final waterLevelRaw = json['waterLevel'] ?? json['water_level'];
+    final waterLevel = waterLevelRaw is num ? waterLevelRaw.toDouble() : null;
+
+    final rainfallRaw = json['rainfall'] ?? json['rainfall_mm'] ?? json['rainfallMm'];
+    final rainfall = rainfallRaw is num ? rainfallRaw.toDouble() : null;
+
+    final flowRateRaw = json['flowRate'] ?? json['flow_rate'] ?? json['flowRateLpm'];
+    final flowRate = flowRateRaw is num ? flowRateRaw.toDouble() : null;
+
+    final status = json['status']?.toString();
+
     return SensorModel(
       id: id,
       sensorId: sensorId,
@@ -176,6 +227,10 @@ class SensorModel {
       lastActiveAt: lastActiveAt,
       updatedAt: updatedAt,
       isActive: isActive,
+      waterLevel: waterLevel,
+      rainfall: rainfall,
+      flowRate: flowRate,
+      status: status,
     );
   }
 
@@ -194,6 +249,10 @@ class SensorModel {
       'last_active_at': lastActiveAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'is_active': isActive,
+      'water_level': waterLevel,
+      'rainfall': rainfall,
+      'flow_rate': flowRate,
+      'status': status,
     };
   }
 

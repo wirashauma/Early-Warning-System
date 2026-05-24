@@ -1,12 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
-import '../models/admin_provider.dart';
+import '../providers/telemetry_provider.dart';
 import '../models/sensor_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
+import 'main_navigation.dart';
 
 class StatusScreen extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -22,6 +24,199 @@ class _StatusScreenState extends State<StatusScreen> {
   String _filter = 'Semua';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  final MapController _mapController = MapController();
+  List<String> _lastFitIds = [];
+
+  void _fitBounds(List<SensorModel> filteredSensors) {
+    if (filteredSensors.isEmpty) return;
+    final points = filteredSensors.map((s) {
+      return LatLng(s.latitude, s.longitude);
+    }).toList();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        _mapController.fitBounds(
+          LatLngBounds.fromPoints(points),
+          options: const FitBoundsOptions(
+            padding: EdgeInsets.all(32),
+          ),
+        );
+      } catch (e) {
+        debugPrint('fitBounds failed: $e');
+      }
+    });
+  }
+
+  void _checkAndFitBounds(List<SensorModel> filteredSensors) {
+    final currentIds = filteredSensors.map((s) => s.sensorId).toList();
+    if (listEquals(_lastFitIds, currentIds)) return;
+    _lastFitIds = currentIds;
+    _fitBounds(filteredSensors);
+  }
+
+  void _showSensorDetails(BuildContext context, SensorModel sensor) {
+    final name = sensor.name;
+    final sensorId = sensor.sensorId;
+    final status = _sensorStatus(sensor);
+    final color = _sensorColor(sensor);
+    final waterLevel = sensor.waterLevel?.toInt() ?? 0;
+    final rainfall = sensor.rainfall ?? 0.0;
+    final battery = sensor.batteryLevel;
+    final connectivity = sensor.displayConnectivity;
+    final lastSeen = sensor.effectiveLastSeenAt?.toIso8601String() ?? '-';
+
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'ID: $sensorId',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textGrey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricTile(
+                      Icons.water,
+                      'Tinggi Air',
+                      '$waterLevel cm',
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildMetricTile(
+                      Icons.grain,
+                      'Curah Hujan',
+                      '$rainfall mm/jam',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricTile(
+                      Icons.battery_charging_full,
+                      'Baterai',
+                      battery != null ? '$battery%' : 'N/A',
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildMetricTile(
+                      Icons.wifi,
+                      'Koneksi',
+                      connectivity,
+                      subtitle: lastSeen.split('T').first,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    navIndexNotifier.value = 0;
+                  },
+                  child: const Text('Pantau di Dasbor'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricTile(IconData icon, String label, String value, {String? subtitle}) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppTheme.accentBlue, size: 20),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 10, color: AppTheme.textGrey),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textGrey),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -29,15 +224,15 @@ class _StatusScreenState extends State<StatusScreen> {
     if (!_loadedOnce) {
       _loadedOnce = true;
       debugPrint(
-        '[StatusScreen] didChangeDependencies -> loadDashboardStats()',
+        '[StatusScreen] didChangeDependencies -> loadInitialData()',
       );
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        final provider = context.read<AdminProvider>();
+        final provider = context.read<TelemetryProvider>();
         try {
-          await provider.loadDashboardStats();
+          await provider.loadInitialData();
         } catch (e) {
-          debugPrint('[StatusScreen] loadDashboardStats failed: $e');
+          debugPrint('[StatusScreen] loadInitialData failed: $e');
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -56,30 +251,19 @@ class _StatusScreenState extends State<StatusScreen> {
     super.dispose();
   }
 
-  bool _isOnline(Map<String, dynamic> sensor) {
-    return SensorModel.isTimestampOnline(
-      sensor['last_seen_at'] ??
-          sensor['lastSeenAt'] ??
-          sensor['last_active_at'] ??
-          sensor['lastActiveAt'] ??
-          sensor['updated_at'] ??
-          sensor['updatedAt'] ??
-          sensor['recorded_at'] ??
-          sensor['recordedAt'],
-    );
+  bool _isOnline(SensorModel sensor) {
+    return sensor.isOnline;
   }
 
-  String _sensorStatus(Map<String, dynamic> sensor) {
-    final raw = (sensor['waterLevelStatus'] ?? sensor['status'] ?? '')
-        .toString()
-        .toUpperCase();
-    if (raw == 'DANGER') return 'Bahaya';
-    if (raw == 'ALERT' || raw == 'WARNING') return 'Waspada';
-    if (raw == 'NORMAL' || raw == 'SAFE') return 'Normal';
-    return _isOnline(sensor) ? 'Normal' : 'Offline';
+  String _sensorStatus(SensorModel sensor) {
+    final raw = (sensor.status ?? '').toString().toUpperCase();
+    if (raw == 'DANGER' || raw == 'BAHAYA') return 'Bahaya';
+    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') return 'Waspada';
+    if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') return 'Normal';
+    return sensor.isOnline ? 'Normal' : 'Offline';
   }
 
-  Color _sensorColor(Map<String, dynamic> sensor) {
+  Color _sensorColor(SensorModel sensor) {
     final status = _sensorStatus(sensor);
     if (status == 'Bahaya') return AppTheme.statusBahaya;
     if (status == 'Waspada') return AppTheme.statusWaspada;
@@ -87,9 +271,9 @@ class _StatusScreenState extends State<StatusScreen> {
     return AppTheme.statusNormal;
   }
 
-  List<Map<String, dynamic>> _sensors(AdminProvider admin) {
-    return admin.sensors.whereType<Map<String, dynamic>>().where((sensor) {
-      final name = (sensor['name'] ?? '').toString();
+  List<SensorModel> _sensors(TelemetryProvider telemetry) {
+    return telemetry.sensors.where((sensor) {
+      final name = sensor.name.toString();
       final status = _sensorStatus(sensor);
       final matchFilter = _filter == 'Semua' || status == _filter;
       final query = _searchQuery.trim().toLowerCase();
@@ -98,23 +282,17 @@ class _StatusScreenState extends State<StatusScreen> {
     }).toList();
   }
 
-  Map<String, dynamic>? _focusedSensor(List<Map<String, dynamic>> sensors) {
+  SensorModel? _focusedSensor(List<SensorModel> sensors) {
     if (_focusedIndex == null || _focusedIndex! >= sensors.length) return null;
     return sensors[_focusedIndex!];
   }
 
-  LatLng _centerOf(List<Map<String, dynamic>> sensors) {
+  LatLng _centerOf(List<SensorModel> sensors) {
     if (sensors.isEmpty) {
       return const LatLng(-0.9490, 100.3610);
     }
     final first = sensors.first;
-    final lat = (first['latitude'] is num)
-        ? (first['latitude'] as num).toDouble()
-        : -0.9490;
-    final lng = (first['longitude'] is num)
-        ? (first['longitude'] as num).toDouble()
-        : 100.3610;
-    return LatLng(lat, lng);
+    return LatLng(first.latitude, first.longitude);
   }
 
   Widget _buildLegend(Color color, String label) {
@@ -137,23 +315,31 @@ class _StatusScreenState extends State<StatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final admin = context.watch<AdminProvider>();
-    final sensors = _sensors(admin);
-    final totalSensors = admin.sensors.length;
-    final onlineSensors = admin.onlineSensorsCount;
-    final offlineSensors = admin.offlineSensorsCount;
-    final warningCount = admin.warningCount;
-    final dangerCount = admin.dangerCount;
-    final globalStatus = admin.globalStatus;
+    final telemetry = context.watch<TelemetryProvider>();
+    final sensors = _sensors(telemetry);
+    
+    // Automatically center and zoom camera to cover all active markers on load/filter
+    _checkAndFitBounds(sensors);
+    
+    final totalSensors = telemetry.sensors.length;
+    final onlineSensors = telemetry.onlineSensorsCount;
+    final offlineSensors = telemetry.offlineSensorsCount;
+    final warningCount = telemetry.warningCount;
+    final dangerCount = telemetry.dangerCount;
+    
+    final globalStatus = dangerCount > 0
+        ? 'Bahaya'
+        : warningCount > 0
+            ? 'Waspada'
+            : 'Aman';
+            
     final center = _centerOf(sensors);
 
     final latestUpdate = () {
       final timestamps = sensors
-          .map((s) => s['lastActiveAt'] ?? s['updatedAt'] ?? s['recordedAt'])
+          .map((s) => s.effectiveLastSeenAt)
           .where((v) => v != null)
-          .map((v) => DateTime.tryParse(v.toString()))
-          .where((dt) => dt != null)
-          .map((dt) => dt!.toLocal())
+          .map((v) => v!)
           .toList();
       if (timestamps.isEmpty) return DateTime.now();
       timestamps.sort((a, b) => b.compareTo(a));
@@ -165,7 +351,7 @@ class _StatusScreenState extends State<StatusScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            if (admin.errorMessage != null)
+            if (telemetry.errorMessage != null)
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -176,7 +362,7 @@ class _StatusScreenState extends State<StatusScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  admin.errorMessage!,
+                  telemetry.errorMessage!,
                   style: const TextStyle(
                     color: Color(0xFFB91C1C),
                     fontSize: 12,
@@ -206,7 +392,7 @@ class _StatusScreenState extends State<StatusScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Identifikasi titik risiko banjir secara real-time melalui integrasi peta dan data metrik sensor.',
+                    'Identifikasi titik risiko banjir secara real-time melalui integrasi peta and data metrik sensor.',
                     style: TextStyle(
                       color: AppTheme.textGrey,
                       fontSize: 12,
@@ -333,6 +519,7 @@ class _StatusScreenState extends State<StatusScreen> {
                             ),
                             clipBehavior: Clip.hardEdge,
                             child: FlutterMap(
+                              mapController: _mapController,
                               options: MapOptions(center: center, zoom: 13.5),
                               children: [
                                 TileLayer(
@@ -345,13 +532,8 @@ class _StatusScreenState extends State<StatusScreen> {
                                   markers: sensors.asMap().entries.map((entry) {
                                     final index = entry.key;
                                     final sensor = entry.value;
-                                    final lat = (sensor['latitude'] is num)
-                                        ? (sensor['latitude'] as num).toDouble()
-                                        : center.latitude;
-                                    final lng = (sensor['longitude'] is num)
-                                        ? (sensor['longitude'] as num)
-                                              .toDouble()
-                                        : center.longitude;
+                                    final lat = sensor.latitude;
+                                    final lng = sensor.longitude;
                                     final color = _sensorColor(sensor);
                                     final focusedNow = _focusedIndex == index;
                                     return Marker(
@@ -359,11 +541,14 @@ class _StatusScreenState extends State<StatusScreen> {
                                       width: 44,
                                       height: 44,
                                       builder: (ctx) => GestureDetector(
-                                        onTap: () => setState(
-                                          () => _focusedIndex = focusedNow
-                                              ? null
-                                              : index,
-                                        ),
+                                        onTap: () {
+                                          setState(
+                                            () => _focusedIndex = focusedNow
+                                                ? null
+                                                : index,
+                                          );
+                                          _showSensorDetails(context, sensor);
+                                        },
                                         child: AnimatedContainer(
                                           duration: const Duration(
                                             milliseconds: 200,
@@ -386,8 +571,8 @@ class _StatusScreenState extends State<StatusScreen> {
                                           ),
                                           child: Center(
                                             child: Text(
-                                              (sensor['name']?.toString() ??
-                                                      'S')
+                                              sensor.name
+                                                  .toString()
                                                   .substring(0, 1)
                                                   .toUpperCase(),
                                               style: const TextStyle(
@@ -431,10 +616,7 @@ class _StatusScreenState extends State<StatusScreen> {
                                 )
                               else ...[
                                 Text(
-                                  _focusedSensor(
-                                        sensors,
-                                      )!['name']?.toString() ??
-                                      '-',
+                                  _focusedSensor(sensors)!.name.toString(),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -442,7 +624,7 @@ class _StatusScreenState extends State<StatusScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${(_focusedSensor(sensors)!['waterLevel'] is num ? (_focusedSensor(sensors)!['waterLevel'] as num).toInt() : 0)} cm',
+                                  '${_focusedSensor(sensors)!.waterLevel?.toInt() ?? 0} cm',
                                   style: const TextStyle(
                                     color: AppTheme.textDark,
                                     fontWeight: FontWeight.bold,
@@ -460,7 +642,7 @@ class _StatusScreenState extends State<StatusScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Lat/Lng: ${(_focusedSensor(sensors)!['latitude'] as num?)?.toDouble().toStringAsFixed(4) ?? '-'}, ${(_focusedSensor(sensors)!['longitude'] as num?)?.toDouble().toStringAsFixed(4) ?? '-'}',
+                                  'Lat/Lng: ${_focusedSensor(sensors)!.latitude.toStringAsFixed(4)}, ${_focusedSensor(sensors)!.longitude.toStringAsFixed(4)}',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: AppTheme.textGrey,
@@ -529,14 +711,17 @@ class _StatusScreenState extends State<StatusScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (sensors.where((s) => true).isEmpty)
+                  if (sensors.isEmpty)
                     const Center(child: Text('Sensor tidak ditemukan.'))
                   else
                     ...sensors.map(
-                      (sensor) => _SensorCard(
-                        sensor: sensor,
-                        statusLabel: _sensorStatus(sensor),
-                        statusColor: _sensorColor(sensor),
+                      (sensor) => GestureDetector(
+                        onTap: () => _showSensorDetails(context, sensor),
+                        child: _SensorCard(
+                          sensor: sensor,
+                          statusLabel: _sensorStatus(sensor),
+                          statusColor: _sensorColor(sensor),
+                        ),
                       ),
                     ),
                 ],
@@ -591,7 +776,7 @@ class _StatBox extends StatelessWidget {
 }
 
 class _SensorCard extends StatelessWidget {
-  final Map<String, dynamic> sensor;
+  final SensorModel sensor;
   final String statusLabel;
   final Color statusColor;
   const _SensorCard({
@@ -602,16 +787,10 @@ class _SensorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final waterLevel = (sensor['waterLevel'] is num)
-        ? (sensor['waterLevel'] as num).toDouble()
-        : 0.0;
-    final battery = sensor['batteryLevel'] ?? sensor['battery_level'];
-    final lat = (sensor['latitude'] is num)
-        ? (sensor['latitude'] as num).toDouble()
-        : null;
-    final lng = (sensor['longitude'] is num)
-        ? (sensor['longitude'] as num).toDouble()
-        : null;
+    final waterLevel = sensor.waterLevel ?? 0.0;
+    final battery = sensor.batteryLevel;
+    final lat = sensor.latitude;
+    final lng = sensor.longitude;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -630,7 +809,7 @@ class _SensorCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sensor['name']?.toString() ?? '-',
+                  sensor.name,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
@@ -638,7 +817,7 @@ class _SensorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Lat/Lng: ${lat?.toStringAsFixed(4) ?? '-'}, ${lng?.toStringAsFixed(4) ?? '-'}',
+                  'Lat/Lng: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppTheme.textGrey,
@@ -646,7 +825,7 @@ class _SensorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Baterai: ${battery ?? '-'}',
+                  'Baterai: ${battery ?? '-'}%',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppTheme.textGrey,

@@ -38,6 +38,28 @@ class TelemetryProvider extends ChangeNotifier {
   List<AlertModel> get activeAlerts => _activeAlerts;
   AlertModel? get activeRealtimeAlert => _activeRealtimeAlert;
 
+  List<dynamic> _waterLevelsCurrent = [];
+  List<dynamic> _rainfallCurrent = [];
+  List<dynamic> _flowRateCurrent = [];
+
+  List<dynamic> get waterLevelsCurrent => _waterLevelsCurrent;
+  List<dynamic> get rainfallCurrent => _rainfallCurrent;
+  List<dynamic> get flowRateCurrent => _flowRateCurrent;
+
+  int get onlineSensorsCount => _sensors.where((s) => s.isOnline).length;
+  int get offlineSensorsCount => _sensors.length - onlineSensorsCount;
+  
+  int get warningCount => _sensors.where((s) => 
+    s.status?.toUpperCase() == 'WARNING' || 
+    s.status?.toUpperCase() == 'ALERT' || 
+    s.status?.toUpperCase() == 'WASPADA'
+  ).length;
+
+  int get dangerCount => _sensors.where((s) => 
+    s.status?.toUpperCase() == 'DANGER' || 
+    s.status?.toUpperCase() == 'BAHAYA'
+  ).length;
+
   TelemetryProvider() {
     _initRealtimeSubscriptions();
   }
@@ -58,7 +80,11 @@ class TelemetryProvider extends ChangeNotifier {
       // Also update the sensor's telemetry values directly if it exists in our cache
       final sensorIdx = _sensors.indexWhere((s) => s.id == log.sensorId || s.sensorId == log.sensorId);
       if (sensorIdx != -1) {
-        // If we want to change any fields we can update the state locally or trigger refresh
+        _sensors[sensorIdx] = _sensors[sensorIdx].copyWith(
+          waterLevel: log.waterLevel.toDouble(),
+          status: log.status,
+          updatedAt: log.recordedAt,
+        );
       }
 
       notifyListeners();
@@ -84,7 +110,12 @@ class TelemetryProvider extends ChangeNotifier {
       
       final index = _sensors.indexWhere((s) => s.id == updatedSensor.id || s.sensorId == updatedSensor.sensorId);
       if (index != -1) {
-        _sensors[index] = updatedSensor;
+        _sensors[index] = updatedSensor.copyWith(
+          waterLevel: _sensors[index].waterLevel,
+          rainfall: _sensors[index].rainfall,
+          flowRate: _sensors[index].flowRate,
+          status: _sensors[index].status,
+        );
       } else {
         _sensors.add(updatedSensor);
       }
@@ -109,21 +140,98 @@ class TelemetryProvider extends ChangeNotifier {
       // 1. Fetch Sensors
       _sensors = await _apiService.fetchSensors(limit: 50);
 
-      // 2. Fetch Histories
-      _waterLevelHistory = await _apiService.fetchWaterLevelHistory(
-        sensorId: sensorId,
-        limit: 20,
-      );
+      // Fetch current telemetry data from endpoints
+      try {
+        final wlCurrent = await _apiService.get('water-levels/current');
+        _waterLevelsCurrent = wlCurrent is List<dynamic> ? wlCurrent : [];
+      } catch (e) {
+        debugPrint('Failed to fetch current water levels: $e');
+        _waterLevelsCurrent = [];
+      }
 
-      _rainfallHistory = await _apiService.fetchRainfallHistory(
-        sensorId: sensorId,
-        limit: 20,
-      );
+      try {
+        final rfCurrent = await _apiService.get('rainfall/current');
+        _rainfallCurrent = rfCurrent is List<dynamic> ? rfCurrent : [];
+      } catch (e) {
+        debugPrint('Failed to fetch current rainfall: $e');
+        _rainfallCurrent = [];
+      }
 
-      _flowRateHistory = await _apiService.fetchFlowRateHistory(
-        sensorId: sensorId,
-        limit: 20,
-      );
+      try {
+        final frCurrent = await _apiService.get('flow-rate/current');
+        _flowRateCurrent = frCurrent is List<dynamic> ? frCurrent : [];
+      } catch (e) {
+        debugPrint('Failed to fetch current flow rates: $e');
+        _flowRateCurrent = [];
+      }
+
+      // Merge current telemetry details into the _sensors model list
+      for (int i = 0; i < _sensors.length; i++) {
+        final s = _sensors[i];
+
+        // Match water level
+        final wl = _waterLevelsCurrent.firstWhere(
+          (item) => item is Map<String, dynamic> && item['sensorId']?.toString() == s.sensorId,
+          orElse: () => null,
+        );
+        final waterLevel = wl != null ? (wl['waterLevel'] as num?)?.toDouble() : null;
+        final status = wl != null ? wl['status']?.toString() : null;
+
+        // Match rainfall
+        final rf = _rainfallCurrent.firstWhere(
+          (item) => item is Map<String, dynamic> && item['sensorId']?.toString() == s.sensorId,
+          orElse: () => null,
+        );
+        final rainfall = rf != null ? (rf['rainfall'] as num?)?.toDouble() : null;
+
+        // Match flow rate
+        final fr = _flowRateCurrent.firstWhere(
+          (item) => item is Map<String, dynamic> && item['sensorId']?.toString() == s.sensorId,
+          orElse: () => null,
+        );
+        final flowRate = fr != null ? (fr['flowRate'] as num?)?.toDouble() : null;
+
+        _sensors[i] = s.copyWith(
+          waterLevel: waterLevel,
+          rainfall: rainfall,
+          flowRate: flowRate,
+          status: status,
+        );
+      }
+
+      // 2. Fetch Histories with required date parameters and safe sensorId fallback
+      final targetSensorId = sensorId ?? (_sensors.isNotEmpty ? _sensors.first.sensorId : null);
+      if (targetSensorId != null) {
+        final now = DateTime.now();
+        final sevenDaysAgo = now.subtract(const Duration(days: 7));
+        final startIso = sevenDaysAgo.toUtc().toIso8601String();
+        final endIso = now.toUtc().toIso8601String();
+
+        _waterLevelHistory = await _apiService.fetchWaterLevelHistory(
+          sensorId: targetSensorId,
+          startDate: startIso,
+          endDate: endIso,
+          limit: 20,
+        );
+
+        _rainfallHistory = await _apiService.fetchRainfallHistory(
+          sensorId: targetSensorId,
+          startDate: startIso,
+          endDate: endIso,
+          limit: 20,
+        );
+
+        _flowRateHistory = await _apiService.fetchFlowRateHistory(
+          sensorId: targetSensorId,
+          startDate: startIso,
+          endDate: endIso,
+          limit: 20,
+        );
+      } else {
+        _waterLevelHistory = [];
+        _rainfallHistory = [];
+        _flowRateHistory = [];
+      }
 
       // 3. Fetch Active Alerts
       _activeAlerts = await _apiService.fetchActiveAlerts();
@@ -140,9 +248,15 @@ class TelemetryProvider extends ChangeNotifier {
 
   // Refresh Single Metri (e.g. manually triggered)
   Future<void> refreshWaterLevels({String? sensorId}) async {
+    final targetSensorId = sensorId ?? (_sensors.isNotEmpty ? _sensors.first.sensorId : null);
+    if (targetSensorId == null) return;
     try {
+      final now = DateTime.now();
+      final sevenDaysAgo = now.subtract(const Duration(days: 7));
       _waterLevelHistory = await _apiService.fetchWaterLevelHistory(
-        sensorId: sensorId,
+        sensorId: targetSensorId,
+        startDate: sevenDaysAgo.toUtc().toIso8601String(),
+        endDate: now.toUtc().toIso8601String(),
         limit: 20,
       );
       notifyListeners();

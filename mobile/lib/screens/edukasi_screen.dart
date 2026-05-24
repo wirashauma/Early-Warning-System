@@ -12,6 +12,22 @@ class EdukasiScreen extends StatefulWidget {
 
 class _EdukasiScreenState extends State<EdukasiScreen> {
   final Set<int> _expandedFaqs = {};
+  final GlobalKey _yellowKey = GlobalKey();
+  final GlobalKey _orangeKey = GlobalKey();
+  final GlobalKey _redKey = GlobalKey();
+  final GlobalKey _checklistKey = GlobalKey();
+  final GlobalKey _faqKey = GlobalKey();
+
+  void _scrollToKey(GlobalKey key) {
+    final context = key.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,11 +85,11 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _JumpPill(label: 'Aksi Kuning'),
-              _JumpPill(label: 'Aksi Oren'),
-              _JumpPill(label: 'Aksi Merah'),
-              _JumpPill(label: 'Checklist'),
-              _JumpPill(label: 'FAQ'),
+              _JumpPill(label: 'Aksi Kuning', onTap: () => _scrollToKey(_yellowKey)),
+              _JumpPill(label: 'Aksi Oren', onTap: () => _scrollToKey(_orangeKey)),
+              _JumpPill(label: 'Aksi Merah', onTap: () => _scrollToKey(_redKey)),
+              _JumpPill(label: 'Checklist', onTap: () => _scrollToKey(_checklistKey)),
+              _JumpPill(label: 'FAQ', onTap: () => _scrollToKey(_faqKey)),
             ],
           ),
           const SizedBox(height: 16),
@@ -211,6 +227,8 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
       ),
     ];
 
+    final keys = [_yellowKey, _orangeKey, _redKey];
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -225,7 +243,10 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
             style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          ...levels.map((l) => _LevelCard(level: l)),
+          ...levels.asMap().entries.map((e) => Container(
+                key: keys[e.key],
+                child: _LevelCard(level: e.value),
+              )),
         ],
       ),
     );
@@ -242,6 +263,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
     ];
 
     return Container(
+      key: _checklistKey,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -478,6 +500,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
     ];
 
     return Container(
+      key: _faqKey,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -602,7 +625,9 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
                 child: const Text('Buka Dashboard'),
               ),
               OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  navIndexNotifier.value = 2; // Navigate to Peringatan/Alert tab
+                },
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -796,17 +821,25 @@ class _LevelCard extends StatelessWidget {
 
 class _JumpPill extends StatelessWidget {
   final String label;
-  const _JumpPill({required this.label});
+  final VoidCallback? onTap;
+  const _JumpPill({required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        borderRadius: BorderRadius.circular(20),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 }

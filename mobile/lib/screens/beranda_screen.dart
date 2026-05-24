@@ -141,96 +141,105 @@ class BerandaScreen extends StatelessWidget {
   }
 
   Widget _buildAdminStatsSection() {
-    // Sinkronisasi data manifest dari berkas seed.ts (3 Perangkat Water Level + 2 Rain Gauge = 5 Sensor Aktif)
-    final adminStats = [
-      {
-        'value': '0',
-        'label': 'Sensor Terpasang',
-        'icon': Icons.sensors,
-        'color': AppTheme.primaryBlue,
-      },
-      {
-        'value': 'NON-AKTIF',
-        'label': 'Konektivitas Global',
-        'icon': Icons.cloud_off,
-        'color': Colors.grey,
-      },
-      {
-        'value': '0',
-        'label': 'Status Waspada',
-        'icon': Icons.warning_rounded,
-        'color': AppTheme.statusWaspada,
-      },
-      {
-        'value': '0',
-        'label': 'Status Bahaya',
-        'icon': Icons.notifications_active,
-        'color': Colors.redAccent,
-      },
-    ];
+    return Consumer<AdminProvider>(
+      builder: (context, adminProvider, _) {
+        final sensorCount = adminProvider.sensors.length;
+        final onlineCount = adminProvider.onlineSensorsCount;
+        final warningCount = adminProvider.warningCount;
+        final dangerCount = adminProvider.dangerCount;
+        final isOnline = onlineCount > 0;
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Kondisi Infrastruktur Real-Time',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.5,
-            children: adminStats.map((s) {
-              return Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+        final adminStats = [
+          {
+            'value': '$sensorCount',
+            'label': 'Sensor Terpasang',
+            'icon': Icons.sensors,
+            'color': AppTheme.primaryBlue,
+          },
+          {
+            'value': isOnline ? '$onlineCount AKTIF' : 'NON-AKTIF',
+            'label': 'Konektivitas Global',
+            'icon': isOnline ? Icons.cloud_done : Icons.cloud_off,
+            'color': isOnline ? AppTheme.statusNormal : Colors.grey,
+          },
+          {
+            'value': '$warningCount',
+            'label': 'Status Waspada',
+            'icon': Icons.warning_rounded,
+            'color': AppTheme.statusWaspada,
+          },
+          {
+            'value': '$dangerCount',
+            'label': 'Status Bahaya',
+            'icon': Icons.notifications_active,
+            'color': Colors.redAccent,
+          },
+        ];
+
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Kondisi Infrastruktur Real-Time',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      s['icon'] as IconData,
-                      color: s['color'] as Color,
-                      size: 20,
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.5,
+                children: adminStats.map((s) {
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      s['value'] as String,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: s['color'] as Color,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          s['icon'] as IconData,
+                          color: s['color'] as Color,
+                          size: 20,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          s['value'] as String,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: s['color'] as Color,
+                          ),
+                        ),
+                        Text(
+                          s['label'] as String,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textGrey,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      s['label'] as String,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textGrey,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
