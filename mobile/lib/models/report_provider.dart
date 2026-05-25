@@ -28,6 +28,7 @@ class ReportProvider extends ChangeNotifier {
 
   // Combined raw rows used by the table
   List<Map<String, dynamic>> rawRows = [];
+  List<String> partialErrors = [];
 
   final DateFormat _fmt = DateFormat("yyyy-MM-dd'T'00:00:00.000'Z'");
 
@@ -93,6 +94,7 @@ class ReportProvider extends ChangeNotifier {
   Future<void> applyFilter() async {
     loading = true;
     error = null;
+    partialErrors = [];
     notifyListeners();
 
     final startIso = _fmt.format(startDate);
@@ -135,7 +137,10 @@ class ReportProvider extends ChangeNotifier {
               frList.addAll(fr);
             }
           } catch (e) {
-            debugPrint('[ReportProvider] applyFilter error on ${s.sensorId}: $e');
+            debugPrint(
+              '[ReportProvider] applyFilter error on ${s.sensorId}: $e',
+            );
+            partialErrors.add('${s.sensorId}: $e');
           }
         }
       } else {
@@ -184,7 +189,10 @@ class ReportProvider extends ChangeNotifier {
               frList.addAll(fr);
             }
           } catch (e) {
-            debugPrint('[ReportProvider] applyFilter error on ${sensor.sensorId}: $e');
+            debugPrint(
+              '[ReportProvider] applyFilter error on ${sensor.sensorId}: $e',
+            );
+            partialErrors.add('${sensor.sensorId}: $e');
             rethrow;
           }
         }
@@ -234,6 +242,11 @@ class ReportProvider extends ChangeNotifier {
             a['timestamp'],
           ).compareTo(DateTime.parse(b['timestamp'])),
         );
+
+      if (partialErrors.isNotEmpty) {
+        error =
+            'Sebagian data laporan gagal dimuat:\n${partialErrors.take(3).join('\n')}';
+      }
 
       notifyListeners();
     } catch (e) {

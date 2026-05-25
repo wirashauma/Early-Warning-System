@@ -54,6 +54,7 @@ class AdminService extends ChangeNotifier {
   Future<dynamic> createSensor({
     required String sensorId,
     required String name,
+    required String type,
     required double latitude,
     required double longitude,
     required int batteryLevel,
@@ -63,6 +64,7 @@ class AdminService extends ChangeNotifier {
       return await _apiService.post('/sensors', {
         'sensorId': sensorId,
         'name': name,
+        'type': type,
         'latitude': latitude,
         'longitude': longitude,
         'batteryLevel': batteryLevel,

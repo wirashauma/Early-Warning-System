@@ -169,6 +169,27 @@ class _ReportsBodyState extends State<_ReportsBody> {
             ),
           ),
 
+          if (provider.error != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                provider.error!,
+                style: const TextStyle(
+                  color: Color(0xFFB91C1C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 12),
 
           // Charts - simple implementations

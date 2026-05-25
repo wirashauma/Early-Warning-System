@@ -193,6 +193,9 @@ class ApiService {
     String? avatar,
     String? phone,
     String? institution,
+    bool? notificationFlood,
+    bool? notificationStatus,
+    bool? notificationEmail,
   }) async {
     final body = <String, dynamic>{'name': name.trim()};
     if (avatar != null) {
@@ -204,7 +207,20 @@ class ApiService {
     if (institution != null) {
       body['institution'] = institution.trim();
     }
+    if (notificationFlood != null) {
+      body['notificationFlood'] = notificationFlood;
+    }
+    if (notificationStatus != null) {
+      body['notificationStatus'] = notificationStatus;
+    }
+    if (notificationEmail != null) {
+      body['notificationEmail'] = notificationEmail;
+    }
     return await put('auth/profile', body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> markNotificationsReadAll() async {
+    return await put('notifications/read-all', {}) as Map<String, dynamic>;
   }
 
   // ==========================================

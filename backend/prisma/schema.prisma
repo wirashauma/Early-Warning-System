@@ -63,6 +63,10 @@ model User {
   role        UserRole @default(USER)
   institution String?
   phone       String?
+  notificationFlood  Boolean  @default(true) @map("notification_flood")
+  notificationStatus Boolean  @default(true) @map("notification_status")
+  notificationEmail  Boolean  @default(false) @map("notification_email")
+  notificationReadAt  DateTime? @map("notification_read_at")
   isActive    Boolean  @default(true) @map("is_active")
   avatar      String?  @db.Text 
   createdAt   DateTime @default(now()) @map("created_at")

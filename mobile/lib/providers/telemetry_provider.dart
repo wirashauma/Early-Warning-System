@@ -21,8 +21,9 @@ class TelemetryProvider extends ChangeNotifier {
   List<SensorModel> _sensors = [];
   List<AlertModel> _activeAlerts = [];
 
-  AlertModel? _activeRealtimeAlert; // Populated when a "DANGER" alert is broadcasted realtime
-  
+  AlertModel?
+  _activeRealtimeAlert; // Populated when a "DANGER" alert is broadcasted realtime
+
   // Stream Subscriptions
   StreamSubscription<WaterLevelLog>? _waterLevelSub;
   StreamSubscription<AlertModel>? _alertSub;
@@ -48,17 +49,23 @@ class TelemetryProvider extends ChangeNotifier {
 
   int get onlineSensorsCount => _sensors.where((s) => s.isOnline).length;
   int get offlineSensorsCount => _sensors.length - onlineSensorsCount;
-  
-  int get warningCount => _sensors.where((s) => 
-    s.status?.toUpperCase() == 'WARNING' || 
-    s.status?.toUpperCase() == 'ALERT' || 
-    s.status?.toUpperCase() == 'WASPADA'
-  ).length;
 
-  int get dangerCount => _sensors.where((s) => 
-    s.status?.toUpperCase() == 'DANGER' || 
-    s.status?.toUpperCase() == 'BAHAYA'
-  ).length;
+  int get warningCount => _sensors
+      .where(
+        (s) =>
+            s.status?.toUpperCase() == 'WARNING' ||
+            s.status?.toUpperCase() == 'ALERT' ||
+            s.status?.toUpperCase() == 'WASPADA',
+      )
+      .length;
+
+  int get dangerCount => _sensors
+      .where(
+        (s) =>
+            s.status?.toUpperCase() == 'DANGER' ||
+            s.status?.toUpperCase() == 'BAHAYA',
+      )
+      .length;
 
   TelemetryProvider() {
     _initRealtimeSubscriptions();
@@ -67,18 +74,22 @@ class TelemetryProvider extends ChangeNotifier {
   void _initRealtimeSubscriptions() {
     // 1. Listen to Realtime Water Level Updates
     _waterLevelSub = _supabaseService.waterLevelStream.listen((log) {
-      debugPrint('🌊 TelemetryProvider: Realtime Water Level Log Appended: ${log.waterLevel} cm');
-      
+      debugPrint(
+        '🌊 TelemetryProvider: Realtime Water Level Log Appended: ${log.waterLevel} cm',
+      );
+
       // Append to the list and notify listeners to rebuild fl_chart
       _waterLevelHistory.add(log);
-      
+
       // Prevent unbounded growth in memory; keep the last 50 entries
       if (_waterLevelHistory.length > 50) {
         _waterLevelHistory.removeAt(0);
       }
 
       // Also update the sensor's telemetry values directly if it exists in our cache
-      final sensorIdx = _sensors.indexWhere((s) => s.id == log.sensorId || s.sensorId == log.sensorId);
+      final sensorIdx = _sensors.indexWhere(
+        (s) => s.id == log.sensorId || s.sensorId == log.sensorId,
+      );
       if (sensorIdx != -1) {
         _sensors[sensorIdx] = _sensors[sensorIdx].copyWith(
           waterLevel: log.waterLevel.toDouble(),
@@ -92,23 +103,29 @@ class TelemetryProvider extends ChangeNotifier {
 
     // 2. Listen to Realtime Danger Alerts
     _alertSub = _supabaseService.alertStream.listen((alert) {
-      debugPrint('🔥 TelemetryProvider: Realtime Alert Broadcast: ${alert.title}');
-      
+      debugPrint(
+        '🔥 TelemetryProvider: Realtime Alert Broadcast: ${alert.title}',
+      );
+
       _activeAlerts.insert(0, alert);
-      
+
       // Trigger Red Banner Overlay if severity is DANGER
       if (alert.severity.toUpperCase() == 'DANGER') {
         _activeRealtimeAlert = alert;
       }
-      
+
       notifyListeners();
     });
 
     // 3. Listen to Realtime Sensor Status Changes
     _sensorSub = _supabaseService.sensorStream.listen((updatedSensor) {
-      debugPrint('📡 TelemetryProvider: Realtime Sensor Status Updated: ${updatedSensor.sensorId} is ${updatedSensor.connectivity}');
-      
-      final index = _sensors.indexWhere((s) => s.id == updatedSensor.id || s.sensorId == updatedSensor.sensorId);
+      debugPrint(
+        '📡 TelemetryProvider: Realtime Sensor Status Updated: ${updatedSensor.sensorId} is ${updatedSensor.connectivity}',
+      );
+
+      final index = _sensors.indexWhere(
+        (s) => s.id == updatedSensor.id || s.sensorId == updatedSensor.sensorId,
+      );
       if (index != -1) {
         _sensors[index] = updatedSensor.copyWith(
           waterLevel: _sensors[index].waterLevel,
@@ -119,7 +136,7 @@ class TelemetryProvider extends ChangeNotifier {
       } else {
         _sensors.add(updatedSensor);
       }
-      
+
       notifyListeners();
     });
   }
@@ -171,25 +188,37 @@ class TelemetryProvider extends ChangeNotifier {
 
         // Match water level
         final wl = _waterLevelsCurrent.firstWhere(
-          (item) => item is Map<String, dynamic> && item['sensorId']?.toString() == s.sensorId,
+          (item) =>
+              item is Map<String, dynamic> &&
+              item['sensorId']?.toString() == s.sensorId,
           orElse: () => null,
         );
-        final waterLevel = wl != null ? (wl['waterLevel'] as num?)?.toDouble() : null;
+        final waterLevel = wl != null
+            ? (wl['waterLevel'] as num?)?.toDouble()
+            : null;
         final status = wl != null ? wl['status']?.toString() : null;
 
         // Match rainfall
         final rf = _rainfallCurrent.firstWhere(
-          (item) => item is Map<String, dynamic> && item['sensorId']?.toString() == s.sensorId,
+          (item) =>
+              item is Map<String, dynamic> &&
+              item['sensorId']?.toString() == s.sensorId,
           orElse: () => null,
         );
-        final rainfall = rf != null ? (rf['rainfall'] as num?)?.toDouble() : null;
+        final rainfall = rf != null
+            ? (rf['rainfall'] as num?)?.toDouble()
+            : null;
 
         // Match flow rate
         final fr = _flowRateCurrent.firstWhere(
-          (item) => item is Map<String, dynamic> && item['sensorId']?.toString() == s.sensorId,
+          (item) =>
+              item is Map<String, dynamic> &&
+              item['sensorId']?.toString() == s.sensorId,
           orElse: () => null,
         );
-        final flowRate = fr != null ? (fr['flowRate'] as num?)?.toDouble() : null;
+        final flowRate = fr != null
+            ? (fr['flowRate'] as num?)?.toDouble()
+            : null;
 
         _sensors[i] = s.copyWith(
           waterLevel: waterLevel,
@@ -199,39 +228,13 @@ class TelemetryProvider extends ChangeNotifier {
         );
       }
 
-      // 2. Fetch Histories with required date parameters and safe sensorId fallback
-      final targetSensorId = sensorId ?? (_sensors.isNotEmpty ? _sensors.first.sensorId : null);
-      if (targetSensorId != null) {
-        final now = DateTime.now();
-        final sevenDaysAgo = now.subtract(const Duration(days: 7));
-        final startIso = sevenDaysAgo.toUtc().toIso8601String();
-        final endIso = now.toUtc().toIso8601String();
-
-        _waterLevelHistory = await _apiService.fetchWaterLevelHistory(
-          sensorId: targetSensorId,
-          startDate: startIso,
-          endDate: endIso,
-          limit: 20,
-        );
-
-        _rainfallHistory = await _apiService.fetchRainfallHistory(
-          sensorId: targetSensorId,
-          startDate: startIso,
-          endDate: endIso,
-          limit: 20,
-        );
-
-        _flowRateHistory = await _apiService.fetchFlowRateHistory(
-          sensorId: targetSensorId,
-          startDate: startIso,
-          endDate: endIso,
-          limit: 20,
-        );
-      } else {
-        _waterLevelHistory = [];
-        _rainfallHistory = [];
-        _flowRateHistory = [];
-      }
+      // 2. Keep history lists empty here; the dashboard loads per-sensor history
+      // only when a matching sensor is selected. This avoids querying the wrong
+      // endpoint for mixed sensor inventories (e.g. flow sensor passed to
+      // water-level history) and prevents false 404s on app startup.
+      _waterLevelHistory = [];
+      _rainfallHistory = [];
+      _flowRateHistory = [];
 
       // 3. Fetch Active Alerts
       _activeAlerts = await _apiService.fetchActiveAlerts();
@@ -248,7 +251,8 @@ class TelemetryProvider extends ChangeNotifier {
 
   // Refresh Single Metri (e.g. manually triggered)
   Future<void> refreshWaterLevels({String? sensorId}) async {
-    final targetSensorId = sensorId ?? (_sensors.isNotEmpty ? _sensors.first.sensorId : null);
+    final targetSensorId =
+        sensorId ?? (_sensors.isNotEmpty ? _sensors.first.sensorId : null);
     if (targetSensorId == null) return;
     try {
       final now = DateTime.now();

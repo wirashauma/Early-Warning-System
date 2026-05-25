@@ -1,27 +1,93 @@
 import 'package:flutter/material.dart';
+
+import '../models/alert_model.dart';
+import '../models/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
 
-class AlertScreen extends StatelessWidget {
+class AlertScreen extends StatefulWidget {
   const AlertScreen({super.key});
+
+  @override
+  State<AlertScreen> createState() => _AlertScreenState();
+}
+
+class _AlertScreenState extends State<AlertScreen> {
+  final ApiService _apiService = ApiService();
+  late Future<List<AlertModel>> _alertsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _alertsFuture = _fetchAlerts();
+  }
+
+  Future<List<AlertModel>> _fetchAlerts() async {
+    return _apiService.fetchActiveAlerts();
+  }
+
+  void _refreshAlerts() {
+    setState(() {
+      _alertsFuture = _fetchAlerts();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: EWSAppBar(
-        onRefresh: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Memperbarui alerts...')),
-          );
-        },
-      ),
+      appBar: EWSAppBar(onRefresh: _refreshAlerts),
       backgroundColor: AppTheme.pageBg,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildAlertsList(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: () async => _refreshAlerts(),
+        child: FutureBuilder<List<AlertModel>>(
+          future: _alertsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  _buildHeader(),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: AppTheme.statusBahaya,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Gagal memuat alert terbaru:\n${snapshot.error}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppTheme.statusBahaya,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _refreshAlerts,
+                          child: const Text('Coba Lagi'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final alerts = snapshot.data ?? const <AlertModel>[];
+
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [_buildHeader(), _buildAlertsList(alerts)],
+            );
+          },
         ),
       ),
     );
@@ -32,15 +98,19 @@ class AlertScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       color: Colors.white,
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Notifikasi & Alert',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textDark,
+            ),
           ),
-          const SizedBox(height: 4),
-          const Text(
+          SizedBox(height: 4),
+          Text(
             'Pantau notifikasi banjir dan update sistem',
             style: TextStyle(color: AppTheme.textGrey, fontSize: 13),
           ),
@@ -49,38 +119,31 @@ class AlertScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAlertsList() {
-    final alerts = [
-      {
-        'title': 'Status Kuning - Sensor H1 Batang Arau',
-        'message': 'Ketinggian air telah mencapai 165 cm. Siapkan perlengkapan darurat.',
-        'severity': 'WARNING',
-        'time': '10 menit yang lalu',
-        'icon': Icons.warning_outlined,
-        'color': AppTheme.statusWaspada,
-      },
-      {
-        'title': 'Update Sistem Berhasil',
-        'message': 'Data sensor telah diperbarui. Semua sensor dalam kondisi normal.',
-        'severity': 'INFO',
-        'time': '25 menit yang lalu',
-        'icon': Icons.info_outlined,
-        'color': AppTheme.accentBlue,
-      },
-      {
-        'title': 'Koneksi Sensor T1 Hilang',
-        'message': 'Sensor T1 tidak merespons. Tim teknis sedang memperbaiki.',
-        'severity': 'ERROR',
-        'time': '1 jam yang lalu',
-        'icon': Icons.signal_cellular_null,
-        'color': AppTheme.statusBahaya,
-      },
-    ];
+  Widget _buildAlertsList(List<AlertModel> alerts) {
+    if (alerts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: Text('Belum ada alert aktif')),
+      );
+    }
 
     return Container(
       margin: const EdgeInsets.all(12),
       child: Column(
         children: alerts.map((alert) {
+          final severity = alert.severity.toUpperCase();
+          final color = severity == 'DANGER'
+              ? AppTheme.statusBahaya
+              : severity == 'WARNING'
+              ? AppTheme.statusWaspada
+              : AppTheme.accentBlue;
+          final icon = severity == 'DANGER'
+              ? Icons.error_outline
+              : severity == 'WARNING'
+              ? Icons.warning_outlined
+              : Icons.info_outlined;
+          final time = alert.sentAt.toLocal().toString().split('.').first;
+
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Container(
@@ -91,7 +154,7 @@ class AlertScreen extends StatelessWidget {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
-                    color: (alert['color'] as Color).withAlpha(26),
+                    color: color.withAlpha(26),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -104,14 +167,10 @@ class AlertScreen extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: (alert['color'] as Color).withAlpha(26),
+                      color: color.withAlpha(26),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
-                      alert['icon'] as IconData,
-                      color: alert['color'] as Color,
-                      size: 22,
-                    ),
+                    child: Icon(icon, color: color, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -119,7 +178,7 @@ class AlertScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          alert['title'] as String,
+                          alert.title.isNotEmpty ? alert.title : 'Alert',
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -128,7 +187,7 @@ class AlertScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          alert['message'] as String,
+                          alert.message,
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.textGrey,
@@ -139,7 +198,7 @@ class AlertScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          alert['time'] as String,
+                          time,
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFFCBD5E1),
@@ -150,17 +209,20 @@ class AlertScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: (alert['color'] as Color).withAlpha(26),
+                      color: color.withAlpha(26),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      alert['severity'] as String,
+                      severity,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: alert['color'] as Color,
+                        color: color,
                       ),
                     ),
                   ),

@@ -78,9 +78,6 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     final nameCtrl = TextEditingController(
       text: sensor['name']?.toString() ?? '',
     );
-    final riverCtrl = TextEditingController(
-      text: sensor['riverName']?.toString() ?? sensor['name']?.toString() ?? '',
-    );
     final latCtrl = TextEditingController(
       text: sensor['latitude']?.toString() ?? '',
     );
@@ -94,9 +91,6 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       text: sensor['connectivity']?.toString() ?? '',
     );
     String typeValue = (sensor['type']?.toString() ?? 'WATER_LEVEL').toString();
-    final zeroCtrl = TextEditingController(
-      text: sensor['zeroCalibrationCm']?.toString() ?? '',
-    );
 
     final result = await showDialog<bool>(
       context: context,
@@ -117,13 +111,6 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               TextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(labelText: 'Nama Lokasi'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: riverCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Sungai/Area',
-                ),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -150,15 +137,6 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                 },
                 decoration: const InputDecoration(labelText: 'Tipe Sensor'),
               ),
-              const SizedBox(height: 8),
-              if (typeValue == 'WATER_LEVEL')
-                TextField(
-                  controller: zeroCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Kalibrasi Nol (cm)',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
               const SizedBox(height: 8),
               TextField(
                 controller: latCtrl,
@@ -222,6 +200,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       final success = await provider.updateSensor(
         id: id,
         name: name,
+        type: typeValue,
         latitude: lat,
         longitude: lng,
         batteryLevel: battery,
@@ -254,6 +233,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     final lngCtrl = TextEditingController();
     final batteryCtrl = TextEditingController(text: '100');
     String connectivity = 'ONLINE';
+    String typeValue = 'WATER_LEVEL';
 
     final result = await showDialog<bool>(
       context: context,
@@ -279,15 +259,17 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               TextField(
                 controller: latCtrl,
                 decoration: const InputDecoration(labelText: 'Latitude'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: lngCtrl,
                 decoration: const InputDecoration(labelText: 'Longitude'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -298,21 +280,56 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               const SizedBox(height: 8),
               StatefulBuilder(
                 builder: (context, setDialogState) {
-                  return DropdownButtonFormField<String>(
-                    value: connectivity,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'ONLINE', child: Text('Online')),
-                      DropdownMenuItem(
-                          value: 'OFFLINE', child: Text('Offline')),
+                  return Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: typeValue,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'WATER_LEVEL',
+                            child: Text('Water Level'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'RAINFALL',
+                            child: Text('Rainfall'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'FLOW_RATE',
+                            child: Text('Flow Rate'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            setDialogState(() => typeValue = v);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Tipe Sensor',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: connectivity,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'ONLINE',
+                            child: Text('Online'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'OFFLINE',
+                            child: Text('Offline'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            setDialogState(() => connectivity = v);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Status Koneksi',
+                        ),
+                      ),
                     ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        setDialogState(() => connectivity = v);
-                      }
-                    },
-                    decoration:
-                        const InputDecoration(labelText: 'Status Koneksi'),
                   );
                 },
               ),
@@ -340,7 +357,8 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('ID Perangkat dan Nama Lokasi wajib diisi')),
+              content: Text('ID Perangkat dan Nama Lokasi wajib diisi'),
+            ),
           );
         }
         return;
@@ -354,6 +372,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       final success = await provider.createSensor(
         sensorId: sensorId,
         name: name,
+        type: typeValue,
         latitude: lat,
         longitude: lng,
         batteryLevel: battery,
@@ -372,7 +391,8 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  provider.errorMessage ?? 'Gagal menambahkan sensor'),
+                provider.errorMessage ?? 'Gagal menambahkan sensor',
+              ),
             ),
           );
         }
@@ -398,6 +418,37 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       body: adminProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
+          : adminProvider.errorMessage != null && sensors.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Color(0xFFB91C1C),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      adminProvider.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFFB91C1C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () =>
+                          context.read<AdminProvider>().loadSensors(),
+                      child: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : sensors.isEmpty
           ? Center(
               child: Padding(

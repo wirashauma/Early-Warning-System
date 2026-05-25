@@ -19,15 +19,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _notifFlood = true;
   bool _notifStatus = true;
   bool _notifEmail = false;
+  String? _syncedUserId;
+
+  void _syncNotificationPreferences(UserModel? user) {
+    if (user == null || _syncedUserId == user.id) return;
+    _syncedUserId = user.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _notifFlood = user.notificationFlood;
+        _notifStatus = user.notificationStatus;
+        _notifEmail = user.notificationEmail;
+      });
+    });
+  }
+
+  Future<void> _persistNotificationPreference(
+    UserModel user, {
+    required String label,
+    bool? flood,
+    bool? status,
+    bool? email,
+  }) async {
+    final previousFlood = _notifFlood;
+    final previousStatus = _notifStatus;
+    final previousEmail = _notifEmail;
+
+    setState(() {
+      if (flood != null) _notifFlood = flood;
+      if (status != null) _notifStatus = status;
+      if (email != null) _notifEmail = email;
+    });
+
+    final authProvider = context.read<AuthProvider>();
+    final ok = await authProvider.updateProfile(
+      name: user.name,
+      phone: user.phone ?? '',
+      address: user.address ?? '',
+      notificationFlood: _notifFlood,
+      notificationStatus: _notifStatus,
+      notificationEmail: _notifEmail,
+    );
+
+    if (!mounted) return;
+    if (!ok) {
+      setState(() {
+        _notifFlood = previousFlood;
+        _notifStatus = previousStatus;
+        _notifEmail = previousEmail;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Gagal menyimpan $label'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.currentUser;
+    _syncNotificationPreferences(user);
 
     return Scaffold(
       backgroundColor: AppTheme.pageBg,
-      body: user == null ? _buildNotLoggedIn(context) : _buildProfile(context, user),
+      body: user == null
+          ? _buildNotLoggedIn(context)
+          : _buildProfile(context, user),
     );
   }
 
@@ -45,27 +104,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: AppTheme.lightBlue,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.person_outline, size: 56, color: AppTheme.accentBlue),
+                child: const Icon(
+                  Icons.person_outline,
+                  size: 56,
+                  color: AppTheme.accentBlue,
+                ),
               ),
               const SizedBox(height: 20),
-              const Text('Belum Masuk', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                'Belum Masuk',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               const Text(
                 'Masuk ke akun Anda untuk mengakses profil, riwayat notifikasi, dan pengaturan personal.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textGrey, fontSize: 14, height: 1.5),
+                style: TextStyle(
+                  color: AppTheme.textGrey,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 32),
               AuthButton(
                 label: 'Masuk ke Akun',
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => LoginScreen(
-                    onLoginSuccess: () {
-                      if (Navigator.canPop(context)) Navigator.pop(context);
-                      setState(() {});
-                    },
-                  )),
+                  MaterialPageRoute(
+                    builder: (_) => LoginScreen(
+                      onLoginSuccess: () {
+                        if (Navigator.canPop(context)) Navigator.pop(context);
+                        setState(() {});
+                      },
+                    ),
+                  ),
                 ).then((_) => setState(() {})),
               ),
               const SizedBox(height: 12),
@@ -73,12 +145,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 label: 'Daftar Akun Baru',
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => RegisterScreen(
-                    onLoginSuccess: () {
-                      if (Navigator.canPop(context)) Navigator.pop(context);
-                      setState(() {});
-                    },
-                  )),
+                  MaterialPageRoute(
+                    builder: (_) => RegisterScreen(
+                      onLoginSuccess: () {
+                        if (Navigator.canPop(context)) Navigator.pop(context);
+                        setState(() {});
+                      },
+                    ),
+                  ),
                 ).then((_) => setState(() {})),
                 isOutlined: true,
               ),
@@ -113,45 +187,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Stack(
                       children: [
                         Container(
-                          width: 80, height: 80,
+                          width: 80,
+                          height: 80,
                           decoration: const BoxDecoration(
                             color: AppTheme.accentBlue,
                             shape: BoxShape.circle,
                           ),
                           child: Center(
                             child: Text(
-                              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                              user.name.isNotEmpty
+                                  ? user.name[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                         Positioned(
-                          bottom: 0, right: 0,
+                          bottom: 0,
+                          right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: const Icon(Icons.edit, size: 14, color: AppTheme.primaryBlue),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit,
+                              size: 14,
+                              color: AppTheme.primaryBlue,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(user.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(user.email, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      user.email,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: user.role == 'admin' ? AppTheme.statusWaspada.withValues(alpha: 0.2) : AppTheme.statusNormal.withValues(alpha: 0.2),
+                        color: user.role == 'admin'
+                            ? AppTheme.statusWaspada.withValues(alpha: 0.2)
+                            : AppTheme.statusNormal.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: user.role == 'admin' ? AppTheme.statusWaspada : AppTheme.statusNormal,
+                          color: user.role == 'admin'
+                              ? AppTheme.statusWaspada
+                              : AppTheme.statusNormal,
                         ),
                       ),
                       child: Text(
-                        user.role == 'admin' ? ' 👑  Administrator' : ' 👤  Pengguna',
+                        user.role == 'admin'
+                            ? ' 👑  Administrator'
+                            : ' 👤  Pengguna',
                         style: TextStyle(
-                          color: user.role == 'admin' ? AppTheme.statusWaspada : AppTheme.statusNormal,
+                          color: user.role == 'admin'
+                              ? AppTheme.statusWaspada
+                              : AppTheme.statusNormal,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -170,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 _buildInfoSection(user),
                 const SizedBox(height: 16),
-                _buildNotificationSection(),
+                _buildNotificationSection(user),
                 const SizedBox(height: 16),
                 _buildMenuSection(context),
                 const SizedBox(height: 16),
@@ -192,8 +305,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _InfoRow(Icons.person, 'Nama Lengkap', user.name),
           _InfoRow(Icons.email_outlined, 'Email', user.email),
-          _InfoRow(Icons.phone_outlined, 'Telepon', user.phone?.isNotEmpty == true ? user.phone! : '-'),
-          _InfoRow(Icons.location_on_outlined, 'Alamat', user.address?.isNotEmpty == true ? user.address! : '-'),
+          _InfoRow(
+            Icons.phone_outlined,
+            'Telepon',
+            user.phone?.isNotEmpty == true ? user.phone! : '-',
+          ),
+          _InfoRow(
+            Icons.location_on_outlined,
+            'Alamat',
+            user.address?.isNotEmpty == true ? user.address! : '-',
+          ),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
@@ -204,7 +325,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primaryBlue,
                 side: const BorderSide(color: AppTheme.primaryBlue),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
@@ -213,7 +336,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildNotificationSection() {
+  Widget _buildNotificationSection(UserModel user) {
     return _SectionCard(
       title: 'Pengaturan Notifikasi',
       icon: Icons.notifications_outlined,
@@ -225,7 +348,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Notifikasi ketika status berubah',
             value: _notifFlood,
             color: AppTheme.accentBlue,
-            onChanged: (v) => setState(() => _notifFlood = v),
+            onChanged: (v) => _persistNotificationPreference(
+              user,
+              label: 'alert banjir',
+              flood: v,
+            ),
           ),
           _SwitchRow(
             icon: Icons.bar_chart_outlined,
@@ -233,7 +360,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Info pembaruan data sensor',
             value: _notifStatus,
             color: AppTheme.statusWaspada,
-            onChanged: (v) => setState(() => _notifStatus = v),
+            onChanged: (v) => _persistNotificationPreference(
+              user,
+              label: 'update status sensor',
+              status: v,
+            ),
           ),
           _SwitchRow(
             icon: Icons.email_outlined,
@@ -241,7 +372,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Kirim alert ke email terdaftar',
             value: _notifEmail,
             color: AppTheme.statusNormal,
-            onChanged: (v) => setState(() => _notifEmail = v),
+            onChanged: (v) => _persistNotificationPreference(
+              user,
+              label: 'notifikasi email',
+              email: v,
+            ),
           ),
         ],
       ),
@@ -250,68 +385,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMenuSection(BuildContext context) {
     final menus = [
-      _MenuItem(Icons.history, 'Riwayat Alert', 'Lihat riwayat peringatan banjir', () {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Riwayat Alert'),
-            content: const Text('Belum ada riwayat alert. Alert akan muncul di sini ketika status banjir berubah.'),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))],
-          ),
-        );
-      }),
-      _MenuItem(Icons.map_outlined, 'Sensor Terdekat', 'Pantau sensor di sekitar Anda', () {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Sensor Aktif'),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(' 📍  Sensor Hulu — Batang Arau', style: TextStyle(fontSize: 13)),
-                SizedBox(height: 6),
-                Text(' 📍  Sensor Tengah — Batang Arau', style: TextStyle(fontSize: 13)),
-                SizedBox(height: 6),
-                Text(' 📍  Sensor Hilir — Batang Arau', style: TextStyle(fontSize: 13)),
+      _MenuItem(
+        Icons.history,
+        'Riwayat Alert',
+        'Lihat riwayat peringatan banjir',
+        () {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Riwayat Alert'),
+              content: const Text(
+                'Belum ada riwayat alert. Alert akan muncul di sini ketika status banjir berubah.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Tutup'),
+                ),
               ],
             ),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))],
-          ),
-        );
-      }),
-      _MenuItem(Icons.help_outline, 'Bantuan & FAQ', 'Panduan penggunaan aplikasi', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const EdukasiScreen()),
-        );
-      }),
-      _MenuItem(Icons.shield_outlined, 'Kebijakan Privasi', 'Cara kami melindungi data Anda', () {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Kebijakan Privasi'),
-            content: const Text('Data Anda disimpan secara aman di Firebase dan tidak dibagikan kepada pihak ketiga tanpa izin Anda.'),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))],
-          ),
-        );
-      }),
-      _MenuItem(Icons.info_outline, 'Tentang Aplikasi', 'Versi 1.0.0 • EWS Flood Guard', () {
-        showAboutDialog(
-          context: context,
-          applicationName: 'EWS Flood Guard',
-          applicationVersion: '1.0.0',
-          applicationIcon: const Icon(Icons.water_drop, color: Color(0xFF3B82F6), size: 40),
-          children: const [Text('Sistem Peringatan Dini Banjir berbasis sensor IoT untuk wilayah Batang Arau, Padang, Sumatera Barat.')],
-        );
-      }),
+          );
+        },
+      ),
+      _MenuItem(
+        Icons.map_outlined,
+        'Sensor Terdekat',
+        'Pantau sensor di sekitar Anda',
+        () {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Sensor Aktif'),
+              content: const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ' 📍  Sensor Hulu — Batang Arau',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    ' 📍  Sensor Tengah — Batang Arau',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    ' 📍  Sensor Hilir — Batang Arau',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Tutup'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      _MenuItem(
+        Icons.help_outline,
+        'Bantuan & FAQ',
+        'Panduan penggunaan aplikasi',
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const EdukasiScreen()),
+          );
+        },
+      ),
+      _MenuItem(
+        Icons.shield_outlined,
+        'Kebijakan Privasi',
+        'Cara kami melindungi data Anda',
+        () {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Kebijakan Privasi'),
+              content: const Text(
+                'Data Anda disimpan secara aman di Firebase dan tidak dibagikan kepada pihak ketiga tanpa izin Anda.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Tutup'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      _MenuItem(
+        Icons.info_outline,
+        'Tentang Aplikasi',
+        'Versi 1.0.0 • EWS Flood Guard',
+        () {
+          showAboutDialog(
+            context: context,
+            applicationName: 'EWS Flood Guard',
+            applicationVersion: '1.0.0',
+            applicationIcon: const Icon(
+              Icons.water_drop,
+              color: Color(0xFF3B82F6),
+              size: 40,
+            ),
+            children: const [
+              Text(
+                'Sistem Peringatan Dini Banjir berbasis sensor IoT untuk wilayah Batang Arau, Padang, Sumatera Barat.',
+              ),
+            ],
+          );
+        },
+      ),
     ];
     return _SectionCard(
       title: 'Lainnya',
       icon: Icons.more_horiz,
-      child: Column(
-        children: menus.map((m) => _MenuTile(item: m)).toList(),
-      ),
+      child: Column(children: menus.map((m) => _MenuTile(item: m)).toList()),
     );
   }
 
@@ -328,12 +522,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: AppTheme.statusBahaya,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 8),
-        const Text('© 2026 EWS Flood Guard. All rights reserved.', style: TextStyle(color: AppTheme.textGrey, fontSize: 11)),
+        const Text(
+          '© 2026 EWS Flood Guard. All rights reserved.',
+          style: TextStyle(color: AppTheme.textGrey, fontSize: 11),
+        ),
       ],
     );
   }
@@ -347,9 +546,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetCtx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+        ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -360,18 +563,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Edit Profil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(sheetCtx), icon: const Icon(Icons.close)),
+                    const Text(
+                      'Edit Profil',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetCtx),
+                      icon: const Icon(Icons.close),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                AuthTextField(label: 'Nama Lengkap', hint: 'Nama Anda', controller: nameCtrl,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Nama wajib diisi' : null),
+                AuthTextField(
+                  label: 'Nama Lengkap',
+                  hint: 'Nama Anda',
+                  controller: nameCtrl,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Nama wajib diisi' : null,
+                ),
                 const SizedBox(height: 14),
-                AuthTextField(label: 'Nomor Telepon', hint: '08xxxxxxxxxx', controller: phoneCtrl,
-                    keyboardType: TextInputType.phone),
+                AuthTextField(
+                  label: 'Nomor Telepon',
+                  hint: '08xxxxxxxxxx',
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 14),
-                AuthTextField(label: 'Alamat', hint: 'Alamat tinggal Anda', controller: addressCtrl, maxLines: 2),
+                AuthTextField(
+                  label: 'Alamat',
+                  hint: 'Alamat tinggal Anda',
+                  controller: addressCtrl,
+                  maxLines: 2,
+                ),
                 const SizedBox(height: 24),
                 AuthButton(
                   label: 'Simpan Perubahan',
@@ -381,14 +607,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     final authProvider = context.read<AuthProvider>();
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                     final ok = await authProvider.updateProfile(
-                      name: nameCtrl.text, phone: phoneCtrl.text, address: addressCtrl.text,
+                      name: nameCtrl.text,
+                      phone: phoneCtrl.text,
+                      address: addressCtrl.text,
                     );
                     if (!mounted) return;
                     if (ok) {
                       Navigator.pop(sheetCtx);
                       setState(() {});
                       scaffoldMessenger.showSnackBar(
-                        const SnackBar(content: Text('Profil berhasil diperbarui'), backgroundColor: AppTheme.statusNormal),
+                        const SnackBar(
+                          content: Text('Profil berhasil diperbarui'),
+                          backgroundColor: AppTheme.statusNormal,
+                        ),
                       );
                     }
                   },
@@ -409,9 +640,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('Keluar dari Akun?'),
-        content: const Text('Apakah Anda yakin ingin keluar? Anda perlu login kembali untuk mengakses fitur personal.'),
+        content: const Text(
+          'Apakah Anda yakin ingin keluar? Anda perlu login kembali untuk mengakses fitur personal.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
@@ -419,10 +655,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               setState(() {});
               widget.onLogout?.call();
               scaffoldMessenger.showSnackBar(
-                const SnackBar(content: Text('Berhasil keluar dari akun'), backgroundColor: AppTheme.statusNormal),
+                const SnackBar(
+                  content: Text('Berhasil keluar dari akun'),
+                  backgroundColor: AppTheme.statusNormal,
+                ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusBahaya, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.statusBahaya,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Ya, Keluar'),
           ),
         ],
@@ -435,7 +677,11 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
-  const _SectionCard({required this.title, required this.icon, required this.child});
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -452,7 +698,13 @@ class _SectionCard extends StatelessWidget {
             children: [
               Icon(icon, color: AppTheme.accentBlue, size: 18),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -481,8 +733,17 @@ class _InfoRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: AppTheme.textGrey, fontSize: 11)),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+              Text(
+                label,
+                style: const TextStyle(color: AppTheme.textGrey, fontSize: 11),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ],
@@ -496,8 +757,15 @@ class _SwitchRow extends StatelessWidget {
   final String label, subtitle;
   final bool value;
   final Color color;
-  final ValueChanged<bool> onChanged;
-  const _SwitchRow({required this.icon, required this.label, required this.subtitle, required this.value, required this.color, required this.onChanged});
+  final ValueChanged<bool>? onChanged;
+  const _SwitchRow({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.color,
+    required this.onChanged,
+  });
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -506,7 +774,10 @@ class _SwitchRow extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
@@ -514,12 +785,28 @@ class _SwitchRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                Text(subtitle, style: const TextStyle(color: AppTheme.textGrey, fontSize: 11)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppTheme.textGrey,
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged, activeColor: AppTheme.primaryBlue),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppTheme.primaryBlue,
+          ),
         ],
       ),
     );
@@ -551,8 +838,20 @@ class _MenuTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                  Text(item.subtitle, style: const TextStyle(color: AppTheme.textGrey, fontSize: 11)),
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    item.subtitle,
+                    style: const TextStyle(
+                      color: AppTheme.textGrey,
+                      fontSize: 11,
+                    ),
+                  ),
                 ],
               ),
             ),

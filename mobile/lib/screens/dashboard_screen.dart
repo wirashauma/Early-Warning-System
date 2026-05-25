@@ -34,7 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _historyError;
   final ApiService _api = ApiService();
 
-  Future<void> _loadSensorHistory(String sensorId) async {
+  Future<void> _loadSensorHistory(SensorModel sensor) async {
     if (!mounted) return;
     setState(() {
       _loadingHistory = true;
@@ -47,31 +47,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final startIso = oneDayAgo.toUtc().toIso8601String();
       final endIso = now.toUtc().toIso8601String();
 
+      final sensorType = sensor.type.toUpperCase();
       final results = await Future.wait([
-        _api
-            .fetchWaterLevelHistory(
-              sensorId: sensorId,
-              startDate: startIso,
-              endDate: endIso,
-              limit: 100,
-            )
-            .catchError((e) => <WaterLevelLog>[]),
-        _api
-            .fetchRainfallHistory(
-              sensorId: sensorId,
-              startDate: startIso,
-              endDate: endIso,
-              limit: 100,
-            )
-            .catchError((e) => <RainfallLog>[]),
-        _api
-            .fetchFlowRateHistory(
-              sensorId: sensorId,
-              startDate: startIso,
-              endDate: endIso,
-              limit: 100,
-            )
-            .catchError((e) => <FlowRateLog>[]),
+        sensorType == 'WATER_LEVEL'
+            ? _api
+                  .fetchWaterLevelHistory(
+                    sensorId: sensor.sensorId,
+                    startDate: startIso,
+                    endDate: endIso,
+                    limit: 100,
+                  )
+                  .catchError((e) => <WaterLevelLog>[])
+            : Future.value(<WaterLevelLog>[]),
+        sensorType == 'RAINFALL'
+            ? _api
+                  .fetchRainfallHistory(
+                    sensorId: sensor.sensorId,
+                    startDate: startIso,
+                    endDate: endIso,
+                    limit: 100,
+                  )
+                  .catchError((e) => <RainfallLog>[])
+            : Future.value(<RainfallLog>[]),
+        sensorType == 'FLOW_RATE'
+            ? _api
+                  .fetchFlowRateHistory(
+                    sensorId: sensor.sensorId,
+                    startDate: startIso,
+                    endDate: endIso,
+                    limit: 100,
+                  )
+                  .catchError((e) => <FlowRateLog>[])
+            : Future.value(<FlowRateLog>[]),
       ]);
 
       if (!mounted) return;
@@ -145,8 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           await telemetry.loadInitialData();
           if (telemetry.sensors.isNotEmpty &&
               _selectedSensorIndex < telemetry.sensors.length) {
-            final sensorId = telemetry.sensors[_selectedSensorIndex].sensorId;
-            _loadSensorHistory(sensorId);
+            _loadSensorHistory(telemetry.sensors[_selectedSensorIndex]);
           }
         } catch (e) {
           debugPrint('[DashboardScreen] loadInitialData failed: $e');
@@ -766,8 +772,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (i != null) {
                     setState(() => _selectedSensorIndex = i);
                     if (sensors.isNotEmpty && i < sensors.length) {
-                      final sensorId = sensors[i].sensorId;
-                      _loadSensorHistory(sensorId);
+                      _loadSensorHistory(sensors[i]);
                     }
                   }
                 },
@@ -912,7 +917,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: GestureDetector(
                           onTap: () {
                             setState(() => _selectedSensorIndex = i);
-                            _loadSensorHistory(s.sensorId);
+                            _loadSensorHistory(s);
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -1233,9 +1238,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             final sensors = telemetryProvider.sensors;
                             if (sensors.isNotEmpty &&
                                 _selectedSensorIndex < sensors.length) {
-                              final sensorId =
-                                  sensors[_selectedSensorIndex].sensorId;
-                              _loadSensorHistory(sensorId);
+                              _loadSensorHistory(
+                                telemetryProvider.sensors[_selectedSensorIndex],
+                              );
                             }
                           },
                           child: const Text(
@@ -1327,33 +1332,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DaruratScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.phone, size: 18),
-              label: const Text(
-                'Kontak Darurat',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.statusBahaya,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
           _ShortcutTile(
             icon: Icons.map_outlined,
             label: 'Buka Peta Sensor',
@@ -1366,6 +1344,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const EdukasiScreen()),
+              );
+            },
+          ),
+          _ShortcutTile(
+            icon: Icons.emergency_outlined,
+            label: 'Pusat Darurat',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DaruratScreen()),
               );
             },
           ),

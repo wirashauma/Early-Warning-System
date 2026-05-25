@@ -19,29 +19,20 @@ class AuthService {
   bool get isLoggedIn => _currentUser != null;
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
   final ApiService _apiService = ApiService();
 
   UserModel _mapBackendUserToModel(Map<String, dynamic> userData) {
-    return UserModel(
-      id: userData['id'] ?? '',
-      name: userData['name'] ?? 'User',
-      email: userData['email'] ?? '',
-      phone: userData['phone'],
-      role: (userData['role'] ?? 'user').toString(),
-      address: userData['address'],
-      createdAt: userData['createdAt'] != null
-          ? DateTime.parse(userData['createdAt'])
-          : DateTime.now(),
-    );
+    return UserModel.fromMap(userData['id']?.toString() ?? '', {
+      ...userData,
+      'address': userData['address'] ?? userData['institution'],
+    });
   }
 
   Future<AuthResult> login(String email, String password) async {
     try {
       final response = await _apiService.login(email, password);
-      
+
       final accessToken = response['accessToken'] as String?;
       final refreshToken = response['refreshToken'] as String?;
       final userData = response['user'] as Map<String, dynamic>?;
@@ -61,10 +52,7 @@ class AuthService {
       _currentUser = _mapBackendUserToModel(userData);
       return AuthResult(isSuccess: true);
     } catch (e) {
-      return AuthResult(
-        isSuccess: false,
-        errorMessage: e.toString(),
-      );
+      return AuthResult(isSuccess: false, errorMessage: e.toString());
     }
   }
 
@@ -102,10 +90,7 @@ class AuthService {
       _currentUser = _mapBackendUserToModel(userData);
       return AuthResult(isSuccess: true);
     } catch (e) {
-      return AuthResult(
-        isSuccess: false,
-        errorMessage: e.toString(),
-      );
+      return AuthResult(isSuccess: false, errorMessage: e.toString());
     }
   }
 
@@ -162,32 +147,35 @@ class AuthService {
     required String name,
     required String phone,
     required String address,
+    bool? notificationFlood,
+    bool? notificationStatus,
+    bool? notificationEmail,
   }) async {
     try {
       if (_currentUser == null) {
-        return AuthResult(
-          isSuccess: false,
-          errorMessage: 'User tidak login',
-        );
+        return AuthResult(isSuccess: false, errorMessage: 'User tidak login');
       }
 
       await _apiService.updateProfile(
         name,
         phone: phone,
         institution: address,
+        notificationFlood: notificationFlood,
+        notificationStatus: notificationStatus,
+        notificationEmail: notificationEmail,
       );
 
       _currentUser = _currentUser!.copyWith(
         name: name,
         phone: phone,
         address: address,
+        notificationFlood: notificationFlood,
+        notificationStatus: notificationStatus,
+        notificationEmail: notificationEmail,
       );
       return AuthResult(isSuccess: true);
     } catch (e) {
-      return AuthResult(
-        isSuccess: false,
-        errorMessage: e.toString(),
-      );
+      return AuthResult(isSuccess: false, errorMessage: e.toString());
     }
   }
 
@@ -196,10 +184,7 @@ class AuthService {
       await _firebaseAuth.sendPasswordResetEmail(email: email);
       return AuthResult(isSuccess: true);
     } catch (e) {
-      return AuthResult(
-        isSuccess: false,
-        errorMessage: e.toString(),
-      );
+      return AuthResult(isSuccess: false, errorMessage: e.toString());
     }
   }
 
@@ -216,5 +201,19 @@ class AuthService {
     await _firebaseAuth.signOut();
     _apiService.clearTokens();
     _currentUser = null;
+  }
+
+  Future<AuthResult> markNotificationsReadAll() async {
+    try {
+      if (_currentUser == null) {
+        return AuthResult(isSuccess: false, errorMessage: 'User tidak login');
+      }
+
+      await _apiService.markNotificationsReadAll();
+      _currentUser = _currentUser!.copyWith(notificationReadAt: DateTime.now());
+      return AuthResult(isSuccess: true);
+    } catch (e) {
+      return AuthResult(isSuccess: false, errorMessage: e.toString());
+    }
   }
 }

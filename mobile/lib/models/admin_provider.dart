@@ -167,6 +167,7 @@ class AdminProvider extends ChangeNotifier {
   Future<bool> createSensor({
     required String sensorId,
     required String name,
+    required String type,
     required double latitude,
     required double longitude,
     required int batteryLevel,
@@ -179,6 +180,7 @@ class AdminProvider extends ChangeNotifier {
       await adminService.createSensor(
         sensorId: sensorId,
         name: name,
+        type: type,
         latitude: latitude,
         longitude: longitude,
         batteryLevel: batteryLevel,

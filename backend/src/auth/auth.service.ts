@@ -27,6 +27,9 @@ interface UpdateProfilePayload {
   avatar?: string | null;
   phone?: string | null;
   institution?: string | null;
+  notificationFlood?: boolean;
+  notificationStatus?: boolean;
+  notificationEmail?: boolean;
 }
 
 interface JwtPayload {
@@ -53,6 +56,10 @@ interface PublicUserFields extends UserWithTokenFields {
   avatar?: string | null;
   institution?: string | null;
   phone?: string | null;
+  notificationFlood?: boolean;
+  notificationStatus?: boolean;
+  notificationEmail?: boolean;
+  notificationReadAt?: Date | null;
 }
 
 @Injectable()
@@ -234,10 +241,28 @@ export class AuthService {
     if (data.institution !== undefined) {
       updateData.institution = data.institution?.trim() || null;
     }
+    if (data.notificationFlood !== undefined) {
+      updateData.notificationFlood = data.notificationFlood;
+    }
+    if (data.notificationStatus !== undefined) {
+      updateData.notificationStatus = data.notificationStatus;
+    }
+    if (data.notificationEmail !== undefined) {
+      updateData.notificationEmail = data.notificationEmail;
+    }
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: updateData,
+    });
+
+    return this.toPublicUser(updatedUser);
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { notificationReadAt: new Date() },
     });
 
     return this.toPublicUser(updatedUser);
@@ -275,6 +300,10 @@ export class AuthService {
       avatar: user.avatar ?? null,
       institution: user.institution ?? null,
       phone: user.phone ?? null,
+      notificationFlood: user.notificationFlood ?? true,
+      notificationStatus: user.notificationStatus ?? true,
+      notificationEmail: user.notificationEmail ?? false,
+      notificationReadAt: user.notificationReadAt?.toISOString() ?? null,
     };
   }
 

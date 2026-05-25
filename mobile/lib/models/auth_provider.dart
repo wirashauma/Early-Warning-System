@@ -101,6 +101,9 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String phone,
     required String address,
+    bool? notificationFlood,
+    bool? notificationStatus,
+    bool? notificationEmail,
   }) async {
     _setLoading(true);
     clearError();
@@ -110,6 +113,9 @@ class AuthProvider extends ChangeNotifier {
         name: name,
         phone: phone,
         address: address,
+        notificationFlood: notificationFlood,
+        notificationStatus: notificationStatus,
+        notificationEmail: notificationEmail,
       );
 
       if (!result.isSuccess) {
@@ -148,5 +154,23 @@ class AuthProvider extends ChangeNotifier {
   void logout() {
     _authService.logout();
     notifyListeners();
+  }
+
+  Future<bool> markNotificationsReadAll() async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      final result = await _authService.markNotificationsReadAll();
+      if (!result.isSuccess) {
+        _errorMessage = result.errorMessage;
+      }
+      return result.isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 }

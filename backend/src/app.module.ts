@@ -11,6 +11,8 @@ import { RainfallModule } from './rainfall/rainfall.module';
 import { FlowRateModule } from './flow-rate/flow-rate.module';
 import { SensorsModule } from './sensors/sensors.module';
 import { ThresholdsModule } from './thresholds/thresholds.module';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsService } from './notifications/notifications.service';
 import { UsersModule } from './users/users.module';
 import { WaterLevelsModule } from './water-levels/water-levels.module';
 import { IotModule } from './iot/iot.module';
@@ -32,7 +34,7 @@ import { DischargeModule } from './discharge/discharge.module';
     EmergencyContactsModule,
     DischargeModule,
   ],
-  controllers: [AppController, HealthController],
-  providers: [AppService],
+  controllers: [AppController, HealthController, NotificationsController],
+  providers: [AppService, NotificationsService],
 })
 export class AppModule {}

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../models/auth_provider.dart';
 import '../models/admin_provider.dart';
 import '../models/alert_model.dart';
 import '../services/notification_service.dart';
@@ -15,6 +16,7 @@ class NotifikasiPage extends StatefulWidget {
 
 class _NotifikasiPageState extends State<NotifikasiPage> {
   StreamSubscription? _sub;
+  bool _markingAllRead = false;
 
   @override
   void initState() {
@@ -48,6 +50,41 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     await context.read<AdminProvider>().loadAlertHistory();
   }
 
+  Future<void> _markAllAsRead() async {
+    if (_markingAllRead) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final adminProvider = context.read<AdminProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() => _markingAllRead = true);
+    final success = await authProvider.markNotificationsReadAll();
+
+    if (!mounted) return;
+
+    if (success) {
+      await adminProvider.loadAlertHistory();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Semua notifikasi ditandai sudah dibaca.'),
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            authProvider.errorMessage ??
+                'Gagal menandai notifikasi sebagai dibaca.',
+          ),
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() => _markingAllRead = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,6 +101,14 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
       body: Consumer<AdminProvider>(
         builder: (context, provider, _) {
           final List<AlertModel> list = provider.alertHistory;
+          final readAt = context
+              .watch<AuthProvider>()
+              .currentUser
+              ?.notificationReadAt;
+          final unreadCount = list.where((a) {
+            final cutoff = readAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return a.sentAt.isAfter(cutoff);
+          }).length;
           return RefreshIndicator(
             onRefresh: _onRefresh,
             child: Column(
@@ -78,7 +123,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "Belum dibaca: ${list.where((a) => a.sentAt.isAfter(DateTime.now().subtract(const Duration(days: 7)))).length}",
+                        'Belum dibaca: $unreadCount',
                         style: const TextStyle(
                           color: Colors.red,
                           fontWeight: FontWeight.bold,
@@ -86,17 +131,19 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Semua notifikasi telah ditandai dibaca.'),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Tandai semua dibaca",
-                          style: TextStyle(fontSize: 13),
-                        ),
+                        onPressed: _markingAllRead ? null : _markAllAsRead,
+                        child: _markingAllRead
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Tandai semua dibaca',
+                                style: TextStyle(fontSize: 13),
+                              ),
                       ),
                     ],
                   ),
@@ -203,17 +250,36 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: Text(alert.title.isNotEmpty ? alert.title : 'Detail Peringatan'),
+                    title: Text(
+                      alert.title.isNotEmpty
+                          ? alert.title
+                          : 'Detail Peringatan',
+                    ),
                     content: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Tingkat: $tag', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Tingkat: $tag',
+                            style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 8),
-                          Text(alert.message, style: const TextStyle(height: 1.5)),
+                          Text(
+                            alert.message,
+                            style: const TextStyle(height: 1.5),
+                          ),
                           const SizedBox(height: 12),
-                          Text('Waktu: $dateStr', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text(
+                            'Waktu: $dateStr',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
