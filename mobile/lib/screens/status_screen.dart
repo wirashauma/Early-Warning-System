@@ -35,12 +35,11 @@ class _StatusScreenState extends State<StatusScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
-        _mapController.fitBounds(
-          LatLngBounds.fromPoints(points),
-          options: const FitBoundsOptions(
-            padding: EdgeInsets.all(32),
-          ),
-        );
+        // New flutter_map API uses move/fitCamera. To keep this simple and
+        // compatible, move the map to the bounds center and use a sensible zoom.
+        final bounds = LatLngBounds.fromPoints(points);
+        final center = bounds.center;
+        _mapController.move(center, 13.5);
       } catch (e) {
         debugPrint('fitBounds failed: $e');
       }
@@ -178,7 +177,12 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  Widget _buildMetricTile(IconData icon, String label, String value, {String? subtitle}) {
+  Widget _buildMetricTile(
+    IconData icon,
+    String label,
+    String value, {
+    String? subtitle,
+  }) {
     return Row(
       children: [
         Container(
@@ -223,9 +227,7 @@ class _StatusScreenState extends State<StatusScreen> {
     super.didChangeDependencies();
     if (!_loadedOnce) {
       _loadedOnce = true;
-      debugPrint(
-        '[StatusScreen] didChangeDependencies -> loadInitialData()',
-      );
+      debugPrint('[StatusScreen] didChangeDependencies -> loadInitialData()');
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         final provider = context.read<TelemetryProvider>();
@@ -258,7 +260,8 @@ class _StatusScreenState extends State<StatusScreen> {
   String _sensorStatus(SensorModel sensor) {
     final raw = (sensor.status ?? '').toString().toUpperCase();
     if (raw == 'DANGER' || raw == 'BAHAYA') return 'Bahaya';
-    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') return 'Waspada';
+    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA')
+      return 'Waspada';
     if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') return 'Normal';
     return sensor.isOnline ? 'Normal' : 'Offline';
   }
@@ -317,22 +320,22 @@ class _StatusScreenState extends State<StatusScreen> {
   Widget build(BuildContext context) {
     final telemetry = context.watch<TelemetryProvider>();
     final sensors = _sensors(telemetry);
-    
+
     // Automatically center and zoom camera to cover all active markers on load/filter
     _checkAndFitBounds(sensors);
-    
+
     final totalSensors = telemetry.sensors.length;
     final onlineSensors = telemetry.onlineSensorsCount;
     final offlineSensors = telemetry.offlineSensorsCount;
     final warningCount = telemetry.warningCount;
     final dangerCount = telemetry.dangerCount;
-    
+
     final globalStatus = dangerCount > 0
         ? 'Bahaya'
         : warningCount > 0
-            ? 'Waspada'
-            : 'Aman';
-            
+        ? 'Waspada'
+        : 'Aman';
+
     final center = _centerOf(sensors);
 
     final latestUpdate = () {
@@ -520,7 +523,10 @@ class _StatusScreenState extends State<StatusScreen> {
                             clipBehavior: Clip.hardEdge,
                             child: FlutterMap(
                               mapController: _mapController,
-                              options: MapOptions(center: center, zoom: 13.5),
+                              options: MapOptions(
+                                initialCenter: center,
+                                initialZoom: 13.5,
+                              ),
                               children: [
                                 TileLayer(
                                   urlTemplate:
@@ -540,7 +546,7 @@ class _StatusScreenState extends State<StatusScreen> {
                                       point: LatLng(lat, lng),
                                       width: 44,
                                       height: 44,
-                                      builder: (ctx) => GestureDetector(
+                                      child: GestureDetector(
                                         onTap: () {
                                           setState(
                                             () => _focusedIndex = focusedNow

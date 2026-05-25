@@ -48,24 +48,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final endIso = now.toUtc().toIso8601String();
 
       final results = await Future.wait([
-        _api.fetchWaterLevelHistory(
-          sensorId: sensorId,
-          startDate: startIso,
-          endDate: endIso,
-          limit: 100,
-        ).catchError((e) => <WaterLevelLog>[]),
-        _api.fetchRainfallHistory(
-          sensorId: sensorId,
-          startDate: startIso,
-          endDate: endIso,
-          limit: 100,
-        ).catchError((e) => <RainfallLog>[]),
-        _api.fetchFlowRateHistory(
-          sensorId: sensorId,
-          startDate: startIso,
-          endDate: endIso,
-          limit: 100,
-        ).catchError((e) => <FlowRateLog>[]),
+        _api
+            .fetchWaterLevelHistory(
+              sensorId: sensorId,
+              startDate: startIso,
+              endDate: endIso,
+              limit: 100,
+            )
+            .catchError((e) => <WaterLevelLog>[]),
+        _api
+            .fetchRainfallHistory(
+              sensorId: sensorId,
+              startDate: startIso,
+              endDate: endIso,
+              limit: 100,
+            )
+            .catchError((e) => <RainfallLog>[]),
+        _api
+            .fetchFlowRateHistory(
+              sensorId: sensorId,
+              startDate: startIso,
+              endDate: endIso,
+              limit: 100,
+            )
+            .catchError((e) => <FlowRateLog>[]),
       ]);
 
       if (!mounted) return;
@@ -88,7 +94,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       telemetry.sensors.isNotEmpty;
 
   SensorModel? _selected(TelemetryProvider telemetry) {
-    if (telemetry.sensors.isNotEmpty && _selectedSensorIndex < telemetry.sensors.length) {
+    if (telemetry.sensors.isNotEmpty &&
+        _selectedSensorIndex < telemetry.sensors.length) {
       return telemetry.sensors[_selectedSensorIndex];
     }
     return null;
@@ -97,7 +104,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _sensorStatus(SensorModel sensor) {
     final raw = (sensor.status ?? '').toString().toUpperCase();
     if (raw == 'DANGER' || raw == 'BAHAYA') return 'Bahaya';
-    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') return 'Waspada';
+    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA')
+      return 'Waspada';
     if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') return 'Normal';
     return sensor.isOnline ? 'Normal' : 'Offline';
   }
@@ -117,10 +125,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
       final authProvider = context.read<AuthProvider>();
       final String currentRole = authProvider.userRole.toString().toUpperCase();
-      final bool isAdmin = currentRole == 'ADMIN' || currentRole == 'USERROLE.ADMIN';
-      
+      final bool isAdmin =
+          currentRole == 'ADMIN' || currentRole == 'USERROLE.ADMIN';
+
       if (isAdmin) {
-        debugPrint('[DashboardScreen] initState -> loadDashboardStats() for ADMIN');
+        debugPrint(
+          '[DashboardScreen] initState -> loadDashboardStats() for ADMIN',
+        );
         final provider = context.read<AdminProvider>();
         try {
           await provider.loadDashboardStats();
@@ -132,7 +143,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final telemetry = context.read<TelemetryProvider>();
         try {
           await telemetry.loadInitialData();
-          if (telemetry.sensors.isNotEmpty && _selectedSensorIndex < telemetry.sensors.length) {
+          if (telemetry.sensors.isNotEmpty &&
+              _selectedSensorIndex < telemetry.sensors.length) {
             final sensorId = telemetry.sensors[_selectedSensorIndex].sensorId;
             _loadSensorHistory(sensorId);
           }
@@ -456,7 +468,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final hasDanger = sensors.any(
       (s) =>
           s.status != null &&
-          (s.status!.toUpperCase() == 'DANGER' || s.status!.toUpperCase() == 'BAHAYA'),
+          (s.status!.toUpperCase() == 'DANGER' ||
+              s.status!.toUpperCase() == 'BAHAYA'),
     );
     final hasAlert =
         !hasDanger &&
@@ -555,9 +568,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     double avgRainfall = 0.0;
     if (sensors.isNotEmpty) {
-      final validRainfalls = sensors.map((s) => s.rainfall).where((r) => r != null).cast<double>().toList();
+      final validRainfalls = sensors
+          .map((s) => s.rainfall)
+          .where((r) => r != null)
+          .cast<double>()
+          .toList();
       if (validRainfalls.isNotEmpty) {
-        avgRainfall = validRainfalls.reduce((a, b) => a + b) / validRainfalls.length;
+        avgRainfall =
+            validRainfalls.reduce((a, b) => a + b) / validRainfalls.length;
       }
     }
 
@@ -584,8 +602,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       {
         'label': 'Sensor Berisiko',
         'value': '$riskCount',
-        'sub':
-            'Bahaya: $dangerCount • Waspada: $warningCount',
+        'sub': 'Bahaya: $dangerCount • Waspada: $warningCount',
         'color': riskCount > 0 ? AppTheme.statusBahaya : AppTheme.statusNormal,
       },
       {
@@ -741,9 +758,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     .map(
                       (e) => DropdownMenuItem(
                         value: e.key,
-                        child: Text(
-                          '${e.value.name} (${e.value.sensorId})',
-                        ),
+                        child: Text('${e.value.name} (${e.value.sensorId})'),
                       ),
                     )
                     .toList(),
@@ -786,7 +801,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 8),
                 _MetricBox(
                   label: 'BATERAI',
-                  value: selectedSensor.batteryLevel != null ? '${selectedSensor.batteryLevel}%' : '-',
+                  value: selectedSensor.batteryLevel != null
+                      ? '${selectedSensor.batteryLevel}%'
+                      : '-',
                   color: AppTheme.statusNormal,
                   flex: 2,
                 ),
@@ -874,8 +891,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             clipBehavior: Clip.hardEdge,
             child: FlutterMap(
               options: MapOptions(
-                center: LatLng(-0.9490, 100.3610),
-                zoom: 14.5,
+                initialCenter: LatLng(-0.9490, 100.3610),
+                initialZoom: 14.5,
               ),
               children: [
                 TileLayer(
@@ -892,7 +909,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         point: LatLng(s.latitude, s.longitude),
                         width: 40,
                         height: 40,
-                        builder: (context) => GestureDetector(
+                        child: GestureDetector(
                           onTap: () {
                             setState(() => _selectedSensorIndex = i);
                             _loadSensorHistory(s.sensorId);
@@ -917,7 +934,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             child: Center(
                               child: Text(
-                                s.name.substring(0, s.name.length > 2 ? 2 : s.name.length).toUpperCase(),
+                                s.name
+                                    .substring(
+                                      0,
+                                      s.name.length > 2 ? 2 : s.name.length,
+                                    )
+                                    .toUpperCase(),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -1040,7 +1062,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   worst.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1115,7 +1140,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       chartColor = const Color(0xFFF59E0B);
       chartTitle = 'Debit Aliran';
-      final currentFlow = _frHistory.isNotEmpty ? _frHistory.last.flowRate : 0.0;
+      final currentFlow = _frHistory.isNotEmpty
+          ? _frHistory.last.flowRate
+          : 0.0;
       currentValStr = '${currentFlow.toStringAsFixed(1)} LPM';
     }
 
@@ -1179,36 +1206,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         SizedBox(height: 10),
                         Text(
                           'Memuat data riwayat...',
-                          style: TextStyle(fontSize: 11, color: AppTheme.textGrey),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textGrey,
+                          ),
                         ),
                       ],
                     ),
                   )
                 : _historyError != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Gagal memuat: $_historyError',
-                              style: const TextStyle(fontSize: 11, color: AppTheme.statusBahaya),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: () {
-                                final sensors = telemetryProvider.sensors;
-                                if (sensors.isNotEmpty && _selectedSensorIndex < sensors.length) {
-                                  final sensorId = sensors[_selectedSensorIndex].sensorId;
-                                  _loadSensorHistory(sensorId);
-                                }
-                              },
-                              child: const Text('Coba Lagi', style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Gagal memuat: $_historyError',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.statusBahaya,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                      )
-                    : activeChart,
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            final sensors = telemetryProvider.sensors;
+                            if (sensors.isNotEmpty &&
+                                _selectedSensorIndex < sensors.length) {
+                              final sensorId =
+                                  sensors[_selectedSensorIndex].sensorId;
+                              _loadSensorHistory(sensorId);
+                            }
+                          },
+                          child: const Text(
+                            'Coba Lagi',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : activeChart,
           ),
           const SizedBox(height: 10),
           Center(
@@ -1246,8 +1284,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       rainfall < 5
                           ? 'Ringan (0-5 mm/jam)'
                           : rainfall < 20
-                              ? 'Sedang (5-20 mm/jam)'
-                              : 'Lebat (>20 mm/jam)',
+                          ? 'Sedang (5-20 mm/jam)'
+                          : 'Lebat (>20 mm/jam)',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppTheme.textGrey,
@@ -1295,7 +1333,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const DaruratScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const DaruratScreen(),
+                  ),
                 );
               },
               icon: const Icon(Icons.phone, size: 18),
@@ -1334,9 +1374,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
-
-  Widget _buildFlChart(List<dynamic> logs, double Function(dynamic) getValue, Color lineColor, String unit) {
+  Widget _buildFlChart(
+    List<dynamic> logs,
+    double Function(dynamic) getValue,
+    Color lineColor,
+    String unit,
+  ) {
     if (logs.isEmpty) {
       return const Center(
         child: Text(
@@ -1361,15 +1404,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: const Color(0xFFE2E8F0),
-            strokeWidth: 1,
-          ),
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: const Color(0xFFE2E8F0), strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -1388,14 +1433,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               reservedSize: 22,
               getTitlesWidget: (value, meta) {
                 final idx = value.toInt();
-                if (idx >= 0 && idx < logs.length && (idx % (logs.length ~/ 4 + 1) == 0 || idx == logs.length - 1)) {
+                if (idx >= 0 &&
+                    idx < logs.length &&
+                    (idx % (logs.length ~/ 4 + 1) == 0 ||
+                        idx == logs.length - 1)) {
                   final rawTime = logs[idx].recordedAt;
-                  final time = rawTime is DateTime ? rawTime : DateTime.parse(rawTime.toString());
+                  final time = rawTime is DateTime
+                      ? rawTime
+                      : DateTime.parse(rawTime.toString());
                   return Padding(
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
                       '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 8, color: AppTheme.textGrey),
+                      style: const TextStyle(
+                        fontSize: 8,
+                        color: AppTheme.textGrey,
+                      ),
                     ),
                   );
                 }
@@ -1432,8 +1485,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-
 
   Widget _buildTabPill(int index, String label, Color color) {
     final active = _selectedChartTab == index;
