@@ -1,11 +1,8 @@
 import axios from "axios";
 import { API_URL } from "@/constants";
 
-const SERVER_API_URL = "http://127.0.0.1:4101/api";
-const baseURL = typeof window !== "undefined" ? API_URL : SERVER_API_URL;
-
 export const api = axios.create({
-  baseURL,
+  baseURL: API_URL,
   timeout: 10_000,
 });
 

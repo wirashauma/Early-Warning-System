@@ -4,12 +4,9 @@ import { API_URL } from "@/constants";
 const ACCESS_TOKEN_KEY = "ews_access_token";
 const REFRESH_TOKEN_KEY = "ews_refresh_token";
 const AUTH_USER_KEY = "ews_user_data";
-const SERVER_API_URL = "http://127.0.0.1:4101/api";
-
-const baseURL = typeof window !== "undefined" ? API_URL : SERVER_API_URL;
 
 export const api = axios.create({
-  baseURL,
+  baseURL: API_URL,
   timeout: 15_000,
   headers: {
     "Content-Type": "application/json",
@@ -34,8 +31,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config;
-    
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
@@ -55,8 +50,40 @@ api.interceptors.response.use(
       }
     }
 
+    const extractBackendMessage = async () => {
+      const responseData = error.response?.data as unknown;
+
+      if (typeof Blob !== "undefined" && responseData instanceof Blob) {
+        try {
+          const text = await responseData.text();
+
+          if (text) {
+            try {
+              const parsed = JSON.parse(text) as { message?: string | string[] };
+              const parsedMessage = parsed?.message;
+
+              if (Array.isArray(parsedMessage)) {
+                return parsedMessage[0];
+              }
+
+              if (typeof parsedMessage === "string") {
+                return parsedMessage;
+              }
+            } catch {
+              return text;
+            }
+          }
+        } catch {
+          // fall through to the generic handler below
+        }
+      }
+
+      const backendMessage = (responseData as any)?.message;
+      return Array.isArray(backendMessage) ? backendMessage[0] : backendMessage;
+    };
+
     // Map Backend Errors to Human Readable Messages
-    const backendMessage = (error.response?.data as any)?.message;
+    const backendMessage = await extractBackendMessage();
     const errorMessage = Array.isArray(backendMessage) 
       ? backendMessage[0] 
       : backendMessage || error.message || "Terjadi kesalahan sistem.";

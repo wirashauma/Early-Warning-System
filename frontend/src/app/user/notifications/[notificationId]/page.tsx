@@ -6,7 +6,6 @@ import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import api from "@/lib/api";
 import { formatTimestamp } from "@/lib/utils";
-import { USER_NOTIFICATION_STORAGE_KEY } from "@/hooks/useUserNotifications";
 import type { UserNotificationItem } from "@/types/user-notification";
 
 const levelBadgeClass = {
@@ -64,6 +63,14 @@ function mapSeverityToGuideHref(severity: string): string {
   return "/user/education#aksi-kuning";
 }
 
+function isNotificationRead(sentAt: string, notificationReadAt: string | null) {
+  if (!notificationReadAt) {
+    return false;
+  }
+
+  return new Date(sentAt).getTime() <= new Date(notificationReadAt).getTime();
+}
+
 export default function UserNotificationDetailPage() {
   const params = useParams<{ notificationId: string | string[] }>();
   const notificationId = useMemo(() => {
@@ -76,11 +83,14 @@ export default function UserNotificationDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<UserNotificationItem | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadDetail = async () => {
+      setErrorMessage(null);
+
       if (!notificationId) {
         if (!cancelled) {
           setNotification(null);
@@ -90,7 +100,12 @@ export default function UserNotificationDetailPage() {
       }
 
       try {
-        const response = await api.get(`/alerts/${notificationId}`);
+        const [meResponse, response] = await Promise.all([
+          api.get("/auth/me"),
+          api.get(`/alerts/${notificationId}`),
+        ]);
+
+        const notificationReadAt = meResponse.data?.data?.notificationReadAt ?? null;
         const row = response.data?.data as {
           id: string;
           title: string;
@@ -105,11 +120,8 @@ export default function UserNotificationDetailPage() {
           sentAt: string;
         };
 
-        const readMap = parseReadMap(localStorage.getItem(USER_NOTIFICATION_STORAGE_KEY));
-        const isRead = Boolean(readMap[row.id]);
-        if (!isRead) {
-          readMap[row.id] = true;
-          localStorage.setItem(USER_NOTIFICATION_STORAGE_KEY, JSON.stringify(readMap));
+        if (!isNotificationRead(row.sentAt, notificationReadAt)) {
+          await api.put("/auth/notifications/read-all");
         }
 
         const sourceType = row.sourceType ?? (row.user?.name ? "ADMIN" : "SYSTEM");
@@ -137,6 +149,7 @@ export default function UserNotificationDetailPage() {
       } catch {
         if (!cancelled) {
           setNotification(null);
+          setErrorMessage("Gagal memuat detail notifikasi.");
           setLoading(false);
         }
       }
@@ -165,7 +178,7 @@ export default function UserNotificationDetailPage() {
         <Card>
           <h1 className="text-lg font-bold text-slate-900">Detail notifikasi tidak ditemukan</h1>
           <p className="mt-2 text-sm text-slate-600">
-            Notifikasi mungkin sudah tidak tersedia. Kembali ke daftar notifikasi untuk melihat data terbaru.
+            {errorMessage ?? "Notifikasi mungkin sudah tidak tersedia. Kembali ke daftar notifikasi untuk melihat data terbaru."}
           </p>
           <div className="mt-4">
             <Link

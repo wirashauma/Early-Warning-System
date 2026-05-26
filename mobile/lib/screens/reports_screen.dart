@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/report_provider.dart';
 
 class ReportsScreen extends StatelessWidget {
-  const ReportsScreen({Key? key}) : super(key: key);
+  const ReportsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class ReportsScreen extends StatelessWidget {
 }
 
 class _ReportsBody extends StatefulWidget {
-  const _ReportsBody({Key? key}) : super(key: key);
+  const _ReportsBody();
 
   @override
   State<_ReportsBody> createState() => _ReportsBodyState();
@@ -106,7 +106,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: provider.selectedSensorId,
+                          initialValue: provider.selectedSensorId,
                           items: [
                             const DropdownMenuItem(
                               value: 'all',
@@ -142,25 +142,49 @@ class _ReportsBodyState extends State<_ReportsBody> {
                   Row(
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => _handleExport(
-                          context,
-                          provider,
-                          type: 'combined',
-                          format: 'pdf',
+                        onPressed: provider.exporting
+                            ? null
+                            : () => _handleExport(
+                                context,
+                                provider,
+                                type: 'combined',
+                                format: 'pdf',
+                              ),
+                        icon: provider.exporting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.picture_as_pdf),
+                        label: Text(
+                          provider.exporting ? 'Memproses...' : 'Unduh PDF',
                         ),
-                        icon: const Icon(Icons.picture_as_pdf),
-                        label: const Text('Unduh PDF'),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
-                        onPressed: () => _handleExport(
-                          context,
-                          provider,
-                          type: 'combined',
-                          format: 'excel',
+                        onPressed: provider.exporting
+                            ? null
+                            : () => _handleExport(
+                                context,
+                                provider,
+                                type: 'combined',
+                                format: 'excel',
+                              ),
+                        icon: provider.exporting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.table_chart),
+                        label: Text(
+                          provider.exporting ? 'Memproses...' : 'Unduh Excel',
                         ),
-                        icon: const Icon(Icons.table_chart),
-                        label: const Text('Unduh Excel'),
                       ),
                     ],
                   ),
@@ -273,15 +297,20 @@ class _ReportsBodyState extends State<_ReportsBody> {
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(const SnackBar(content: Text('Loading export...')));
+    messenger.showSnackBar(
+      SnackBar(content: Text('Mengunduh ${format.toUpperCase()}...')),
+    );
 
     try {
-      await provider.launchReportExport(type: type, format: format);
+      final filePath = await provider.downloadAndOpenReport(
+        type: type,
+        format: format,
+      );
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Unduh ${format.toUpperCase()} berhasil. Lihat browser untuk melanjutkan.',
+            'Unduh ${format.toUpperCase()} berhasil. File tersimpan di: $filePath',
           ),
         ),
       );

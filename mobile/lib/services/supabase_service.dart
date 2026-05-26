@@ -29,12 +29,17 @@ class SupabaseService {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    final url = dotenv.env['SUPABASE_URL']?.trim() ?? dotenv.env['NEXT_PUBLIC_SUPABASE_URL']?.trim() ?? 'https://placeholder.supabase.co';
-    final anonKey = dotenv.env['SUPABASE_ANON_KEY']?.trim() ?? dotenv.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']?.trim() ?? 'placeholder-anon-key';
+    final url =
+        dotenv.env['SUPABASE_URL']?.trim() ??
+        dotenv.env['NEXT_PUBLIC_SUPABASE_URL']?.trim();
+    final anonKey =
+        dotenv.env['SUPABASE_ANON_KEY']?.trim() ??
+        dotenv.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']?.trim();
 
-    if (url.contains('placeholder') || anonKey.contains('placeholder')) {
-      print('⚠️ Supabase URL or Anon Key is missing or placeholder in .env. Realtime features will be disabled.');
-      return;
+    if (url == null || url.isEmpty || anonKey == null || anonKey.isEmpty) {
+      throw StateError(
+        '[EWS] Missing Supabase env values. Set SUPABASE_URL and SUPABASE_ANON_KEY in mobile/.env before initializing realtime features.',
+      );
     }
 
     try {
@@ -70,7 +75,9 @@ class SupabaseService {
           schema: 'public',
           table: 'water_level_logs',
           callback: (payload) {
-            print('🔥 Supabase: Water Level Log INSERT received: ${payload.newRecord}');
+            print(
+              '🔥 Supabase: Water Level Log INSERT received: ${payload.newRecord}',
+            );
             try {
               final log = WaterLevelLog.fromJson(payload.newRecord);
               _waterLevelController.add(log);

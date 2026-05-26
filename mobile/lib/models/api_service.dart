@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'water_level_log.dart';
 import 'rainfall_log.dart';
@@ -19,11 +20,26 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  String baseUrl =
-      (dotenv.env['API_URL']?.trim()) ??
-      (dotenv.env['API_BASE_URL']?.trim()) ??
-      (dotenv.env['NEXT_PUBLIC_API_URL']?.trim()) ??
-      'http://10.0.2.2:4101/api';
+  ApiService._internal();
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+
+  static const String _accessTokenKey = 'ews_access_token';
+  static const String _refreshTokenKey = 'ews_refresh_token';
+
+  static String _resolveBaseUrl() {
+    final value = dotenv.env['API_URL']?.trim();
+
+    if (value == null || value.isEmpty) {
+      throw StateError(
+        '[EWS] Missing required API_URL in mobile/.env. Configure the backend API base URL before starting the app.',
+      );
+    }
+
+    return value;
+  }
+
+  final String baseUrl = _resolveBaseUrl();
 
   /// Request timeout in seconds
   final int requestTimeoutSeconds =
@@ -138,14 +154,34 @@ class ApiService {
     return await delete('/users/$id');
   }
 
-  void setTokens({required String accessToken, required String refreshToken}) {
+  Future<void> setTokens({
+    required String accessToken,
+    required String refreshToken,
+    bool persist = true,
+  }) async {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
+
+    if (persist) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_accessTokenKey, accessToken);
+      await prefs.setString(_refreshTokenKey, refreshToken);
+    }
   }
 
-  void clearTokens() {
+  Future<void> loadPersistedTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    accessToken = prefs.getString(_accessTokenKey);
+    refreshToken = prefs.getString(_refreshTokenKey);
+  }
+
+  Future<void> clearTokens() async {
     accessToken = null;
     refreshToken = null;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
   }
 
   // Authentication
@@ -157,16 +193,18 @@ class ApiService {
         as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> register(
-    String name,
-    String email,
-    String password, {
+  Future<Map<String, dynamic>> register({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
     String? institution,
   }) async {
     final body = {
       'name': name.trim(),
       'email': email.trim().toLowerCase(),
       'password': password,
+      'phone': phone.trim(),
     };
     if (institution != null && institution.isNotEmpty) {
       body['institution'] = institution.trim();
@@ -418,9 +456,8 @@ class ApiService {
         .toList();
   }
 
-  /// Download a generated report file (PDF or Excel) from the backend.
-  /// Returns the raw bytes of the file.
-  Future<List<int>> downloadReport({
+  /// Download generated report file bytes (PDF or Excel) via authenticated API call.
+  Future<List<int>> downloadReportBytes({
     required String type, // water_level | rainfall | combined
     required String startDate,
     required String endDate,
@@ -440,8 +477,20 @@ class ApiService {
           .timeout(Duration(seconds: requestTimeoutSeconds));
 
       if (response.statusCode >= 400) {
-        _parseResponse(response); // will throw ApiException
-        throw ApiException(response.statusCode, 'Failed to download report');
+        try {
+          _parseResponse(
+            response,
+          ); // will throw ApiException with backend message
+        } catch (e) {
+          if (e is ApiException) {
+            rethrow;
+          }
+        }
+
+        throw ApiException(
+          response.statusCode,
+          'Gagal mengunduh laporan (HTTP ${response.statusCode})',
+        );
       }
 
       return response.bodyBytes;

@@ -22,22 +22,18 @@ export default function AdminLayout({ children }: PropsWithChildren) {
 
     const fetchUnreadCount = async () => {
       try {
-        const response = await api.get("/alerts/history", {
-          params: { page: 1, limit: 100 },
-        });
+        const [meResponse, alertsResponse] = await Promise.all([
+          api.get("/auth/me"),
+          api.get("/alerts/history", {
+            params: { page: 1, limit: 100 },
+          }),
+        ]);
 
-        const rows = (response.data?.data?.items ?? []) as Array<{ id: string }>;
-        const savedReadMapRaw = localStorage.getItem("ews_admin_notifications_read_map");
-        let savedReadMap: Record<string, boolean> = {};
-        if (savedReadMapRaw) {
-          try {
-            savedReadMap = JSON.parse(savedReadMapRaw);
-          } catch {
-            savedReadMap = {};
-          }
-        }
-        
-        const count = rows.filter((row) => !savedReadMap[row.id]).length;
+        const notificationReadAt = meResponse.data?.data?.notificationReadAt ?? null;
+        const readAtTime = notificationReadAt ? new Date(notificationReadAt).getTime() : Number.NEGATIVE_INFINITY;
+        const rows = (alertsResponse.data?.data?.items ?? []) as Array<{ sentAt: string }>;
+
+        const count = rows.filter((row) => new Date(row.sentAt).getTime() > readAtTime).length;
         setUnreadCount(count);
       } catch {
         // ignore

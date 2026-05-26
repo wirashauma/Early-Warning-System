@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
 import type { UserNotificationItem } from "@/types/user-notification";
 
-export const USER_NOTIFICATION_STORAGE_KEY = "ews_user_notifications_read_map";
-
 interface ApiAlertItem {
   id: string;
   title: string;
@@ -18,19 +16,6 @@ interface ApiAlertItem {
     name?: string | null;
   } | null;
   sentAt: string;
-}
-
-function parseReadMap(raw: string | null): Record<string, boolean> {
-  if (!raw) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Record<string, boolean>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
 }
 
 function mapSeverityToRiskLevel(severity: ApiAlertItem["severity"]): UserNotificationItem["riskLevel"] {
@@ -57,23 +42,45 @@ function mapSeverityToGuideHref(severity: ApiAlertItem["severity"]): string {
   return "/user/education#aksi-kuning";
 }
 
+function isNotificationRead(sentAt: string, notificationReadAt: string | null) {
+  if (!notificationReadAt) {
+    return false;
+  }
+
+  const sentAtTime = new Date(sentAt).getTime();
+  const readAtTime = new Date(notificationReadAt).getTime();
+
+  return Number.isFinite(sentAtTime) && Number.isFinite(readAtTime) && sentAtTime <= readAtTime;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Gagal memuat notifikasi.";
+}
+
 export function useUserNotifications() {
   const [items, setItems] = useState<UserNotificationItem[]>([]);
-  const [readMap, setReadMap] = useState<Record<string, boolean>>(() =>
-    parseReadMap(
-      typeof window === "undefined"
-        ? null
-        : localStorage.getItem(USER_NOTIFICATION_STORAGE_KEY),
-    ),
-  );
+  const [notificationReadAt, setNotificationReadAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const loadNotifications = useCallback(async () => {
-    try {
-      const response = await api.get("/alerts/history", {
-        params: { page: 1, limit: 100 },
-      });
+    setError(null);
+    setLoading(true);
 
-      const rows = (response.data?.data?.items ?? []) as ApiAlertItem[];
+    try {
+      const [meResponse, alertsResponse] = await Promise.all([
+        api.get("/auth/me"),
+        api.get("/alerts/history", {
+          params: { page: 1, limit: 100 },
+        }),
+      ]);
+
+      const backendUser = meResponse.data?.data as { notificationReadAt?: string | null } | undefined;
+      const readAt = backendUser?.notificationReadAt ?? null;
+      setNotificationReadAt(readAt);
+
+      const rows = (alertsResponse.data?.data?.items ?? []) as ApiAlertItem[];
 
       const mapped: UserNotificationItem[] = rows.map((row) => {
         const riskLevel = mapSeverityToRiskLevel(row.severity);
@@ -88,7 +95,7 @@ export function useUserNotifications() {
           title: row.title,
           message: row.message,
           createdAt: row.sentAt,
-          isRead: Boolean(readMap[row.id]),
+          isRead: isNotificationRead(row.sentAt, readAt),
           guideHref: mapSeverityToGuideHref(row.severity),
           senderName: row.user?.name?.trim() || (sourceType === "ADMIN" ? "Admin EWS" : "Sistem EWS"),
           sourceType,
@@ -97,54 +104,53 @@ export function useUserNotifications() {
       });
 
       setItems(mapped);
-    } catch {
-      setItems([]);
+    } catch (error) {
+      setError(getErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
-  }, [readMap]);
+  }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadNotifications();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
+    void loadNotifications();
   }, [loadNotifications]);
-
-  useEffect(() => {
-    localStorage.setItem(USER_NOTIFICATION_STORAGE_KEY, JSON.stringify(readMap));
-  }, [readMap]);
 
   const unreadCount = useMemo(
     () => items.filter((item) => !item.isRead).length,
     [items],
   );
 
-  const markAsRead = useCallback((id: string) => {
-    setReadMap((prev) => ({ ...prev, [id]: true }));
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, isRead: true } : item)),
-    );
+  const markAllAsRead = useCallback(async () => {
+    setIsUpdating(true);
+    setError(null);
+
+    try {
+      const response = await api.put("/auth/notifications/read-all");
+      const readAt = response.data?.data?.notificationReadAt ?? new Date().toISOString();
+
+      setNotificationReadAt(readAt);
+      setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    } catch (error) {
+      setError(getErrorMessage(error));
+      throw error;
+    } finally {
+      setIsUpdating(false);
+    }
   }, []);
 
-  const markAllAsRead = useCallback(() => {
-    setReadMap((prev) => {
-      const next = { ...prev };
-      items.forEach((item) => {
-        next[item.id] = true;
-      });
-      return next;
-    });
-
-    setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
-  }, [items]);
+  const markAsRead = useCallback(async (_id: string) => {
+    await markAllAsRead();
+  }, [markAllAsRead]);
 
   return {
     notifications: items,
     unreadCount,
     markAsRead,
     markAllAsRead,
+    loading,
+    error,
+    isUpdating,
     reload: loadNotifications,
+    notificationReadAt,
   };
 }

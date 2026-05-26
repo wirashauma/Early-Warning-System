@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { useUserNotifications } from "@/hooks/useUserNotifications";
@@ -19,7 +20,16 @@ const levelLabel = {
 } as const;
 
 export default function UserNotificationsPage() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useUserNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, loading, error, isUpdating } = useUserNotifications();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!error) return;
+
+    setToastMessage(error);
+    const timer = window.setTimeout(() => setToastMessage(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   // --- FUNGSI UNTUK MENGETES PUSH NOTIFICATION ---
   const handleTestNotification = async () => {
@@ -69,15 +79,20 @@ export default function UserNotificationsPage() {
           </span>
           <button
             type="button"
-            onClick={markAllAsRead}
-            className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            onClick={() => void markAllAsRead().then(() => setToastMessage("Semua notifikasi ditandai sebagai dibaca.")).catch(() => {})}
+            disabled={isUpdating}
+            className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Tandai semua dibaca
+            {isUpdating ? "Memproses..." : "Tandai semua dibaca"}
           </button>
         </div>
       </div>
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <Card>
+          <p className="text-sm text-slate-600">Memuat notifikasi...</p>
+        </Card>
+      ) : notifications.length === 0 ? (
         <Card>
           <h2 className="text-base font-semibold text-slate-900">Belum ada notifikasi risiko</h2>
           <p className="mt-2 text-sm text-slate-600">Notifikasi akan otomatis muncul saat salah satu sensor masuk level Kuning, Oren, atau Merah.</p>
@@ -99,7 +114,9 @@ export default function UserNotificationsPage() {
               className="group block"
               onClick={() => {
                 if (!item.isRead) {
-                  markAsRead(item.id);
+                  void markAsRead(item.id).catch(() => {
+                    // error state handled by hook + toast
+                  });
                 }
               }}
             >
@@ -144,6 +161,13 @@ export default function UserNotificationsPage() {
               </Card>
             </Link>
           ))}
+        </div>
+      )}
+
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl shadow-slate-900/10">
+          <p className="text-sm font-semibold text-blue-700">Notifikasi</p>
+          <p className="mt-1 text-sm text-slate-600">{toastMessage}</p>
         </div>
       )}
     </main>

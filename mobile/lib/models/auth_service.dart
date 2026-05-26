@@ -22,6 +22,57 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
   final ApiService _apiService = ApiService();
 
+  Future<bool> restoreSession() async {
+    try {
+      await _apiService.loadPersistedTokens();
+
+      final accessToken = _apiService.accessToken;
+      final refreshToken = _apiService.refreshToken;
+
+      if (accessToken == null || accessToken.isEmpty) {
+        _currentUser = null;
+        return false;
+      }
+
+      try {
+        final userData = await _apiService.me();
+        _currentUser = _mapBackendUserToModel(userData);
+        return true;
+      } catch (e) {
+        if (refreshToken == null || refreshToken.isEmpty) {
+          await _apiService.clearTokens();
+          _currentUser = null;
+          return false;
+        }
+
+        final refreshed = await _apiService.refreshSession(refreshToken);
+        final newAccessToken = refreshed['accessToken'] as String?;
+        final newRefreshToken =
+            refreshed['refreshToken'] as String? ?? refreshToken;
+
+        if (newAccessToken == null || newAccessToken.isEmpty) {
+          await _apiService.clearTokens();
+          _currentUser = null;
+          return false;
+        }
+
+        await _apiService.setTokens(
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        );
+
+        final userData = await _apiService.me();
+        _currentUser = _mapBackendUserToModel(userData);
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[AuthService] restoreSession failed: $e');
+      await _apiService.clearTokens();
+      _currentUser = null;
+      return false;
+    }
+  }
+
   UserModel _mapBackendUserToModel(Map<String, dynamic> userData) {
     return UserModel.fromMap(userData['id']?.toString() ?? '', {
       ...userData,
@@ -44,7 +95,7 @@ class AuthService {
         );
       }
 
-      _apiService.setTokens(
+      await _apiService.setTokens(
         accessToken: accessToken,
         refreshToken: refreshToken ?? '',
       );
@@ -65,9 +116,10 @@ class AuthService {
   }) async {
     try {
       final response = await _apiService.register(
-        name,
-        email,
-        password,
+        name: name,
+        email: email,
+        password: password,
+        phone: phone,
         institution: address,
       );
 
@@ -82,7 +134,7 @@ class AuthService {
         );
       }
 
-      _apiService.setTokens(
+      await _apiService.setTokens(
         accessToken: accessToken,
         refreshToken: refreshToken ?? '',
       );
@@ -128,7 +180,7 @@ class AuthService {
         );
       }
 
-      _apiService.setTokens(
+      await _apiService.setTokens(
         accessToken: accessToken,
         refreshToken: refreshToken ?? '',
       );
@@ -199,7 +251,7 @@ class AuthService {
     }
     await _googleSignIn.signOut();
     await _firebaseAuth.signOut();
-    _apiService.clearTokens();
+    await _apiService.clearTokens();
     _currentUser = null;
   }
 

@@ -10,6 +10,7 @@ import 'screens/splash_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/admin_navigation.dart';
 import 'models/auth_provider.dart';
+import 'models/auth_service.dart';
 import 'models/admin_provider.dart';
 import 'providers/telemetry_provider.dart';
 import 'services/supabase_service.dart';
@@ -69,6 +70,12 @@ Future<void> main() async {
     }
   } catch (e) {
     debugPrint("Firebase initialization error: $e");
+  }
+
+  try {
+    await AuthService.instance.restoreSession();
+  } catch (e) {
+    debugPrint('Auth session restore error: $e');
   }
 
   runApp(const MyApp());

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'api_service.dart';
 import 'water_level_log.dart';
@@ -19,6 +19,7 @@ class ReportProvider extends ChangeNotifier {
   String selectedSensorId = 'all';
 
   bool loading = false;
+  bool exporting = false;
   String? error;
 
   List<SensorModel> sensors = [];
@@ -51,44 +52,6 @@ class ReportProvider extends ChangeNotifier {
     startDate = start;
     endDate = end;
     notifyListeners();
-  }
-
-  String buildExportUrl({required String type, required String format}) {
-    final queryParams = {
-      'type': type,
-      'startDate': _fmt.format(startDate),
-      'endDate': DateFormat("yyyy-MM-dd'T'23:59:59.000'Z'").format(endDate),
-      'format': format,
-    };
-
-    final baseUri = Uri.parse(_api.baseUrl);
-    final pathSegments = [
-      ...baseUri.pathSegments.where((segment) => segment.isNotEmpty),
-      'reports',
-      'generate',
-    ];
-
-    return baseUri
-        .replace(pathSegments: pathSegments, queryParameters: queryParams)
-        .toString();
-  }
-
-  Future<bool> launchReportExport({
-    required String type,
-    required String format,
-  }) async {
-    final uri = Uri.parse(buildExportUrl(type: type, format: format));
-    if (!await canLaunchUrl(uri)) {
-      throw ApiException(0, 'Tidak dapat membuka tautan ekspor');
-    }
-
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-    if (!launched) {
-      throw ApiException(0, 'Gagal membuka aplikasi untuk ekspor');
-    }
-
-    return launched;
   }
 
   Future<void> applyFilter() async {
@@ -258,28 +221,47 @@ class ReportProvider extends ChangeNotifier {
     }
   }
 
-  Future<String> downloadReport({
+  Future<String> downloadAndOpenReport({
     required String type,
     required String format,
   }) async {
+    if (exporting) {
+      throw ApiException(0, 'Unduhan sedang berjalan. Mohon tunggu.');
+    }
+
+    exporting = true;
+    notifyListeners();
+
     final startIso = _fmt.format(startDate);
     final endIso = DateFormat("yyyy-MM-dd'T'23:59:59.000'Z'").format(endDate);
 
-    final bytes = await _api.downloadReport(
-      type: type,
-      startDate: startIso,
-      endDate: endIso,
-      format: format,
-    );
+    try {
+      final bytes = await _api.downloadReportBytes(
+        type: type,
+        startDate: startIso,
+        endDate: endIso,
+        format: format,
+      );
 
-    // Save to temporary directory
-    final dir = await getTemporaryDirectory();
-    final ext = format == 'pdf' ? 'pdf' : 'xlsx';
-    final filename =
-        'ews-report-$type-${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(bytes, flush: true);
+      final dir = await getApplicationDocumentsDirectory();
+      final ext = format == 'pdf' ? 'pdf' : 'xlsx';
+      final filename =
+          'ews-report-$type-${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(bytes, flush: true);
 
-    return file.path;
+      final openResult = await OpenFilex.open(file.path);
+      if (openResult.type != ResultType.done) {
+        throw ApiException(
+          0,
+          'File tersimpan di ${file.path}, tetapi gagal dibuka otomatis: ${openResult.message}',
+        );
+      }
+
+      return file.path;
+    } finally {
+      exporting = false;
+      notifyListeners();
+    }
   }
 }

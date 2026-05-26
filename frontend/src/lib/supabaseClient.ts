@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "placeholder-anon-key";
+function requireSupabaseEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY") {
+  const value = process.env[name]?.trim();
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  console.warn(
-    "⚠️ Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) are missing. Realtime subscriptions will not function until these are configured."
-  );
+  if (!value) {
+    throw new Error(
+      `[EWS] Missing required environment variable: ${name}. Configure your Supabase env vars before running the app.`,
+    );
+  }
+
+  return value;
 }
+
+const supabaseUrl = requireSupabaseEnv("NEXT_PUBLIC_SUPABASE_URL");
+const supabaseAnonKey = requireSupabaseEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

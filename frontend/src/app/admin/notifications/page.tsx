@@ -15,16 +15,9 @@ const levelDotClass: Record<NotificationConditionLevel, string> = {
   Bahaya: "bg-rose-500",
 };
 
-const ADMIN_NOTIFICATION_STORAGE_KEY = "ews_admin_notifications_read_map";
-
-function parseReadMap(raw: string | null): Record<string, boolean> {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as Record<string, boolean>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+function isNotificationRead(sentAt: string, notificationReadAt: string | null) {
+  if (!notificationReadAt) return false;
+  return new Date(sentAt).getTime() <= new Date(notificationReadAt).getTime();
 }
 
 export default function AdminNotificationsPage() {
@@ -43,14 +36,21 @@ export default function AdminNotificationsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; subject: string } | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const mounted = typeof window !== "undefined";
+  const [notificationReadAt, setNotificationReadAt] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       setErrorMessage(null);
       try {
-        const response = await api.get("/alerts/history", {
-          params: { page: 1, limit: 100 },
-        });
+        const [meResponse, response] = await Promise.all([
+          api.get("/auth/me"),
+          api.get("/alerts/history", {
+            params: { page: 1, limit: 100 },
+          }),
+        ]);
+
+        const readAt = meResponse.data?.data?.notificationReadAt ?? null;
+        setNotificationReadAt(readAt);
 
         const rows = (response.data?.data?.items ?? []) as Array<{
           id: string;
@@ -62,10 +62,6 @@ export default function AdminNotificationsPage() {
           user?: { name?: string };
         }>;
 
-        const savedReadMap = typeof window !== "undefined"
-          ? parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY))
-          : {};
-
         setItems(
           rows.map((row) => ({
             id: row.id,
@@ -75,7 +71,7 @@ export default function AdminNotificationsPage() {
             sender: row.user?.name ?? "Sistem EWS",
             channel: row.channels?.[0] ?? "push",
             receivedAt: row.sentAt,
-            isRead: Boolean(savedReadMap[row.id]),
+            isRead: isNotificationRead(row.sentAt, readAt),
           })),
         );
       } catch (error) {
@@ -90,24 +86,18 @@ export default function AdminNotificationsPage() {
     setItems((prev) => prev.filter((item) => item.id !== id));
     setDeleteConfirm(null);
     setOpenMenu(null);
-
-    if (typeof window !== "undefined") {
-      const savedReadMap = parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY));
-      savedReadMap[id] = true;
-      localStorage.setItem(ADMIN_NOTIFICATION_STORAGE_KEY, JSON.stringify(savedReadMap));
-      window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
-    }
   };
 
-  const handleMarkAsRead = (id: string) => {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true } : item)));
-    setOpenMenu(null);
-
-    if (typeof window !== "undefined") {
-      const savedReadMap = parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY));
-      savedReadMap[id] = true;
-      localStorage.setItem(ADMIN_NOTIFICATION_STORAGE_KEY, JSON.stringify(savedReadMap));
+  const handleMarkAllRead = async () => {
+    try {
+      const response = await api.put("/auth/notifications/read-all");
+      const readAt = response.data?.data?.notificationReadAt ?? new Date().toISOString();
+      setNotificationReadAt(readAt);
+      setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      setOpenMenu(null);
       window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Gagal menandai notifikasi sebagai dibaca.");
     }
   };
 
@@ -265,7 +255,7 @@ export default function AdminNotificationsPage() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleMarkAsRead(item.id);
+                              void handleMarkAllRead();
                             }}
                             disabled={item.isRead}
                             className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"

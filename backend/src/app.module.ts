@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AlertsModule } from './alerts/alerts.module';
@@ -17,9 +19,31 @@ import { UsersModule } from './users/users.module';
 import { WaterLevelsModule } from './water-levels/water-levels.module';
 import { IotModule } from './iot/iot.module';
 import { DischargeModule } from './discharge/discharge.module';
+import { ReportModule } from './reports/report.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+      validationSchema: Joi.object({
+        NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+        PORT: Joi.number().default(4101),
+        DATABASE_URL: Joi.string().required(),
+        DIRECT_URL: Joi.string().optional(),
+        JWT_SECRET: Joi.string().default('rahasia-super-kuat-ews-123'),
+        FIREBASE_SERVICE_ACCOUNT_PATH: Joi.string().optional(),
+        SUPABASE_URL: Joi.string().optional(),
+        SUPABASE_SERVICE_ROLE_KEY: Joi.string().optional(),
+        SMTP_HOST: Joi.string().optional(),
+        SMTP_PORT: Joi.number().optional(),
+        SMTP_USER: Joi.string().optional(),
+        SMTP_PASS: Joi.string().optional(),
+        SMTP_FROM: Joi.string().optional(),
+        ALLOWED_ORIGINS: Joi.string().allow('').optional(),
+        ALLOW_NGROK_ORIGINS: Joi.boolean().truthy('true').falsy('false').default(true),
+      }),
+    }),
     FirebaseModule,
     PrismaModule,
     AuthModule,
@@ -33,6 +57,7 @@ import { DischargeModule } from './discharge/discharge.module';
     UsersModule,
     EmergencyContactsModule,
     DischargeModule,
+    ReportModule,
   ],
   controllers: [AppController, HealthController, NotificationsController],
   providers: [AppService, NotificationsService],

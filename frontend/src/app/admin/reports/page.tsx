@@ -16,6 +16,10 @@ interface FilterState {
   sensorId: string;
 }
 
+type DownloadFormat = "pdf" | "excel";
+
+const REPORT_TYPE = "combined";
+
 export default function AdminReportsPage() {
   const today = new Date();
   const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
@@ -25,6 +29,8 @@ export default function AdminReportsPage() {
   const [filteredData, setFilteredData] = useState<WaterLevelPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [downloadLoading, setDownloadLoading] = useState<DownloadFormat | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [filterForm, setFilterForm] = useState<FilterState>({
     fromDate: initialFromDate,
@@ -36,6 +42,62 @@ export default function AdminReportsPage() {
     toDate: initialToDate,
     sensorId: "all",
   });
+
+  useEffect(() => {
+    if (!toastMessage) return;
+
+    const timer = window.setTimeout(() => setToastMessage(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [toastMessage]);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+  };
+
+  const buildDownloadFilename = (format: DownloadFormat) => {
+    const extension = format === "pdf" ? "pdf" : "xlsx";
+    return `ews-report-${REPORT_TYPE}-${appliedFilter.fromDate}_to_${appliedFilter.toDate}.${extension}`;
+  };
+
+  const triggerDownload = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = "noopener noreferrer";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const downloadReport = async (format: DownloadFormat) => {
+    setDownloadLoading(format);
+    setErrorMessage(null);
+
+    try {
+      const response = await api.get("/reports/generate", {
+        params: {
+          type: REPORT_TYPE,
+          startDate: `${appliedFilter.fromDate}T00:00:00.000Z`,
+          endDate: `${appliedFilter.toDate}T23:59:59.999Z`,
+          format,
+        },
+        responseType: "blob",
+      });
+
+      const blob = response.data as Blob;
+      const filename = buildDownloadFilename(format);
+      triggerDownload(blob, filename);
+      showToast(format === "pdf" ? "Unduhan PDF sedang dimulai." : "Unduhan Excel sedang dimulai.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal mengunduh laporan.";
+      setErrorMessage(message);
+      showToast(message);
+    } finally {
+      setDownloadLoading(null);
+    }
+  };
 
   const loadSensors = async () => {
     const response = await api.get("/sensors");
@@ -126,31 +188,7 @@ export default function AdminReportsPage() {
     void bootstrap();
   }, [initialFromDate, initialToDate]);
 
-  const exportCsv = () => {
-    const lines = [
-      ["Waktu", "Sensor", "Ketinggian (cm)", "Intensitas Hujan (mm/jam)", "Debit Aliran (LPM)"]
-        .join(","),
-      ...filteredData.map((row) => [
-        formatTimestamp(row.timestamp),
-        row.sensorId,
-        row.levelCm.toString(),
-        row.rainfallMm.toString(),
-        (row.flowRateLpm ?? 0).toString(),
-      ].join(",")),
-    ];
-
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "laporan-ews.csv";
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadPdf = () => {
-    window.print();
-  };
+  const isDownloading = downloadLoading !== null;
 
   return (
     <main className="space-y-6">
@@ -254,10 +292,30 @@ export default function AdminReportsPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-900">Tabel Data Mentah</h2>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={downloadPdf}>
-              Unduh PDF
+            <Button
+              variant="secondary"
+              onClick={() => void downloadReport("pdf")}
+              disabled={isDownloading}
+            >
+              {downloadLoading === "pdf" ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex size-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                  Memproses PDF...
+                </span>
+              ) : (
+                "Unduh PDF"
+              )}
             </Button>
-            <Button onClick={exportCsv}>Unduh Excel/CSV</Button>
+            <Button onClick={() => void downloadReport("excel")} disabled={isDownloading}>
+              {downloadLoading === "excel" ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex size-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                  Memproses Excel...
+                </span>
+              ) : (
+                "Unduh Excel (.xlsx)"
+              )}
+            </Button>
           </div>
         </div>
 
@@ -295,6 +353,13 @@ export default function AdminReportsPage() {
 
       {loading && <p className="text-sm text-slate-500">Memuat data laporan...</p>}
       {errorMessage && <p className="text-sm text-rose-600">{errorMessage}</p>}
+
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl shadow-slate-900/10">
+          <p className="text-sm font-semibold text-blue-700">Laporan</p>
+          <p className="mt-1 text-sm text-slate-600">{toastMessage}</p>
+        </div>
+      )}
     </main>
   );
 }

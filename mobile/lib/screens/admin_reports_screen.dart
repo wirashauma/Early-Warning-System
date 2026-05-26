@@ -22,7 +22,7 @@ class AdminReportsScreen extends StatelessWidget {
 }
 
 class _AdminReportsBody extends StatefulWidget {
-  const _AdminReportsBody({Key? key}) : super(key: key);
+  const _AdminReportsBody();
 
   @override
   State<_AdminReportsBody> createState() => _AdminReportsBodyState();
@@ -58,16 +58,19 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      const SnackBar(content: Text('Memproses ekspor laporan...')),
+      SnackBar(content: Text('Mengunduh ${format.toUpperCase()}...')),
     );
 
     try {
-      await provider.launchReportExport(type: type, format: format);
+      final filePath = await provider.downloadAndOpenReport(
+        type: type,
+        format: format,
+      );
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Unduh ${format.toUpperCase()} berhasil. Lihat browser untuk melanjutkan.',
+            'Unduh ${format.toUpperCase()} berhasil. File tersimpan di: $filePath',
           ),
         ),
       );
@@ -101,7 +104,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
               children: [
                 // Sensor Dropdown — wired to ReportProvider
                 DropdownButtonFormField<String>(
-                  value: provider.selectedSensorId,
+                  initialValue: provider.selectedSensorId,
                   decoration: const InputDecoration(
                     labelText: 'Pilih Sensor',
                     border: OutlineInputBorder(),
@@ -181,34 +184,56 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
             ),
           ),
           const SizedBox(height: 12),
-          // Export Buttons — wired to ReportProvider.launchReportExport()
+          // Export Buttons — wired to ReportProvider.downloadAndOpenReport()
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.white),
-                  label: const Text('Unduh PDF', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600),
-                  onPressed: () => _handleExport(
-                    context,
-                    provider,
-                    type: 'combined',
-                    format: 'pdf',
+                  icon: const Icon(
+                    Icons.picture_as_pdf,
+                    size: 16,
+                    color: Colors.white,
                   ),
+                  label: Text(
+                    provider.exporting ? 'Memproses...' : 'Unduh PDF',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                  ),
+                  onPressed: provider.exporting
+                      ? null
+                      : () => _handleExport(
+                          context,
+                          provider,
+                          type: 'combined',
+                          format: 'pdf',
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.grid_on_outlined, size: 16, color: Colors.white),
-                  label: const Text('Unduh Excel', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600),
-                  onPressed: () => _handleExport(
-                    context,
-                    provider,
-                    type: 'combined',
-                    format: 'excel',
+                  icon: const Icon(
+                    Icons.grid_on_outlined,
+                    size: 16,
+                    color: Colors.white,
                   ),
+                  label: Text(
+                    provider.exporting ? 'Memproses...' : 'Unduh Excel',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                  ),
+                  onPressed: provider.exporting
+                      ? null
+                      : () => _handleExport(
+                          context,
+                          provider,
+                          type: 'combined',
+                          format: 'excel',
+                        ),
                 ),
               ),
             ],
@@ -235,66 +260,79 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.rawRows.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.folder_open, size: 48, color: Color(0xFF94A3B8)),
-                            SizedBox(height: 8),
-                            Text(
-                              'Tidak ada data logs pada rentang filter ini.',
-                              style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                            ),
-                          ],
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.folder_open,
+                          size: 48,
+                          color: Color(0xFF94A3B8),
                         ),
-                      )
-                    : SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${provider.rawRows.length} record ditemukan',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Card(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: DataTable(
-                                  columns: const [
-                                    DataColumn(label: Text('Waktu')),
-                                    DataColumn(label: Text('Sensor')),
-                                    DataColumn(label: Text('Ketinggian (cm)')),
-                                    DataColumn(label: Text('Hujan (mm)')),
-                                    DataColumn(label: Text('Debit (LPM)')),
-                                  ],
-                                  rows: provider.rawRows.map((r) {
-                                    return DataRow(
-                                      cells: [
-                                        DataCell(
-                                          Text(
-                                            DateFormat('yyyy-MM-dd HH:mm').format(
-                                              DateTime.parse(r['timestamp']),
-                                            ),
-                                          ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Tidak ada data logs pada rentang filter ini.',
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${provider.rawRows.length} record ditemukan',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              columns: const [
+                                DataColumn(label: Text('Waktu')),
+                                DataColumn(label: Text('Sensor')),
+                                DataColumn(label: Text('Ketinggian (cm)')),
+                                DataColumn(label: Text('Hujan (mm)')),
+                                DataColumn(label: Text('Debit (LPM)')),
+                              ],
+                              rows: provider.rawRows.map((r) {
+                                return DataRow(
+                                  cells: [
+                                    DataCell(
+                                      Text(
+                                        DateFormat('yyyy-MM-dd HH:mm').format(
+                                          DateTime.parse(r['timestamp']),
                                         ),
-                                        DataCell(Text(r['sensorId'] ?? '-')),
-                                        DataCell(Text((r['levelCm'] ?? 0).toString())),
-                                        DataCell(Text((r['rainfallMm'] ?? 0).toString())),
-                                        DataCell(Text((r['flowRateLpm'] ?? 0).toString())),
-                                      ],
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
+                                      ),
+                                    ),
+                                    DataCell(Text(r['sensorId'] ?? '-')),
+                                    DataCell(
+                                      Text((r['levelCm'] ?? 0).toString()),
+                                    ),
+                                    DataCell(
+                                      Text((r['rainfallMm'] ?? 0).toString()),
+                                    ),
+                                    DataCell(
+                                      Text((r['flowRateLpm'] ?? 0).toString()),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
