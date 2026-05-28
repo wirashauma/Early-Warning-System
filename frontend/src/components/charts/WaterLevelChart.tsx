@@ -301,14 +301,15 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
   // Aggregate and filter data points for Recharts based on range selection
   const chartData = useMemo(() => {
     if (isDemo) {
+      const baseTime = Date.now();
       return [
-        { label: "08:00", value: 2.1 },
-        { label: "09:00", value: 2.5 },
-        { label: "10:00", value: 3.8 },
-        { label: "11:00", value: 5.2 },
-        { label: "12:00", value: 8.5 },
-        { label: "13:00", value: 11.0 }, // Peak
-        { label: "14:00", value: 9.2 },
+        { label: "08:00", value: 2.1, timestamp: baseTime - 6 * 60 * 60 * 1000 },
+        { label: "09:00", value: 2.5, timestamp: baseTime - 5 * 60 * 60 * 1000 },
+        { label: "10:00", value: 3.8, timestamp: baseTime - 4 * 60 * 60 * 1000 },
+        { label: "11:00", value: 5.2, timestamp: baseTime - 3 * 60 * 60 * 1000 },
+        { label: "12:00", value: 8.5, timestamp: baseTime - 2 * 60 * 60 * 1000 },
+        { label: "13:00", value: 11.0, timestamp: baseTime - 1 * 60 * 60 * 1000 }, // Peak
+        { label: "14:00", value: 9.2, timestamp: baseTime },
       ];
     }
 
@@ -460,10 +461,27 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="timestamp"
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
                   tick={{ fill: "#64748b", fontSize: 11 }}
+                  tickFormatter={(value) => {
+                    if (!value) return "";
+                    try {
+                      const date = new Date(value);
+                      if (range === "day") {
+                        return date.toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                      }
+                      return date.toLocaleDateString("id-ID", {
+                        weekday: "short",
+                      });
+                    } catch (e) {
+                      return String(value);
+                    }
+                  }}
                 />
                 <YAxis
                   axisLine={{ stroke: "#e2e8f0" }}
@@ -473,10 +491,20 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
+                      const datum = payload[0].payload;
+                      const timeStr = datum.timestamp
+                        ? new Date(datum.timestamp).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : datum.label;
+                      const dateLabel = range === "day"
+                        ? `Waktu Ingest: ${timeStr}`
+                        : `Hari: ${datum.label}`;
                       return (
                         <div className="rounded-lg border border-slate-200 bg-white/95 p-2.5 shadow-md backdrop-blur-xs">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            {range === "day" ? "Waktu Ingest" : "Hari"}
+                            {dateLabel}
                           </p>
                           <p className="mt-0.5 text-sm font-black text-blue-600">
                             {payload[0].value} <span className="text-xs font-semibold text-slate-500">cm</span>

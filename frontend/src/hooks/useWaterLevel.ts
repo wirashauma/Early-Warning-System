@@ -270,6 +270,43 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
           },
         };
       });
+
+      setHistoryBySensor((prev) => {
+        const currentHistory = prev[payload.sensorId] ?? [];
+        
+        // Find if there is an existing point with the exact same timestamp
+        const existingIndex = currentHistory.findIndex((p) => p.timestamp === timestamp);
+
+        let newHistory = [...currentHistory];
+        if (existingIndex !== -1) {
+          // Merge updates into the existing point
+          newHistory[existingIndex] = {
+            ...newHistory[existingIndex],
+            levelCm: payload.waterLevel !== undefined ? payload.waterLevel : newHistory[existingIndex].levelCm,
+            rainfallMm: payload.rainfall !== undefined ? payload.rainfall : newHistory[existingIndex].rainfallMm,
+            flowRateLpm: payload.flowRate !== undefined ? payload.flowRate : newHistory[existingIndex].flowRateLpm,
+          };
+        } else {
+          // Get the last known values as fallback
+          const lastPoint = currentHistory[currentHistory.length - 1];
+          const newPoint: WaterLevelPoint = {
+            timestamp,
+            levelCm: payload.waterLevel ?? lastPoint?.levelCm ?? 0,
+            rainfallMm: payload.rainfall ?? lastPoint?.rainfallMm ?? 0,
+            flowRateLpm: payload.flowRate ?? lastPoint?.flowRateLpm ?? 0,
+            sensorId: payload.sensorId,
+          };
+          newHistory.push(newPoint);
+        }
+
+        // Sort strictly chronologically to prevent visual shifts or backwards loops!
+        newHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        return {
+          ...prev,
+          [payload.sensorId]: newHistory,
+        };
+      });
     };
 
     // 1. Establish SSE EventSource connection

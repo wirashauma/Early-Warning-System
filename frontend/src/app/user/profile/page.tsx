@@ -13,6 +13,7 @@ export default function ProfilePage() {
   
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [removeAvatarConfirmOpen, setRemoveAvatarConfirmOpen] = useState(false);
@@ -28,7 +29,7 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Fungsi untuk mengubah file gambar menjadi teks Base64
+  // Fungsi untuk menangkap file gambar secara langsung
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -39,12 +40,9 @@ export default function ProfilePage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      // Hasil konversi berupa string "data:image/jpeg;base64,..."
-      setAvatar(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    setAvatarFile(file);
+    // Instant preview using browser blob URL
+    setAvatar(URL.createObjectURL(file));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -53,11 +51,17 @@ export default function ProfilePage() {
     setMessage({ type: "", text: "" });
 
     try {
-      // Kirim data ke endpoint PUT /auth/profile yang baru kita buat
-      const response = await api.put("/auth/profile", {
-        name,
-        avatar,
-      });
+      const formData = new FormData();
+      formData.append("name", name);
+      
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
+      } else if (avatar === null) {
+        formData.append("removeAvatar", "true");
+      }
+
+      // Kirim data ke endpoint PUT /auth/profile yang baru kita buat (multipart/form-data)
+      const response = await api.put("/auth/profile", formData);
 
       const updatedUser = response.data?.data as { name?: string; avatar?: string | null } | undefined;
       updateProfile({
@@ -65,10 +69,13 @@ export default function ProfilePage() {
         avatar: updatedUser?.avatar ?? avatar,
       });
 
+      // Reset state file raw setelah sukses
+      setAvatarFile(null);
       setMessage({ type: "success", text: "Profil berhasil diperbarui!" });
 
-    } catch {
-      setMessage({ type: "error", text: "Gagal memperbarui profil." });
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Gagal memperbarui profil.";
+      setMessage({ type: "error", text: errorMsg });
     } finally {
       setIsSubmitting(false);
     }

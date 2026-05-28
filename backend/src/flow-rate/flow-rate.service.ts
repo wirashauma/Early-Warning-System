@@ -84,41 +84,45 @@ export class FlowRateService {
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [logs, total] = await this.prisma.$transaction([
-      this.prisma.flowRateLog.findMany({
-        where: {
-          sensorId: sensor.id,
-          recordedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        orderBy: { recordedAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.flowRateLog.count({
-        where: {
-          sensorId: sensor.id,
-          recordedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      }),
-    ]);
+    // 2. Query aggregated logs using DATE_TRUNC hourly
+    const aggregatedLogs = await this.prisma.$queryRaw<
+      Array<{
+        hour: Date;
+        flowRate: number;
+        minFlowRate: number;
+        maxFlowRate: number;
+      }>
+    >`
+      SELECT 
+        DATE_TRUNC('hour', recorded_at) as "hour",
+        ROUND(AVG(flow_rate)::numeric, 2)::float as "flowRate",
+        ROUND(MIN(flow_rate)::numeric, 2)::float as "minFlowRate",
+        ROUND(MAX(flow_rate)::numeric, 2)::float as "maxFlowRate"
+      FROM flow_rate_logs
+      WHERE sensor_id = ${sensor.id} 
+        AND recorded_at BETWEEN ${startDate} AND ${endDate}
+      GROUP BY "hour"
+      ORDER BY "hour" ASC
+    `;
 
-    const items = logs.map((item) => ({
-      id: item.id,
-      sensorId: sensor.sensorId,
-      sensorName: sensor.name,
-      flowRate: item.flowRate,
-      unit: item.unit,
-      latitude: sensor.latitude,
-      longitude: sensor.longitude,
-      recordedAt: item.recordedAt,
-      interval: query.interval ?? 'hourly',
-    }));
+    const total = aggregatedLogs.length;
+    const slicedLogs = aggregatedLogs.slice(skip, skip + limit);
+
+    const items = slicedLogs.map((item) => {
+      return {
+        id: `${sensor.sensorId}-fr-agg-${item.hour.getTime()}`,
+        sensorId: sensor.sensorId,
+        sensorName: sensor.name,
+        flowRate: item.flowRate,
+        minFlowRate: item.minFlowRate,
+        maxFlowRate: item.maxFlowRate,
+        unit: 'l/min',
+        latitude: sensor.latitude,
+        longitude: sensor.longitude,
+        recordedAt: item.hour,
+        interval: query.interval ?? 'hourly',
+      };
+    });
 
     return {
       items,

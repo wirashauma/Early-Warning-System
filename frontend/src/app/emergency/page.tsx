@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import api from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Reveal } from "@/components/ui/Reveal";
 
@@ -13,26 +9,28 @@ interface EmergencyContact {
   isActive: boolean;
 }
 
-export default function EmergencyPage() {
-  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        const response = await api.get("/emergency-contacts");
-        if (response.data?.data) {
-          setContacts(response.data.data.filter((c: EmergencyContact) => c.isActive));
-        }
-      } catch (error) {
-        console.error("Gagal mengambil kontak darurat:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+export default async function EmergencyPage() {
+  let contacts: EmergencyContact[] = [];
+  
+  try {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4101/api";
+    // Clean trailing slash if present
+    const cleanUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+    
+    // Fetch directly from the unauthenticated public NestJS API endpoint
+    const res = await fetch(`${cleanUrl}/emergency-contacts`, {
+      next: { revalidate: 60 },
+    });
 
-    fetchContacts();
-  }, []);
+    if (res.ok) {
+      const payload = await res.json();
+      contacts = (payload.data || []).filter((c: EmergencyContact) => c.isActive);
+    }
+  } catch (error) {
+    console.error("Gagal memuat kontak darurat di server:", error);
+  }
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -43,14 +41,7 @@ export default function EmergencyPage() {
         </p>
       </Reveal>
 
-      {isLoading ? (
-        <div className="mt-12 flex h-40 items-center justify-center rounded-2xl border border-dashed border-slate-200">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-            <p className="text-sm font-medium text-slate-500">Memperbarui data dari pusat...</p>
-          </div>
-        </div>
-      ) : contacts.length > 0 ? (
+      {contacts.length > 0 ? (
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {contacts.map((contact, index) => (
             <Reveal key={contact.id} delayMs={index * 100}>

@@ -308,28 +308,17 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
   // Aggregate and filter data points for Recharts based on range selection
   const chartData = useMemo(() => {
     if (isDemo) {
-      return [
-        { label: "1", value: 13.0 },
-        { label: "2", value: 16.8 },
-        { label: "3", value: 15.2 },
-        { label: "4", value: 15.8 },
-        { label: "5", value: 14.0 },
-        { label: "6", value: 14.0 },
-        { label: "7", value: 11.5 },
-        { label: "8", value: 15.0 },
-        { label: "9", value: 15.0 },
-        { label: "10", value: 15.0 },
-        { label: "11", value: 13.0 },
-        { label: "12", value: 14.0 },
-        { label: "13", value: 18.0 },
-        { label: "14", value: 18.0 },
-        { label: "15", value: 15.0 },
-        { label: "16", value: 12.2 },
-        { label: "17", value: 10.6 },
-        { label: "18", value: 12.0 },
-        { label: "19", value: 26.6 },
-        { label: "20", value: 20.3 },
-      ];
+      const baseTime = Date.now();
+      const basePoints = [13.0, 16.8, 15.2, 15.8, 14.0, 14.0, 11.5, 15.0, 15.0, 15.0, 13.0, 14.0, 18.0, 18.0, 15.0, 12.2, 10.6, 12.0, 26.6, 20.3];
+      return basePoints.map((val, index) => {
+        const offsetMinutes = (basePoints.length - 1 - index) * 10;
+        const timestamp = baseTime - offsetMinutes * 60 * 1000;
+        return {
+          label: (index + 1).toString(),
+          value: val,
+          timestamp,
+        };
+      });
     }
 
     if (points.length === 0) return [];
@@ -378,13 +367,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       }));
   }, [points, range, referenceNow, isDemo]);
 
-  // Dynamic X-axis ticks based on active range
-  const xAxisTicks = useMemo(() => {
-    if (range === "day") {
-      return ["1", "4", "7", "10", "13", "16", "19", "20"];
-    }
-    return ["1", "2", "3", "4", "5", "6", "7"];
-  }, [range]);
+  // Hardcoded ticks removed in favor of responsive, auto-calculated date/time ticks.
 
   // Calculations for stats boxes at the bottom
   const values = chartData.map((p) => p.value);
@@ -470,11 +453,27 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               
               <XAxis
-                dataKey="label"
-                ticks={xAxisTicks}
+                dataKey="timestamp"
                 axisLine={{ stroke: "#e2e8f0" }}
                 tickLine={false}
                 tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
+                tickFormatter={(value) => {
+                  if (!value) return "";
+                  try {
+                    const date = new Date(value);
+                    if (range === "day") {
+                      return date.toLocaleTimeString("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                    }
+                    return date.toLocaleDateString("id-ID", {
+                      weekday: "short",
+                    });
+                  } catch (e) {
+                    return String(value);
+                  }
+                }}
               />
               <YAxis
                 domain={[0, 30]}
@@ -487,13 +486,23 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
                 cursor={{ fill: "#f8fafc", opacity: 0.8 }}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
+                    const datum = payload[0].payload;
+                    const timeStr = datum.timestamp
+                      ? new Date(datum.timestamp).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : `Titik ${datum.label}`;
+                    const tooltipLabel = range === "day"
+                      ? `Waktu Ingest: ${timeStr}`
+                      : `Hari: ${datum.timestamp ? new Date(datum.timestamp).toLocaleDateString("id-ID", { weekday: "long" }) : `Titik ${datum.label}`}`;
                     return (
                       <div className="rounded-lg border border-slate-200 bg-white/95 p-2.5 shadow-md backdrop-blur-xs">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          Hari Pengukuran: {payload[0].payload.label}
+                          {tooltipLabel}
                         </p>
                         <p className="mt-0.5 text-sm font-black text-blue-600">
-                          {payload[0].value} <span className="text-xs font-semibold text-slate-500">L/m</span>
+                          {payload[0].value} <span className="text-xs font-semibold text-slate-500">L/min</span>
                         </p>
                       </div>
                     );

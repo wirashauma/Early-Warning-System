@@ -16,6 +16,7 @@ import { Observable } from 'rxjs';
 import { ok } from '../common/api-response';
 import { SensorsService } from './sensors.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { Public } from '../auth/public.decorator';
 
 interface UpsertSensorRequest {
   sensorId: string;
@@ -34,11 +35,13 @@ export class SensorsController {
     private readonly realtimeService: RealtimeService,
   ) {}
 
+  @Public()
   @Sse('stream')
   streamSensors(): Observable<MessageEvent> {
     return this.realtimeService.getSensorStream();
   }
 
+  @Public()
   @Get()
   async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     const data = await this.sensorsService.findAll(

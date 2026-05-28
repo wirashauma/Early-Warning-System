@@ -85,42 +85,58 @@ export class RainfallService {
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [logs, total] = await this.prisma.$transaction([
-      this.prisma.rainfallLog.findMany({
-        where: {
-          sensorId: sensor.id,
-          recordedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        orderBy: { recordedAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.rainfallLog.count({
-        where: {
-          sensorId: sensor.id,
-          recordedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      }),
-    ]);
+    // 1. Fetch threshold dynamically to evaluate intensity
+    const threshold = await this.prisma.threshold.findUnique({
+      where: { type: 'rainfall' },
+    });
+    const warningMin = threshold?.warningMin ?? 5.1;
+    const dangerMin = threshold?.dangerMin ?? 20.1;
 
-    const items = logs.map((item) => ({
-      id: item.id,
-      sensorId: sensor.sensorId,
-      sensorName: sensor.name,
-      rainfall: item.rainfall,
-      unit: item.unit,
-      intensity: item.intensity,
-      latitude: sensor.latitude,
-      longitude: sensor.longitude,
-      recordedAt: item.recordedAt,
-      interval: query.interval ?? 'hourly',
-    }));
+    // 2. Query aggregated logs using DATE_TRUNC hourly
+    const aggregatedLogs = await this.prisma.$queryRaw<
+      Array<{
+        hour: Date;
+        rainfall: number;
+        minRainfall: number;
+        maxRainfall: number;
+      }>
+    >`
+      SELECT 
+        DATE_TRUNC('hour', recorded_at) as "hour",
+        ROUND(AVG(rainfall)::numeric, 2)::float as "rainfall",
+        ROUND(MIN(rainfall)::numeric, 2)::float as "minRainfall",
+        ROUND(MAX(rainfall)::numeric, 2)::float as "maxRainfall"
+      FROM rainfall_logs
+      WHERE sensor_id = ${sensor.id} 
+        AND recorded_at BETWEEN ${startDate} AND ${endDate}
+      GROUP BY "hour"
+      ORDER BY "hour" ASC
+    `;
+
+    const total = aggregatedLogs.length;
+    const slicedLogs = aggregatedLogs.slice(skip, skip + limit);
+
+    const items = slicedLogs.map((item) => {
+      const avgRain = item.rainfall;
+      const intensity: RainfallIntensity =
+        avgRain >= dangerMin ? RainfallIntensity.HEAVY :
+        avgRain >= warningMin ? RainfallIntensity.MODERATE : RainfallIntensity.LIGHT;
+
+      return {
+        id: `${sensor.sensorId}-rf-agg-${item.hour.getTime()}`,
+        sensorId: sensor.sensorId,
+        sensorName: sensor.name,
+        rainfall: avgRain,
+        minRainfall: item.minRainfall,
+        maxRainfall: item.maxRainfall,
+        unit: 'mm/hour',
+        intensity,
+        latitude: sensor.latitude,
+        longitude: sensor.longitude,
+        recordedAt: item.hour,
+        interval: query.interval ?? 'hourly',
+      };
+    });
 
     return {
       items,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/api_service.dart';
 import '../models/water_level_log.dart';
@@ -6,11 +7,10 @@ import '../models/rainfall_log.dart';
 import '../models/flow_rate_log.dart';
 import '../models/alert_model.dart';
 import '../models/sensor_model.dart';
-import '../services/supabase_service.dart';
+import '../services/sse_client.dart';
 
 class TelemetryProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
-  final SupabaseService _supabaseService = SupabaseService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -24,10 +24,9 @@ class TelemetryProvider extends ChangeNotifier {
   AlertModel?
   _activeRealtimeAlert; // Populated when a "DANGER" alert is broadcasted realtime
 
-  // Stream Subscriptions
-  StreamSubscription<WaterLevelLog>? _waterLevelSub;
-  StreamSubscription<AlertModel>? _alertSub;
-  StreamSubscription<SensorModel>? _sensorSub;
+  // SSE Client & Subscription
+  SseClient? _sseClient;
+  StreamSubscription<SseEvent>? _sseSub;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -72,72 +71,97 @@ class TelemetryProvider extends ChangeNotifier {
   }
 
   void _initRealtimeSubscriptions() {
-    // 1. Listen to Realtime Water Level Updates
-    _waterLevelSub = _supabaseService.waterLevelStream.listen((log) {
-      debugPrint(
-        '🌊 TelemetryProvider: Realtime Water Level Log Appended: ${log.waterLevel} cm',
-      );
+    final streamUrl = '${_apiService.baseUrl}/sensors/stream';
+    debugPrint('⚡ [SSE] Connecting TelemetryProvider to $streamUrl');
 
-      // Append to the list and notify listeners to rebuild fl_chart
-      _waterLevelHistory.add(log);
+    _sseClient = SseClient(streamUrl);
+    _sseSub = _sseClient!.stream.listen((event) {
+      try {
+        final Map<String, dynamic> data = jsonDecode(event.data);
+        debugPrint('⚡ [SSE] Real-Time Event received in TelemetryProvider: $data');
 
-      // Prevent unbounded growth in memory; keep the last 50 entries
-      if (_waterLevelHistory.length > 50) {
-        _waterLevelHistory.removeAt(0);
+        final String recordedAtStr = data['recordedAt'] ?? DateTime.now().toUtc().toIso8601String();
+        final DateTime recordedAt = DateTime.parse(recordedAtStr);
+
+        // 1. Process Water Level update
+        if (data.containsKey('water') && data['water'] != null) {
+          final water = data['water'] as Map<String, dynamic>;
+          final String sensorId = water['sensorId'];
+          final double waterLevel = (water['waterLevel'] as num).toDouble();
+          final String status = water['status'];
+
+          final log = WaterLevelLog(
+            id: '',
+            sensorId: sensorId,
+            waterLevel: waterLevel,
+            unit: 'cm',
+            status: status,
+            recordedAt: recordedAt,
+          );
+
+          _waterLevelHistory.add(log);
+          if (_waterLevelHistory.length > 50) {
+            _waterLevelHistory.removeAt(0);
+          }
+
+          final idx = _sensors.indexWhere((s) => s.id == sensorId || s.sensorId == sensorId);
+          if (idx != -1) {
+            _sensors[idx] = _sensors[idx].copyWith(
+              waterLevel: waterLevel,
+              status: status,
+              updatedAt: recordedAt,
+            );
+          }
+
+          // Trigger Danger warning overlay if status reaches danger
+          if (status.toUpperCase() == 'DANGER') {
+            _activeRealtimeAlert = AlertModel(
+              id: 'realtime-danger-${DateTime.now().millisecondsSinceEpoch}',
+              title: 'CRITICAL FLOOD WARNING ($sensorId)',
+              message: 'Sensor has detected water levels reaching $waterLevel cm (DANGER). Please follow evacuation guides immediately.',
+              severity: 'DANGER',
+              channels: const ['PUSH'],
+              sentAt: recordedAt,
+            );
+          }
+        }
+
+        // 2. Process Rainfall update
+        if (data.containsKey('rainfall') && data['rainfall'] != null) {
+          final rain = data['rainfall'] as Map<String, dynamic>;
+          final String sensorId = rain['sensorId'];
+          final double rainfall = (rain['rainfall'] as num).toDouble();
+          final String intensity = rain['intensity'];
+
+          final idx = _sensors.indexWhere((s) => s.id == sensorId || s.sensorId == sensorId);
+          if (idx != -1) {
+            _sensors[idx] = _sensors[idx].copyWith(
+              rainfall: rainfall,
+              status: intensity,
+              updatedAt: recordedAt,
+            );
+          }
+        }
+
+        // 3. Process Flow Rate update
+        if (data.containsKey('flowRate') && data['flowRate'] != null) {
+          final flow = data['flowRate'] as Map<String, dynamic>;
+          final String sensorId = flow['sensorId'];
+          final double flowRate = (flow['flowRate'] as num).toDouble();
+
+          final idx = _sensors.indexWhere((s) => s.id == sensorId || s.sensorId == sensorId);
+          if (idx != -1) {
+            _sensors[idx] = _sensors[idx].copyWith(
+              flowRate: flowRate,
+              updatedAt: recordedAt,
+            );
+          }
+        }
+
+        notifyListeners();
+      } catch (e) {
+        debugPrint('❌ [SSE] Error parsing dynamic event chunk: $e');
       }
-
-      // Also update the sensor's telemetry values directly if it exists in our cache
-      final sensorIdx = _sensors.indexWhere(
-        (s) => s.id == log.sensorId || s.sensorId == log.sensorId,
-      );
-      if (sensorIdx != -1) {
-        _sensors[sensorIdx] = _sensors[sensorIdx].copyWith(
-          waterLevel: log.waterLevel.toDouble(),
-          status: log.status,
-          updatedAt: log.recordedAt,
-        );
-      }
-
-      notifyListeners();
-    });
-
-    // 2. Listen to Realtime Danger Alerts
-    _alertSub = _supabaseService.alertStream.listen((alert) {
-      debugPrint(
-        '🔥 TelemetryProvider: Realtime Alert Broadcast: ${alert.title}',
-      );
-
-      _activeAlerts.insert(0, alert);
-
-      // Trigger Red Banner Overlay if severity is DANGER
-      if (alert.severity.toUpperCase() == 'DANGER') {
-        _activeRealtimeAlert = alert;
-      }
-
-      notifyListeners();
-    });
-
-    // 3. Listen to Realtime Sensor Status Changes
-    _sensorSub = _supabaseService.sensorStream.listen((updatedSensor) {
-      debugPrint(
-        '📡 TelemetryProvider: Realtime Sensor Status Updated: ${updatedSensor.sensorId} is ${updatedSensor.connectivity}',
-      );
-
-      final index = _sensors.indexWhere(
-        (s) => s.id == updatedSensor.id || s.sensorId == updatedSensor.sensorId,
-      );
-      if (index != -1) {
-        _sensors[index] = updatedSensor.copyWith(
-          waterLevel: _sensors[index].waterLevel,
-          rainfall: _sensors[index].rainfall,
-          flowRate: _sensors[index].flowRate,
-          status: _sensors[index].status,
-        );
-      } else {
-        _sensors.add(updatedSensor);
-      }
-
-      notifyListeners();
     });
   }
 
@@ -271,9 +295,8 @@ class TelemetryProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _waterLevelSub?.cancel();
-    _alertSub?.cancel();
-    _sensorSub?.cancel();
+    _sseSub?.cancel();
+    _sseClient?.close();
     super.dispose();
   }
 }

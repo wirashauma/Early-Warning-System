@@ -7,10 +7,15 @@ import {
   Put,
   Request,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ok } from '../common/api-response';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { Public } from './public.decorator';
+import { StorageService } from '../common/storage/storage.service';
 
 interface LoginRequest {
   email: string;
@@ -42,8 +47,12 @@ interface AuthenticatedRequest {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly storageService: StorageService,
+  ) {}
 
+  @Public()
   @Post('register')
   @HttpCode(201)
   async register(@Body() body: RegisterRequest) {
@@ -51,6 +60,7 @@ export class AuthController {
     return ok(data);
   }
 
+  @Public()
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: LoginRequest) {
@@ -58,6 +68,7 @@ export class AuthController {
     return ok(data);
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Body() body: RefreshRequest) {
@@ -65,6 +76,7 @@ export class AuthController {
     return ok(data);
   }
 
+  @Public()
   @Post('google-login')
   @HttpCode(200)
   async googleLogin(@Body() body: GoogleLoginRequest) {
@@ -83,21 +95,50 @@ export class AuthController {
   // --- ENDPOINT UPDATE PROFILE BARU ---
   @UseGuards(JwtAuthGuard)
   @Put('profile')
+  @UseInterceptors(FileInterceptor('avatar'))
   @HttpCode(200)
   async updateProfile(
     @Request() req: AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File,
     @Body()
     body: {
       name?: string;
-      avatar?: string;
       phone?: string;
       institution?: string;
-      notificationFlood?: boolean;
-      notificationStatus?: boolean;
-      notificationEmail?: boolean;
+      notificationFlood?: string;
+      notificationStatus?: string;
+      notificationEmail?: string;
+      removeAvatar?: string;
     },
   ) {
-    const data = await this.authService.updateProfile(req.user.id, body);
+    const parsedData: any = {
+      name: body.name,
+      phone: body.phone,
+      institution: body.institution,
+    };
+
+    if (body.notificationFlood !== undefined) {
+      parsedData.notificationFlood = body.notificationFlood === 'true';
+    }
+    if (body.notificationStatus !== undefined) {
+      parsedData.notificationStatus = body.notificationStatus === 'true';
+    }
+    if (body.notificationEmail !== undefined) {
+      parsedData.notificationEmail = body.notificationEmail === 'true';
+    }
+
+    if (body.removeAvatar === 'true' || body.removeAvatar === '') {
+      parsedData.avatar = null;
+    } else if (file) {
+      const avatarUrl = await this.storageService.uploadAvatar(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+      );
+      parsedData.avatar = avatarUrl;
+    }
+
+    const data = await this.authService.updateProfile(req.user.id, parsedData);
     return ok(data);
   }
 

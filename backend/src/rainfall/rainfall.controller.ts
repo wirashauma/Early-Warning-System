@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ok } from '../common/api-response';
 import { RainfallService } from './rainfall.service';
+import { Public } from '../auth/public.decorator';
 
 interface HistoryQuery {
   sensorId?: string;
@@ -11,6 +12,7 @@ interface HistoryQuery {
   limit?: string;
 }
 
+@Public()
 @Controller('rainfall')
 export class RainfallController {
   constructor(private readonly rainfallService: RainfallService) {}

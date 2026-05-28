@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
-import { FLOW_SENSOR_ID } from "@/constants";
+import { FLOW_SENSOR_ID, API_URL } from "@/constants";
 import type { LiveFlowRate, WaterLevelPoint } from "@/types/water-level";
 
 interface UseFlowRateOptions {
@@ -135,17 +135,94 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
   }, [latest.sensorId, sensorId]);
 
   useEffect(() => {
+    const applyRealtimeUpdate = (payload: { sensorId: string; flowRate: number; recordedAt?: string }) => {
+      const preferredId = (sensorId ?? FLOW_SENSOR_ID ?? "").trim();
+      if (!payload.sensorId || (preferredId && payload.sensorId !== preferredId)) {
+        return;
+      }
+
+      const timestamp = payload.recordedAt ?? toIsoNow();
+
+      setLatest((prev) => {
+        if (prev.sensorId && prev.sensorId !== payload.sensorId) {
+          return prev;
+        }
+        return {
+          ...prev,
+          flowRateLpm: payload.flowRate,
+          updatedAt: timestamp,
+        };
+      });
+
+      setHistory((prev) => {
+        const existingIndex = prev.findIndex((p) => p.timestamp === timestamp);
+        let newHistory = [...prev];
+
+        if (existingIndex !== -1) {
+          newHistory[existingIndex] = {
+            ...newHistory[existingIndex],
+            flowRateLpm: payload.flowRate,
+          };
+        } else {
+          const lastPoint = prev[prev.length - 1];
+          const newPoint: WaterLevelPoint = {
+            timestamp,
+            levelCm: lastPoint?.levelCm ?? 0,
+            rainfallMm: lastPoint?.rainfallMm ?? 0,
+            flowRateLpm: payload.flowRate,
+            sensorId: payload.sensorId,
+          };
+          newHistory.push(newPoint);
+        }
+
+        newHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return newHistory;
+      });
+    };
+
+    // 1. Establish SSE EventSource connection
+    const streamUrl = API_URL.startsWith("/")
+      ? `${window.location.protocol}//${window.location.host}${API_URL}/sensors/stream`
+      : `${API_URL}/sensors/stream`;
+
+    console.log("⚡ useFlowRate: SSE Connecting to stream:", streamUrl);
+    const eventSource = new EventSource(streamUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("⚡ useFlowRate: SSE Real-Time Event received:", data);
+
+        if (data.flowRate) {
+          applyRealtimeUpdate({
+            sensorId: data.flowRate.sensorId,
+            flowRate: data.flowRate.flowRate,
+            recordedAt: data.recordedAt,
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing SSE message in useFlowRate:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.warn("useFlowRate: SSE stream closed or error, will reconnect...", err);
+    };
+
     void loadCurrent();
     void loadHistory();
+
     const timer = window.setInterval(() => {
+      console.log("🔄 useFlowRate: Heartbeat sync...");
       void loadCurrent();
       void loadHistory();
-    }, refreshMs);
+    }, Math.max(refreshMs, 30_000));
 
     return () => {
       window.clearInterval(timer);
+      eventSource.close();
     };
-  }, [loadCurrent, loadHistory, refreshMs]);
+  }, [loadCurrent, loadHistory, refreshMs, sensorId]);
 
   return { latest, history };
 }

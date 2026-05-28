@@ -118,42 +118,60 @@ export class WaterLevelsService {
     const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [logs, total] = await this.prisma.$transaction([
-      this.prisma.waterLevelLog.findMany({
-        where: {
-          sensorId: sensor.id,
-          recordedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        orderBy: { recordedAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.waterLevelLog.count({
-        where: {
-          sensorId: sensor.id,
-          recordedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      }),
-    ]);
+    // 1. Fetch threshold dynamically to evaluate statuses based on aggregated averages
+    const threshold = await this.prisma.threshold.findUnique({
+      where: { type: 'water_level' },
+    });
+    const warningMin = threshold?.warningMin ?? 151;
+    const dangerMin = threshold?.dangerMin ?? 221;
+    const alertMin = threshold?.alertMin ?? 180;
 
-    const items = logs.map((item) => ({
-      id: item.id,
-      sensorId: sensor.sensorId,
-      sensorName: sensor.name,
-      waterLevel: item.waterLevel,
-      unit: item.unit,
-      status: item.status,
-      latitude: sensor.latitude,
-      longitude: sensor.longitude,
-      recordedAt: item.recordedAt,
-      interval: query.interval ?? 'hourly',
-    }));
+    // 2. Query aggregated logs using DATE_TRUNC hourly
+    const aggregatedLogs = await this.prisma.$queryRaw<
+      Array<{
+        hour: Date;
+        waterLevel: number;
+        minWaterLevel: number;
+        maxWaterLevel: number;
+      }>
+    >`
+      SELECT 
+        DATE_TRUNC('hour', recorded_at) as "hour",
+        ROUND(AVG(water_level)::numeric, 2)::float as "waterLevel",
+        ROUND(MIN(water_level)::numeric, 2)::float as "minWaterLevel",
+        ROUND(MAX(water_level)::numeric, 2)::float as "maxWaterLevel"
+      FROM water_level_logs
+      WHERE sensor_id = ${sensor.id} 
+        AND recorded_at BETWEEN ${startDate} AND ${endDate}
+      GROUP BY "hour"
+      ORDER BY "hour" ASC
+    `;
+
+    const total = aggregatedLogs.length;
+    const slicedLogs = aggregatedLogs.slice(skip, skip + limit);
+
+    const items = slicedLogs.map((item) => {
+      const avgLevel = item.waterLevel;
+      const status =
+        avgLevel >= dangerMin ? 'DANGER' :
+        avgLevel >= alertMin ? 'ALERT' :
+        avgLevel >= warningMin ? 'WARNING' : 'NORMAL';
+
+      return {
+        id: `${sensor.sensorId}-wl-agg-${item.hour.getTime()}`,
+        sensorId: sensor.sensorId,
+        sensorName: sensor.name,
+        waterLevel: avgLevel,
+        minWaterLevel: item.minWaterLevel,
+        maxWaterLevel: item.maxWaterLevel,
+        unit: 'cm',
+        status,
+        latitude: sensor.latitude,
+        longitude: sensor.longitude,
+        recordedAt: item.hour,
+        interval: query.interval ?? 'hourly',
+      };
+    });
 
     return {
       items,

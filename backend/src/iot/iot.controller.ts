@@ -2,7 +2,9 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { ok, type ApiResponse } from '../common/api-response';
 import { IngestPayload } from './dto/ingest.dto';
 import { IotService, type IngestResult } from './iot.service';
+import { Public } from '../auth/public.decorator';
 
+@Public()
 @Controller('iot')
 export class IotController {
   constructor(private readonly iotService: IotService) {}

@@ -59,93 +59,14 @@ class SupabaseService {
   }
 
   void subscribeToRealtime() {
-    if (!_initialized || _client == null) {
-      print('⚠️ Cannot subscribe to realtime: Supabase not initialized.');
-      return;
-    }
-
-    // Ensure we clear previous subscriptions if any
-    unsubscribe();
-
-    // 1. Subscribe to 'water_level_logs' (Event: INSERT)
-    _waterLevelChannel = _client!
-        .channel('public-water-levels-realtime')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'water_level_logs',
-          callback: (payload) {
-            print(
-              '🔥 Supabase: Water Level Log INSERT received: ${payload.newRecord}',
-            );
-            try {
-              final log = WaterLevelLog.fromJson(payload.newRecord);
-              _waterLevelController.add(log);
-            } catch (e) {
-              print('❌ Error parsing realtime water level log: $e');
-            }
-          },
-        )
-        .subscribe();
-
-    // 2. Subscribe to 'alerts' (Event: INSERT)
-    _alertChannel = _client!
-        .channel('public-alerts-realtime')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'alerts',
-          callback: (payload) {
-            print('🔥 Supabase: Alert INSERT received: ${payload.newRecord}');
-            try {
-              final alert = AlertModel.fromJson(payload.newRecord);
-              _alertController.add(alert);
-            } catch (e) {
-              print('❌ Error parsing realtime alert log: $e');
-            }
-          },
-        )
-        .subscribe();
-
-    // 3. Subscribe to 'sensors' (Event: UPDATE)
-    _sensorChannel = _client!
-        .channel('public-sensors-realtime')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'sensors',
-          callback: (payload) {
-            print('🔥 Supabase: Sensor UPDATE received: ${payload.newRecord}');
-            try {
-              final sensor = SensorModel.fromJson(payload.newRecord);
-              _sensorController.add(sensor);
-            } catch (e) {
-              print('❌ Error parsing realtime sensor update: $e');
-            }
-          },
-        )
-        .subscribe();
-
-    print('📡 Subscribed to Supabase PostgreSQL Realtime channels!');
+    print('📡 [SupabaseService] Realtime PostgreSQL CDC is disabled. Standardized on NestJS SSE stream instead.');
   }
 
   void unsubscribe() {
-    if (_waterLevelChannel != null) {
-      _client?.removeChannel(_waterLevelChannel!);
-      _waterLevelChannel = null;
-    }
-    if (_alertChannel != null) {
-      _client?.removeChannel(_alertChannel!);
-      _alertChannel = null;
-    }
-    if (_sensorChannel != null) {
-      _client?.removeChannel(_sensorChannel!);
-      _sensorChannel = null;
-    }
+    // No-op since we deactivated Supabase realtime streams
   }
 
   void dispose() {
-    unsubscribe();
     _waterLevelController.close();
     _alertController.close();
     _sensorController.close();
