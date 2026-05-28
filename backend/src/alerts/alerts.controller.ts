@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { AlertSeverity } from '@prisma/client';
 import { ok } from '../common/api-response';
 import { AlertsService } from './alerts.service';
+import { Public } from '../auth/public.decorator';
 
 interface BroadcastRequest {
   title: string;
@@ -20,6 +21,7 @@ interface SubscribeRequest {
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 
+  @Public()
   @Get('active')
   async getActive() {
     const data = await this.alertsService.getActive();
@@ -41,6 +43,7 @@ export class AlertsController {
     return ok(data);
   }
 
+  @Public()
   @Get('history')
   async getHistory(
     @Query('page') page?: string,
@@ -53,6 +56,7 @@ export class AlertsController {
     return ok(data);
   }
 
+  @Public()
   @Get(':id')
   async getById(@Param('id') id: string) {
     const data = await this.alertsService.getById(id);
