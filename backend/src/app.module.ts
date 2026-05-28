@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AlertsModule } from './alerts/alerts.module';
@@ -21,6 +23,7 @@ import { IotModule } from './iot/iot.module';
 import { DischargeModule } from './discharge/discharge.module';
 import { ReportModule } from './reports/report.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { StorageModule } from './common/storage/storage.module';
 
 @Module({
   imports: [
@@ -60,8 +63,16 @@ import { RealtimeModule } from './realtime/realtime.module';
     DischargeModule,
     ReportModule,
     RealtimeModule,
+    StorageModule,
   ],
   controllers: [AppController, HealthController, NotificationsController],
-  providers: [AppService, NotificationsService],
+  providers: [
+    AppService,
+    NotificationsService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}
