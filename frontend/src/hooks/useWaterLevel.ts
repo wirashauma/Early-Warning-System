@@ -158,6 +158,7 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       const nextSensors: Sensor[] = effectiveSensors.map((sensor) => {
         const water = waterBySensorId.get(sensor.sensorId);
         const rain = rainfallBySensorId.get(sensor.sensorId);
+        const flow = flowBySensorId.get(sensor.sensorId);
         const lastSeenAt = sensor.lastActiveAt ?? water?.recordedAt ?? rain?.recordedAt ?? null;
         const updatedAt = lastSeenAt ?? STABLE_FALLBACK_TIMESTAMP;
         return {
@@ -171,6 +172,10 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
           batteryPercent: sensor.batteryLevel ?? 0,
           lastLevelCm: water?.waterLevel ?? 0,
           hasWaterLevelData: Boolean(water),
+          lastRainfall: rain?.rainfall ?? 0,
+          hasRainfallData: Boolean(rain),
+          lastFlowRate: flow?.flowRate ?? 0,
+          hasFlowRateData: Boolean(flow),
           lastSeenAt,
           status: mapStatus(water?.status),
           updatedAt,
@@ -242,6 +247,16 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
             payload.waterLevel !== undefined && payload.waterLevel !== null
               ? true
               : currentSensor.hasWaterLevelData,
+          lastRainfall: payload.rainfall ?? currentSensor.lastRainfall,
+          hasRainfallData:
+            payload.rainfall !== undefined && payload.rainfall !== null
+              ? true
+              : currentSensor.hasRainfallData,
+          lastFlowRate: payload.flowRate ?? currentSensor.lastFlowRate,
+          hasFlowRateData:
+            payload.flowRate !== undefined && payload.flowRate !== null
+              ? true
+              : currentSensor.hasFlowRateData,
           lastSeenAt: timestamp,
           status: payload.status ? mapStatus(payload.status) : currentSensor.status,
           updatedAt: timestamp,

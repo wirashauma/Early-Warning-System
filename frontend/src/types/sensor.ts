@@ -14,6 +14,10 @@ export interface Sensor {
   batteryPercent: number;
   lastLevelCm: number;
   hasWaterLevelData?: boolean;
+  lastRainfall?: number;
+  hasRainfallData?: boolean;
+  lastFlowRate?: number;
+  hasFlowRateData?: boolean;
   lastSeenAt?: string | null;
   status: WaterStatus;
   updatedAt: string;

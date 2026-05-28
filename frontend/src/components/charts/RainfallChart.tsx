@@ -34,7 +34,46 @@ export function RainfallChart({ points }: RainfallChartProps) {
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<Array<{ month: string; value: number }>>([]);
   const [threshold, setThreshold] = useState<number>(150);
+  const [range, setRange] = useState<"day" | "week">("day");
   const cardRef = useRef<HTMLDivElement>(null);
+  const isDemo = !points || points.length === 0;
+
+  const validPoints = useMemo(() => {
+    if (isDemo || !points) return [];
+    return points.filter((point) => point && point.rainfallMm !== null && point.rainfallMm !== undefined && point.rainfallMm !== 0);
+  }, [points, isDemo]);
+
+  const isMultiDay = useMemo(() => {
+    const activePoints = isDemo ? (points || []) : validPoints;
+    if (activePoints.length < 2) return false;
+    const firstTime = new Date(activePoints[0].timestamp).getTime();
+    const lastTime = new Date(activePoints[activePoints.length - 1].timestamp).getTime();
+    const diffHours = (lastTime - firstTime) / (1000 * 60 * 60);
+    return diffHours > 24;
+  }, [points, validPoints, isDemo]);
+
+  const formatXAxisTick = (value: any) => {
+    if (!value) return "";
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+
+      if (isMultiDay) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${day} ${month} ${hours}:${minutes}`;
+      } else {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      }
+    } catch (e) {
+      return String(value);
+    }
+  };
 
   const handleExportPDF = async () => {
     if (!cardRef.current) return;
@@ -307,6 +346,11 @@ export function RainfallChart({ points }: RainfallChartProps) {
   useEffect(() => {
     if (!mounted) return;
 
+    if (!isDemo) {
+      setLoading(false);
+      return;
+    }
+
     const fetchKentenData = async () => {
       try {
         setLoading(true);
@@ -399,8 +443,63 @@ export function RainfallChart({ points }: RainfallChartProps) {
     }));
   };
 
+  const referenceNow = useMemo(() => {
+    const activePoints = isDemo ? (points || []) : validPoints;
+    if (activePoints.length === 0) return 0;
+    return new Date(activePoints[activePoints.length - 1].timestamp).getTime();
+  }, [points, validPoints, isDemo]);
+
+  const computedChartData = useMemo(() => {
+    if (isDemo) {
+      return chartData;
+    }
+
+    const activePoints = validPoints;
+    if (activePoints.length === 0) return [];
+
+    const dayAgo = referenceNow - 24 * 60 * 60 * 1000;
+    const weekAgo = referenceNow - 7 * 24 * 60 * 60 * 1000;
+
+    if (range === "day") {
+      const daily = activePoints.filter((point) => new Date(point.timestamp).getTime() >= dayAgo);
+      const source = daily.length > 0 ? daily : activePoints;
+
+      return source.map((point, index) => ({
+        month: (index + 1).toString(),
+        label: (index + 1).toString(),
+        value: point.rainfallMm,
+        timestamp: new Date(point.timestamp).getTime(),
+      }));
+    }
+
+    const weekly = activePoints.filter((point) => new Date(point.timestamp).getTime() >= weekAgo);
+    const source = weekly.length > 0 ? weekly : activePoints;
+
+    const grouped = new Map<string, { sum: number; count: number; ts: number }>();
+    source.forEach((point) => {
+      const date = new Date(point.timestamp);
+      const key = date.toISOString().slice(0, 10);
+      const current = grouped.get(key) ?? { sum: 0, count: 0, ts: date.getTime() };
+      grouped.set(key, {
+        sum: current.sum + point.rainfallMm,
+        count: current.count + 1,
+        ts: Math.max(current.ts, date.getTime()),
+      });
+    });
+
+    return Array.from(grouped.entries())
+      .sort((a, b) => a[1].ts - b[1].ts)
+      .slice(-7)
+      .map(([key, value], index) => ({
+        month: (index + 1).toString(),
+        label: (index + 1).toString(),
+        value: parseFloat((value.sum / Math.max(value.count, 1)).toFixed(2)),
+        timestamp: value.ts,
+      }));
+  }, [validPoints, range, referenceNow, isDemo, chartData]);
+
   // Calculations for stats boxes at the bottom
-  const values = useMemo(() => chartData.map((p) => p.value), [chartData]);
+  const values = useMemo(() => computedChartData.map((p) => p.value), [computedChartData]);
   const min = values.length > 0 ? Math.min(...values) : 0;
   const max = values.length > 0 ? Math.max(...values) : 0;
   const average =
@@ -418,7 +517,9 @@ export function RainfallChart({ points }: RainfallChartProps) {
       {/* Unified Header - 2 Rows Compact Layout to prevent wrapping */}
       <div className="w-full mb-4">
         <div className="flex flex-row justify-between items-center w-full mb-2">
-          <h3 className="text-base font-bold text-slate-800 leading-tight">Grafik Curah Hujan Bulanan</h3>
+          <h3 className="text-base font-bold text-slate-800 leading-tight">
+            {isDemo ? "Grafik Curah Hujan Bulanan" : "Grafik Curah Hujan"}
+          </h3>
           <button
             type="button"
             onClick={handleExportPDF}
@@ -432,12 +533,39 @@ export function RainfallChart({ points }: RainfallChartProps) {
         </div>
         <div className="flex flex-row items-center justify-between w-full pb-2 border-b border-slate-100">
           <div className="inline-flex rounded-full bg-slate-100 p-0.5 border border-slate-200 text-xs">
-            <span className="rounded-full bg-white px-3 py-0.5 font-semibold text-blue-600 shadow-xs">
-              Month
-            </span>
+            {!isDemo ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setRange("day")}
+                  className={`rounded-full px-3 py-0.5 font-medium transition-colors ${
+                    range === "day"
+                      ? "bg-white text-blue-600 shadow-xs font-semibold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRange("week")}
+                  className={`rounded-full px-3 py-0.5 font-medium transition-colors ${
+                    range === "week"
+                      ? "bg-white text-blue-600 shadow-xs font-semibold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Week
+                </button>
+              </>
+            ) : (
+              <span className="rounded-full bg-white px-3 py-0.5 font-semibold text-blue-600 shadow-xs">
+                Month
+              </span>
+            )}
           </div>
           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-100 whitespace-nowrap">
-            Kenten: Live
+            {isDemo ? "Kenten: Live" : `Live: ${latest} mm`}
           </span>
         </div>
       </div>
@@ -456,13 +584,17 @@ export function RainfallChart({ points }: RainfallChartProps) {
         ) : (
           <div className="chart-container-capture h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
+              <BarChart data={computedChartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
-                  dataKey="month"
+                  dataKey={isDemo ? "month" : "timestamp"}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
                   tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
+                  tickFormatter={(value) => {
+                    if (isDemo) return String(value);
+                    return formatXAxisTick(value);
+                  }}
                 />
                 <YAxis
                   axisLine={{ stroke: "#e2e8f0" }}
@@ -473,10 +605,22 @@ export function RainfallChart({ points }: RainfallChartProps) {
                   cursor={{ fill: "#f8fafc", opacity: 0.8 }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
+                      const datum = payload[0].payload;
+                      const timeStr = datum.timestamp
+                        ? new Date(datum.timestamp).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : datum.month;
+                      const tooltipLabel = isDemo
+                        ? datum.month
+                        : range === "day"
+                        ? `Waktu Ingest: ${timeStr}`
+                        : `Hari: ${datum.timestamp ? new Date(datum.timestamp).toLocaleDateString("id-ID", { weekday: "long" }) : datum.label}`;
                       return (
                         <div className="rounded-lg border border-slate-200 bg-white/95 p-2.5 shadow-md backdrop-blur-xs">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            {payload[0].payload.month}
+                            {tooltipLabel}
                           </p>
                           <p className="mt-0.5 text-sm font-black text-blue-600">
                             {payload[0].value} <span className="text-xs font-semibold text-slate-500">mm</span>
@@ -487,12 +631,14 @@ export function RainfallChart({ points }: RainfallChartProps) {
                     return null;
                   }}
                 />
-                <ReferenceLine
-                  y={threshold}
-                  stroke="#ef4444"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                />
+                {isDemo && (
+                  <ReferenceLine
+                    y={threshold}
+                    stroke="#ef4444"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                  />
+                )}
                 <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
               </BarChart>
             </ResponsiveContainer>
@@ -511,8 +657,8 @@ export function RainfallChart({ points }: RainfallChartProps) {
           <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{average} mm</p>
         </div>
         <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Puncak</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{max} mm</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">{isDemo ? "Puncak" : "Saat Ini"}</p>
+          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{latest} mm</p>
         </div>
       </div>
     </div>

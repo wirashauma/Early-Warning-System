@@ -291,12 +291,50 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
     setMounted(true);
   }, []);
 
-  const referenceNow = useMemo(() => {
-    if (points.length === 0) return 0;
-    return new Date(points[points.length - 1].timestamp).getTime();
-  }, [points]);
-
   const isDemo = points.length === 0;
+
+  const validPoints = useMemo(() => {
+    if (isDemo) return [];
+    return points.filter((point) => point && point.levelCm !== null && point.levelCm !== undefined && point.levelCm !== 0);
+  }, [points, isDemo]);
+
+  const referenceNow = useMemo(() => {
+    const activePoints = isDemo ? points : validPoints;
+    if (activePoints.length === 0) return 0;
+    return new Date(activePoints[activePoints.length - 1].timestamp).getTime();
+  }, [points, validPoints, isDemo]);
+
+  const isMultiDay = useMemo(() => {
+    const activePoints = isDemo ? points : validPoints;
+    if (activePoints.length < 2) return false;
+    const firstTime = new Date(activePoints[0].timestamp).getTime();
+    const lastTime = new Date(activePoints[activePoints.length - 1].timestamp).getTime();
+    const diffHours = (lastTime - firstTime) / (1000 * 60 * 60);
+    return diffHours > 24;
+  }, [points, validPoints, isDemo]);
+
+  const formatXAxisTick = (value: any) => {
+    if (!value) return "";
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+
+      if (isMultiDay) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${day} ${month} ${hours}:${minutes}`;
+      } else {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      }
+    } catch (e) {
+      return String(value);
+    }
+  };
 
   // Aggregate and filter data points for Recharts based on range selection
   const chartData = useMemo(() => {
@@ -313,14 +351,15 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
       ];
     }
 
-    if (points.length === 0) return [];
+    const activePoints = validPoints;
+    if (activePoints.length === 0) return [];
 
     const dayAgo = referenceNow - 24 * 60 * 60 * 1000;
     const weekAgo = referenceNow - 7 * 24 * 60 * 60 * 1000;
 
     if (range === "day") {
-      const daily = points.filter((point) => new Date(point.timestamp).getTime() >= dayAgo);
-      const source = daily.length > 0 ? daily : points.slice(-24);
+      const daily = activePoints.filter((point) => new Date(point.timestamp).getTime() >= dayAgo);
+      const source = daily.length > 0 ? daily : activePoints;
 
       return source
         .map((point) => ({
@@ -330,12 +369,11 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
           }),
           value: point.levelCm,
           timestamp: new Date(point.timestamp).getTime(),
-        }))
-        .slice(-12);
+        }));
     }
 
-    const weekly = points.filter((point) => new Date(point.timestamp).getTime() >= weekAgo);
-    const source = weekly.length > 0 ? weekly : points;
+    const weekly = activePoints.filter((point) => new Date(point.timestamp).getTime() >= weekAgo);
+    const source = weekly.length > 0 ? weekly : activePoints;
 
     const grouped = new Map<string, { sum: number; count: number; ts: number }>();
     source.forEach((point) => {
@@ -359,13 +397,13 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
         value: Math.round(value.sum / Math.max(value.count, 1)),
         timestamp: value.ts,
       }));
-  }, [points, range, referenceNow, isDemo]);
+  }, [validPoints, range, referenceNow, isDemo]);
 
   // Calculations for stats boxes at the bottom
   const values = chartData.map((p) => p.value);
   const min = isDemo ? 2.1 : (values.length > 0 ? Math.min(...values) : 0);
   const max = isDemo ? 11.0 : (values.length > 0 ? Math.max(...values) : 0);
-  const latest = isDemo ? 9.2 : (points.length > 0 ? points[points.length - 1].levelCm : 0);
+  const latest = isDemo ? 9.2 : (validPoints.length > 0 ? validPoints[validPoints.length - 1].levelCm : 0);
   const average =
     isDemo ? 6.0 : (values.length > 0 ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : 0);
 
@@ -466,21 +504,23 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                   tickLine={false}
                   tick={{ fill: "#64748b", fontSize: 11 }}
                   tickFormatter={(value) => {
-                    if (!value) return "";
-                    try {
-                      const date = new Date(value);
-                      if (range === "day") {
-                        return date.toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
+                    if (isDemo) {
+                      if (!value) return "";
+                      try {
+                        const date = new Date(value);
+                        if (range === "day") {
+                          const h = String(date.getHours()).padStart(2, "0");
+                          const m = String(date.getMinutes()).padStart(2, "0");
+                          return `${h}:${m}`;
+                        }
+                        return date.toLocaleDateString("id-ID", {
+                          weekday: "short",
                         });
+                      } catch (e) {
+                        return String(value);
                       }
-                      return date.toLocaleDateString("id-ID", {
-                        weekday: "short",
-                      });
-                    } catch (e) {
-                      return String(value);
                     }
+                    return formatXAxisTick(value);
                   }}
                 />
                 <YAxis
@@ -522,6 +562,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorWaterLevel)"
+                  connectNulls={true}
                 />
               </AreaChart>
             </ResponsiveContainer>

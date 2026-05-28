@@ -82,7 +82,7 @@ export class RainfallService {
     }
 
     const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 20;
+    const limit = Number(query.limit) || 2000;
     const skip = (page - 1) * limit;
 
     // 1. Fetch threshold dynamically to evaluate intensity
@@ -92,25 +92,25 @@ export class RainfallService {
     const warningMin = threshold?.warningMin ?? 5.1;
     const dangerMin = threshold?.dangerMin ?? 20.1;
 
-    // 2. Query aggregated logs using DATE_TRUNC hourly
+    // 2. Query aggregated logs using DATE_TRUNC minute
     const aggregatedLogs = await this.prisma.$queryRaw<
       Array<{
-        hour: Date;
+        minute: Date;
         rainfall: number;
         minRainfall: number;
         maxRainfall: number;
       }>
     >`
       SELECT 
-        DATE_TRUNC('hour', recorded_at) as "hour",
+        DATE_TRUNC('minute', recorded_at) as "minute",
         ROUND(AVG(rainfall)::numeric, 2)::float as "rainfall",
         ROUND(MIN(rainfall)::numeric, 2)::float as "minRainfall",
         ROUND(MAX(rainfall)::numeric, 2)::float as "maxRainfall"
       FROM rainfall_logs
       WHERE sensor_id = ${sensor.id} 
         AND recorded_at BETWEEN ${startDate} AND ${endDate}
-      GROUP BY "hour"
-      ORDER BY "hour" ASC
+      GROUP BY "minute"
+      ORDER BY "minute" ASC
     `;
 
     const total = aggregatedLogs.length;
@@ -123,7 +123,7 @@ export class RainfallService {
         avgRain >= warningMin ? RainfallIntensity.MODERATE : RainfallIntensity.LIGHT;
 
       return {
-        id: `${sensor.sensorId}-rf-agg-${item.hour.getTime()}`,
+        id: `${sensor.sensorId}-rf-agg-${item.minute.getTime()}`,
         sensorId: sensor.sensorId,
         sensorName: sensor.name,
         rainfall: avgRain,
@@ -133,8 +133,8 @@ export class RainfallService {
         intensity,
         latitude: sensor.latitude,
         longitude: sensor.longitude,
-        recordedAt: item.hour,
-        interval: query.interval ?? 'hourly',
+        recordedAt: item.minute,
+        interval: query.interval ?? 'minute',
       };
     });
 

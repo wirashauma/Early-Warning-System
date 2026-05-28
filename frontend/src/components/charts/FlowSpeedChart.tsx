@@ -298,12 +298,50 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
     setMounted(true);
   }, []);
 
-  const referenceNow = useMemo(() => {
-    if (points.length === 0) return 0;
-    return new Date(points[points.length - 1].timestamp).getTime();
-  }, [points]);
-
   const isDemo = points.length === 0;
+
+  const validPoints = useMemo(() => {
+    if (isDemo) return [];
+    return points.filter((point) => point && point.flowRateLpm !== null && point.flowRateLpm !== undefined && point.flowRateLpm !== 0);
+  }, [points, isDemo]);
+
+  const referenceNow = useMemo(() => {
+    const activePoints = isDemo ? points : validPoints;
+    if (activePoints.length === 0) return 0;
+    return new Date(activePoints[activePoints.length - 1].timestamp).getTime();
+  }, [points, validPoints, isDemo]);
+
+  const isMultiDay = useMemo(() => {
+    const activePoints = isDemo ? points : validPoints;
+    if (activePoints.length < 2) return false;
+    const firstTime = new Date(activePoints[0].timestamp).getTime();
+    const lastTime = new Date(activePoints[activePoints.length - 1].timestamp).getTime();
+    const diffHours = (lastTime - firstTime) / (1000 * 60 * 60);
+    return diffHours > 24;
+  }, [points, validPoints, isDemo]);
+
+  const formatXAxisTick = (value: any) => {
+    if (!value) return "";
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+
+      if (isMultiDay) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${day} ${month} ${hours}:${minutes}`;
+      } else {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      }
+    } catch (e) {
+      return String(value);
+    }
+  };
 
   // Aggregate and filter data points for Recharts based on range selection
   const chartData = useMemo(() => {
@@ -321,17 +359,17 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       });
     }
 
-    if (points.length === 0) return [];
+    const activePoints = validPoints;
+    if (activePoints.length === 0) return [];
 
     const dayAgo = referenceNow - 24 * 60 * 60 * 1000;
     const weekAgo = referenceNow - 7 * 24 * 60 * 60 * 1000;
 
     if (range === "day") {
-      const daily = points.filter((point) => new Date(point.timestamp).getTime() >= dayAgo);
-      const source = daily.length > 0 ? daily : points;
-      const activeSource = source.slice(-20);
+      const daily = activePoints.filter((point) => new Date(point.timestamp).getTime() >= dayAgo);
+      const source = daily.length > 0 ? daily : activePoints;
 
-      return activeSource.map((point, index) => {
+      return source.map((point, index) => {
         const val = point.flowRateLpm ?? Number((point.levelCm / 260 + point.rainfallMm / 40).toFixed(2));
         return {
           label: (index + 1).toString(),
@@ -341,8 +379,8 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       });
     }
 
-    const weekly = points.filter((point) => new Date(point.timestamp).getTime() >= weekAgo);
-    const source = weekly.length > 0 ? weekly : points;
+    const weekly = activePoints.filter((point) => new Date(point.timestamp).getTime() >= weekAgo);
+    const source = weekly.length > 0 ? weekly : activePoints;
 
     const grouped = new Map<string, { sum: number; count: number; ts: number }>();
     source.forEach((point) => {
@@ -365,7 +403,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
         value: parseFloat((value.sum / Math.max(value.count, 1)).toFixed(2)),
         timestamp: value.ts,
       }));
-  }, [points, range, referenceNow, isDemo]);
+  }, [validPoints, range, referenceNow, isDemo]);
 
   // Hardcoded ticks removed in favor of responsive, auto-calculated date/time ticks.
 
@@ -374,8 +412,8 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
   const min = isDemo ? 10.6 : (values.length > 0 ? Math.min(...values) : 0);
   const max = isDemo ? 26.6 : (values.length > 0 ? Math.max(...values) : 0);
   const latest =
-    isDemo ? 20.3 : (points.length > 0
-      ? parseFloat((points[points.length - 1].flowRateLpm ?? Number((points[points.length - 1].levelCm / 260 + points[points.length - 1].rainfallMm / 40).toFixed(2))).toFixed(2))
+    isDemo ? 20.3 : (validPoints.length > 0
+      ? parseFloat((validPoints[validPoints.length - 1].flowRateLpm ?? Number((validPoints[validPoints.length - 1].levelCm / 260 + validPoints[validPoints.length - 1].rainfallMm / 40).toFixed(2))).toFixed(2))
       : 0);
   const average =
     isDemo ? 15.5 : (values.length > 0
@@ -458,21 +496,23 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
                 tickLine={false}
                 tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
                 tickFormatter={(value) => {
-                  if (!value) return "";
-                  try {
-                    const date = new Date(value);
-                    if (range === "day") {
-                      return date.toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
+                  if (isDemo) {
+                    if (!value) return "";
+                    try {
+                      const date = new Date(value);
+                      if (range === "day") {
+                        const h = String(date.getHours()).padStart(2, "0");
+                        const m = String(date.getMinutes()).padStart(2, "0");
+                        return `${h}:${m}`;
+                      }
+                      return date.toLocaleDateString("id-ID", {
+                        weekday: "short",
                       });
+                    } catch (e) {
+                      return String(value);
                     }
-                    return date.toLocaleDateString("id-ID", {
-                      weekday: "short",
-                    });
-                  } catch (e) {
-                    return String(value);
                   }
+                  return formatXAxisTick(value);
                 }}
               />
               <YAxis

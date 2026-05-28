@@ -9,6 +9,8 @@ interface ThresholdForm {
   normalMax: number;
   waspadaMin: number;
   waspadaMax: number;
+  siagaMin: number;
+  siagaMax: number;
   bahayaMin: number;
   ringanMax: number;
   sedangMax: number;
@@ -29,7 +31,9 @@ export default function AdminThresholdsPage() {
     normalMax: 150,
     waspadaMin: 151,
     waspadaMax: 250,
-    bahayaMin: 251,
+    siagaMin: 251,
+    siagaMax: 350,
+    bahayaMin: 351,
     ringanMax: 5,
     sedangMax: 20,
     lebatMin: 21,
@@ -47,6 +51,7 @@ export default function AdminThresholdsPage() {
         waterLevel: {
           normal: { min: number; max: number };
           warning: { min: number; max: number };
+          alert: { min: number; max: number } | null;
           danger: { min: number; max: number | null };
         } | null;
         rainfall: {
@@ -69,6 +74,8 @@ export default function AdminThresholdsPage() {
           normalMax: waterLevel.normal.max,
           waspadaMin: waterLevel.warning.min,
           waspadaMax: waterLevel.warning.max,
+          siagaMin: waterLevel.alert?.min ?? 251,
+          siagaMax: waterLevel.alert?.max ?? 350,
           bahayaMin: waterLevel.danger.min,
           ringanMax: rainfall.light.max,
           sedangMax: rainfall.moderate.max,
@@ -114,6 +121,7 @@ export default function AdminThresholdsPage() {
         waterLevel: {
           normal: { min: 0, max: form.normalMax },
           warning: { min: form.waspadaMin, max: form.waspadaMax },
+          alert: { min: form.siagaMin, max: form.siagaMax },
           danger: { min: form.bahayaMin, max: null },
         },
         rainfall: {
@@ -303,6 +311,48 @@ export default function AdminThresholdsPage() {
 
                 <label className="block text-sm text-slate-700">
                   <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">
+                      <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      Siaga
+                    </span>
+                    Level Siaga Min
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.siagaMin}
+                      onChange={(event) => setForm((prev) => ({ ...prev, siagaMin: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
+                  </div>
+                </label>
+
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">
+                      <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      Siaga
+                    </span>
+                    Level Siaga Maks
+                  </span>
+                  <div className="relative rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                    <input
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      value={form.siagaMax}
+                      onChange={(event) => setForm((prev) => ({ ...prev, siagaMax: Number(event.target.value) }))}
+                      className="h-12 w-full rounded-lg bg-transparent px-4 text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-slate-400">cm</span>
+                  </div>
+                </label>
+
+                <label className="block text-sm text-slate-700">
+                  <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
                       <span className="h-2 w-2 rounded-full bg-rose-500" />
                       Bahaya
@@ -382,7 +432,7 @@ export default function AdminThresholdsPage() {
                   <span className="mb-1.5 flex items-center gap-2 font-medium text-slate-700">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
                       <span className="h-2 w-2 rounded-full bg-rose-500" />
-                      Bahaya
+                      Lebat
                     </span>
                     Curah Hujan Min
                   </span>

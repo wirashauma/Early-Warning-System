@@ -258,12 +258,42 @@ export default function AdminDashboardPage() {
 
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Ketinggian Air</p>
-                  {sensor.hasWaterLevelData ? (
-                    <p className="mt-1 font-semibold text-slate-900">{sensor.lastLevelCm.toFixed(1)} cm</p>
-                  ) : (
-                    <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
-                  )}
+                  {(() => {
+                    if (sensor.type === "RAINFALL") {
+                      return (
+                        <>
+                          <p className="text-xs text-slate-500">Curah Hujan</p>
+                          {sensor.hasRainfallData ? (
+                            <p className="mt-1 font-semibold text-slate-900">{(sensor.lastRainfall ?? 0).toFixed(1)} mm/jam</p>
+                          ) : (
+                            <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+                          )}
+                        </>
+                      );
+                    }
+                    if (sensor.type === "FLOW_RATE") {
+                      return (
+                        <>
+                          <p className="text-xs text-slate-500">Debit Air</p>
+                          {sensor.hasFlowRateData ? (
+                            <p className="mt-1 font-semibold text-slate-900">{(sensor.lastFlowRate ?? 0).toFixed(1)} LPM</p>
+                          ) : (
+                            <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+                          )}
+                        </>
+                      );
+                    }
+                    return (
+                      <>
+                        <p className="text-xs text-slate-500">Ketinggian Air</p>
+                        {sensor.hasWaterLevelData ? (
+                          <p className="mt-1 font-semibold text-slate-900">{sensor.lastLevelCm.toFixed(1)} cm</p>
+                        ) : (
+                          <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Baterai</p>

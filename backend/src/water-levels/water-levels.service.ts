@@ -115,7 +115,7 @@ export class WaterLevelsService {
     }
 
     const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 20;
+    const limit = Number(query.limit) || 2000;
     const skip = (page - 1) * limit;
 
     // 1. Fetch threshold dynamically to evaluate statuses based on aggregated averages
@@ -126,25 +126,25 @@ export class WaterLevelsService {
     const dangerMin = threshold?.dangerMin ?? 221;
     const alertMin = threshold?.alertMin ?? 180;
 
-    // 2. Query aggregated logs using DATE_TRUNC hourly
+    // 2. Query aggregated logs using DATE_TRUNC minute
     const aggregatedLogs = await this.prisma.$queryRaw<
       Array<{
-        hour: Date;
+        minute: Date;
         waterLevel: number;
         minWaterLevel: number;
         maxWaterLevel: number;
       }>
     >`
       SELECT 
-        DATE_TRUNC('hour', recorded_at) as "hour",
+        DATE_TRUNC('minute', recorded_at) as "minute",
         ROUND(AVG(water_level)::numeric, 2)::float as "waterLevel",
         ROUND(MIN(water_level)::numeric, 2)::float as "minWaterLevel",
         ROUND(MAX(water_level)::numeric, 2)::float as "maxWaterLevel"
       FROM water_level_logs
       WHERE sensor_id = ${sensor.id} 
         AND recorded_at BETWEEN ${startDate} AND ${endDate}
-      GROUP BY "hour"
-      ORDER BY "hour" ASC
+      GROUP BY "minute"
+      ORDER BY "minute" ASC
     `;
 
     const total = aggregatedLogs.length;
@@ -158,7 +158,7 @@ export class WaterLevelsService {
         avgLevel >= warningMin ? 'WARNING' : 'NORMAL';
 
       return {
-        id: `${sensor.sensorId}-wl-agg-${item.hour.getTime()}`,
+        id: `${sensor.sensorId}-wl-agg-${item.minute.getTime()}`,
         sensorId: sensor.sensorId,
         sensorName: sensor.name,
         waterLevel: avgLevel,
@@ -168,8 +168,8 @@ export class WaterLevelsService {
         status,
         latitude: sensor.latitude,
         longitude: sensor.longitude,
-        recordedAt: item.hour,
-        interval: query.interval ?? 'hourly',
+        recordedAt: item.minute,
+        interval: query.interval ?? 'minute',
       };
     });
 

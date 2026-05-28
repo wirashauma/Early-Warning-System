@@ -5,6 +5,7 @@ interface UpdateThresholdRequest {
   waterLevel?: {
     normal: { min: number; max: number };
     warning: { min: number; max: number };
+    alert?: { min: number; max: number };
     danger: { min: number; max: number | null };
   };
   rainfall?: {
@@ -29,6 +30,7 @@ export class ThresholdsService {
         ? {
             normal: { min: waterLevel.normalMin, max: waterLevel.normalMax },
             warning: { min: waterLevel.warningMin, max: waterLevel.warningMax },
+            alert: { min: waterLevel.alertMin ?? 0, max: waterLevel.alertMax ?? 0 },
             danger: { min: waterLevel.dangerMin, max: waterLevel.dangerMax },
           }
         : null,
@@ -56,6 +58,8 @@ export class ThresholdsService {
           normalMax: payload.waterLevel.normal.max,
           warningMin: payload.waterLevel.warning.min,
           warningMax: payload.waterLevel.warning.max,
+          alertMin: payload.waterLevel.alert?.min ?? null,
+          alertMax: payload.waterLevel.alert?.max ?? null,
           dangerMin: payload.waterLevel.danger.min,
           dangerMax: payload.waterLevel.danger.max,
         },
@@ -64,6 +68,8 @@ export class ThresholdsService {
           normalMax: payload.waterLevel.normal.max,
           warningMin: payload.waterLevel.warning.min,
           warningMax: payload.waterLevel.warning.max,
+          alertMin: payload.waterLevel.alert?.min ?? null,
+          alertMax: payload.waterLevel.alert?.max ?? null,
           dangerMin: payload.waterLevel.danger.min,
           dangerMax: payload.waterLevel.danger.max,
         },

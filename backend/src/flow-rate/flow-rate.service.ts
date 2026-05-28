@@ -81,28 +81,28 @@ export class FlowRateService {
     }
 
     const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 20;
+    const limit = Number(query.limit) || 2000;
     const skip = (page - 1) * limit;
 
-    // 2. Query aggregated logs using DATE_TRUNC hourly
+    // 2. Query aggregated logs using DATE_TRUNC minute
     const aggregatedLogs = await this.prisma.$queryRaw<
       Array<{
-        hour: Date;
+        minute: Date;
         flowRate: number;
         minFlowRate: number;
         maxFlowRate: number;
       }>
     >`
       SELECT 
-        DATE_TRUNC('hour', recorded_at) as "hour",
+        DATE_TRUNC('minute', recorded_at) as "minute",
         ROUND(AVG(flow_rate)::numeric, 2)::float as "flowRate",
         ROUND(MIN(flow_rate)::numeric, 2)::float as "minFlowRate",
         ROUND(MAX(flow_rate)::numeric, 2)::float as "maxFlowRate"
       FROM flow_rate_logs
       WHERE sensor_id = ${sensor.id} 
         AND recorded_at BETWEEN ${startDate} AND ${endDate}
-      GROUP BY "hour"
-      ORDER BY "hour" ASC
+      GROUP BY "minute"
+      ORDER BY "minute" ASC
     `;
 
     const total = aggregatedLogs.length;
@@ -110,7 +110,7 @@ export class FlowRateService {
 
     const items = slicedLogs.map((item) => {
       return {
-        id: `${sensor.sensorId}-fr-agg-${item.hour.getTime()}`,
+        id: `${sensor.sensorId}-fr-agg-${item.minute.getTime()}`,
         sensorId: sensor.sensorId,
         sensorName: sensor.name,
         flowRate: item.flowRate,
@@ -119,8 +119,8 @@ export class FlowRateService {
         unit: 'l/min',
         latitude: sensor.latitude,
         longitude: sensor.longitude,
-        recordedAt: item.hour,
-        interval: query.interval ?? 'hourly',
+        recordedAt: item.minute,
+        interval: query.interval ?? 'minute',
       };
     });
 
