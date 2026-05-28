@@ -25,7 +25,11 @@ function toAppUser(user: BackendAuthUser): AppUser {
     email: user.email,
     avatar: user.avatar ?? null,
     institution: user.institution ?? null,
+    whatsappNumber: user.phone ?? null,
     role: mapBackendRole(String(user.role ?? "")),
+    notificationFlood: user.notificationFlood ?? true,
+    notificationStatus: user.notificationStatus ?? true,
+    notificationEmail: user.notificationEmail ?? false,
   };
 }
 
@@ -227,7 +231,7 @@ export function useAuth() {
 
   // Sinkronkan perubahan profil ke state lokal agar komponen lain langsung ikut ter-update.
   const updateProfile = useCallback(
-    (payload: Partial<Pick<AppUser, "name" | "email" | "avatar">>) => {
+    (payload: Partial<AppUser>) => {
       setUser((prev) => {
         if (!prev) return prev;
         const nextUser: AppUser = { ...prev, ...payload };

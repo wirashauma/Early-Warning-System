@@ -101,6 +101,20 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const response = await api.put("/auth/notifications/read-all");
+      const readAt = response.data?.data?.notificationReadAt ?? new Date().toISOString();
+      setNotificationReadAt(readAt);
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, isRead: true } : item))
+      );
+      window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Gagal menandai notifikasi sebagai dibaca.");
+    }
+  };
+
   useEffect(() => {
     if (!openMenu) return;
 

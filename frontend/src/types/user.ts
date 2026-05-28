@@ -8,8 +8,11 @@ export interface AppUser {
   email: string;
   avatar?: string | null;
   institution?: string | null;
-  whatsappNumber?: string;
+  whatsappNumber?: string | null;
   role: UserRole;
+  notificationFlood?: boolean;
+  notificationStatus?: boolean;
+  notificationEmail?: boolean;
 }
 
 export interface BackendAuthUser {
@@ -19,4 +22,8 @@ export interface BackendAuthUser {
   avatar?: string | null;
   institution?: string | null;
   role: BackendUserRole;
+  phone?: string | null;
+  notificationFlood?: boolean;
+  notificationStatus?: boolean;
+  notificationEmail?: boolean;
 }

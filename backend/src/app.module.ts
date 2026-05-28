@@ -20,6 +20,7 @@ import { WaterLevelsModule } from './water-levels/water-levels.module';
 import { IotModule } from './iot/iot.module';
 import { DischargeModule } from './discharge/discharge.module';
 import { ReportModule } from './reports/report.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ReportModule } from './reports/report.module';
     EmergencyContactsModule,
     DischargeModule,
     ReportModule,
+    RealtimeModule,
   ],
   controllers: [AppController, HealthController, NotificationsController],
   providers: [AppService, NotificationsService],

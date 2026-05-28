@@ -13,6 +13,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { IngestPayload } from './dto/ingest.dto';
+import { EmailService } from '../common/email/email.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 export interface IngestResult {
   recordedAt: string;
@@ -35,7 +37,11 @@ export interface IngestResult {
 
 @Injectable()
 export class IotService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly realtimeService: RealtimeService,
+  ) {}
 
   async ingest(payload: IngestPayload): Promise<IngestResult> {
     const hasValue = (value: number | null | undefined) => value !== undefined && value !== null;
@@ -349,6 +355,58 @@ export class IotService {
 
       return resultData;
     });
+
+    // 3. Emit SSE real-time sensor updates
+    this.realtimeService.emitSensorUpdate(result);
+
+    // 4. Trigger automated email notifications outside the transaction loop
+    try {
+      if (result.rainfall) {
+        const rainInfo = result.rainfall;
+        const sensor = await this.prisma.sensor.findUnique({
+          where: { sensorId: rainInfo.sensorId },
+        });
+        if (sensor && (rainInfo.intensity === 'MODERATE' || rainInfo.intensity === 'HEAVY')) {
+          const level = rainInfo.intensity === 'HEAVY' ? 'DANGER' : 'WARNING';
+          const warningMin = rainfallThreshold?.warningMin ?? 5;
+          const dangerMin = rainfallThreshold?.dangerMin ?? 20;
+          const thresholdVal = level === 'DANGER' ? dangerMin : warningMin;
+
+          await this.emailService.sendAutomatedThresholdAlert(
+            sensor.sensorId,
+            sensor.name,
+            rainInfo.rainfall,
+            thresholdVal,
+            level,
+            'RAINFALL',
+          );
+        }
+      }
+
+      if (result.water) {
+        const waterInfo = result.water;
+        const sensor = await this.prisma.sensor.findUnique({
+          where: { sensorId: waterInfo.sensorId },
+        });
+        if (sensor && (waterInfo.status === 'WARNING' || waterInfo.status === 'ALERT' || waterInfo.status === 'DANGER')) {
+          const level = waterInfo.status === 'DANGER' ? 'DANGER' : 'WARNING';
+          const warningMin = waterThreshold?.warningMin ?? 151;
+          const dangerMin = waterThreshold?.dangerMin ?? 221;
+          const thresholdVal = level === 'DANGER' ? dangerMin : warningMin;
+
+          await this.emailService.sendAutomatedThresholdAlert(
+            sensor.sensorId,
+            sensor.name,
+            waterInfo.waterLevel,
+            thresholdVal,
+            level,
+            'WATER_LEVEL',
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Failed to trigger email threshold alert:', err);
+    }
 
     return result;
   }

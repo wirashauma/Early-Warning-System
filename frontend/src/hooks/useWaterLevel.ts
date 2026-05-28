@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import { PRIMARY_SENSOR_ID, WS_URL } from "@/constants";
+import { PRIMARY_SENSOR_ID, WS_URL, API_URL } from "@/constants";
 import api from "@/lib/api";
 import type { Sensor } from "@/types/sensor";
 import type { LiveWaterLevel, WaterLevelPoint } from "@/types/water-level";
@@ -208,11 +208,6 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   }, []);
 
   useEffect(() => {
-    const socket: Socket = io(WS_URL, {
-      transports: ["websocket"],
-      reconnectionAttempts: 5,
-    });
-
     const applyRealtimeUpdate = (payload: RealtimeSensorUpdatePayload) => {
       if (!payload.sensorId) {
         return;
@@ -277,8 +272,50 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       });
     };
 
-    socket.on("sensorUpdate", applyRealtimeUpdate);
-    socket.on("statusChange", applyRealtimeUpdate);
+    // 1. Establish SSE EventSource connection
+    const streamUrl = API_URL.startsWith("/")
+      ? `${window.location.protocol}//${window.location.host}${API_URL}/sensors/stream`
+      : `${API_URL}/sensors/stream`;
+
+    console.log("⚡ SSE Connecting to stream:", streamUrl);
+    const eventSource = new EventSource(streamUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("⚡ SSE Real-Time Event received in useWaterLevel:", data);
+
+        if (data.water) {
+          applyRealtimeUpdate({
+            sensorId: data.water.sensorId,
+            waterLevel: data.water.waterLevel,
+            status: data.water.status,
+            recordedAt: data.recordedAt,
+          });
+        }
+        if (data.rainfall) {
+          applyRealtimeUpdate({
+            sensorId: data.rainfall.sensorId,
+            rainfall: data.rainfall.rainfall,
+            status: data.rainfall.intensity,
+            recordedAt: data.recordedAt,
+          });
+        }
+        if (data.flowRate) {
+          applyRealtimeUpdate({
+            sensorId: data.flowRate.sensorId,
+            flowRate: data.flowRate.flowRate,
+            recordedAt: data.recordedAt,
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing SSE message in useWaterLevel:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.warn("SSE Connection encountered an error or closed. Reconnecting...", err);
+    };
 
     // Listen to custom Supabase Realtime connectivity update events
     const handleRealtimeSensorUpdate = (e: Event) => {
@@ -301,15 +338,16 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     }
 
     void loadCurrent();
+    
+    // Smooth fallback polling (reduced rate to 30s to respect SSE stream)
     const timer = window.setInterval(() => {
+      console.log("🔄 SSE Heartbeat Sync: Reloading sensor data...");
       void loadCurrent();
-    }, refreshMs);
+    }, Math.max(refreshMs, 30_000));
 
     return () => {
       window.clearInterval(timer);
-      socket.off("sensorUpdate", applyRealtimeUpdate);
-      socket.off("statusChange", applyRealtimeUpdate);
-      socket.disconnect();
+      eventSource.close();
       if (typeof window !== "undefined") {
         window.removeEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
       }

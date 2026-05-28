@@ -24,6 +24,7 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter | null = null;
   private cachedTransportKey: string | null = null;
+  private readonly rateLimitCache = new Map<string, number>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -35,6 +36,118 @@ export class EmailService {
         process.env.SMTP_PASS?.trim() &&
         process.env.SMTP_FROM?.trim(),
     );
+  }
+
+  async sendAutomatedThresholdAlert(
+    sensorId: string,
+    sensorName: string,
+    value: number,
+    thresholdValue: number,
+    level: 'WARNING' | 'DANGER',
+    type: 'RAINFALL' | 'WATER_LEVEL',
+  ): Promise<BroadcastEmailResult> {
+    // 1. Fetch active users in the database who have enabled email notifications
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        notificationEmail: true,
+        email: { not: '' },
+      },
+    });
+
+    if (users.length === 0) {
+      this.logger.log('Tidak ada penerima email aktif dengan notificationEmail: true.');
+      return {
+        attempted: false,
+        skippedReason: 'Tidak ada penerima email aktif dengan notificationEmail: true.',
+      };
+    }
+
+    // 2. Strict Rate Limiting / Debouncing (max 1 email per hour for the same event/sensor)
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    const recipientsToSend: string[] = [];
+
+    for (const user of users) {
+      const cacheKey = `${user.id}-${sensorId}-${type}`;
+      const lastSent = this.rateLimitCache.get(cacheKey);
+
+      if (lastSent && now - lastSent < oneHour) {
+        this.logger.log(
+          `Skipped email to ${user.email} due to 1-hour anti-spam rate limit for sensor ${sensorId} (${type})`
+        );
+        continue;
+      }
+
+      recipientsToSend.push(user.email.trim().toLowerCase());
+      this.rateLimitCache.set(cacheKey, now);
+    }
+
+    if (recipientsToSend.length === 0) {
+      return {
+        attempted: false,
+        skippedReason: 'Semua penerima di-rate limit (anti-spam).',
+      };
+    }
+
+    const payload: BroadcastEmailPayload = {
+      title: `ALERT: ${type} ${level} di ${sensorName} (${sensorId})`,
+      message: `Peringatan Kritis: Sensor ${sensorName} (${sensorId}) telah mendeteksi ${type.toLowerCase()} mencapai ${value} ${
+        type === 'RAINFALL' ? 'mm/hour' : 'cm'
+      }, melampaui ambang batas ${level.toLowerCase()} ${thresholdValue} ${
+        type === 'RAINFALL' ? 'mm/hour' : 'cm'
+      }. Harap waspada dan siapkan langkah antisipasi segera.`,
+      severity: level,
+      targetArea: sensorName,
+    };
+
+    // 3. Graceful Mock fallback if SMTP credentials aren't set
+    if (!this.isEnabled()) {
+      const mockMsg = `
+========================================
+[MOCK EMAIL SENT - SMTP NOT CONFIGURED]
+To: ${recipientsToSend.join(', ')}
+Subject: ${payload.title}
+Body: ${payload.message}
+========================================`;
+      console.log(mockMsg);
+      this.logger.warn(`Email mock alert successfully generated for ${recipientsToSend.length} user(s).`);
+      return {
+        attempted: true,
+        recipientCount: recipientsToSend.length,
+        skippedReason: 'SMTP not configured (Mock Sent)',
+      };
+    }
+
+    const transporter = this.getTransporter();
+    if (!transporter) {
+      throw new BadRequestException('SMTP transporter gagal dibuat.');
+    }
+
+    const from = process.env.SMTP_FROM!.trim();
+    const subject = payload.title.trim();
+    const textBody = this.buildPlainTextBody(payload);
+    const htmlBody = this.buildHtmlBody(payload);
+
+    const info = await transporter.sendMail({
+      from,
+      to: from,
+      bcc: recipientsToSend,
+      subject,
+      text: textBody,
+      html: htmlBody,
+    });
+
+    this.logger.log(
+      `Email threshold alert sent successfully to ${recipientsToSend.length} recipient(s). MessageId=${info.messageId}`,
+    );
+
+    return {
+      attempted: true,
+      recipientCount: recipientsToSend.length,
+      messageId: info.messageId,
+      response: typeof info.response === 'string' ? info.response : undefined,
+    };
   }
 
   async sendBroadcastEmail(

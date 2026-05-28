@@ -8,10 +8,14 @@ import {
   Post,
   Put,
   Query,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
 import { SensorConnectivity, SensorType } from '@prisma/client';
+import { Observable } from 'rxjs';
 import { ok } from '../common/api-response';
 import { SensorsService } from './sensors.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 interface UpsertSensorRequest {
   sensorId: string;
@@ -25,7 +29,15 @@ interface UpsertSensorRequest {
 
 @Controller('sensors')
 export class SensorsController {
-  constructor(private readonly sensorsService: SensorsService) {}
+  constructor(
+    private readonly sensorsService: SensorsService,
+    private readonly realtimeService: RealtimeService,
+  ) {}
+
+  @Sse('stream')
+  streamSensors(): Observable<MessageEvent> {
+    return this.realtimeService.getSensorStream();
+  }
 
   @Get()
   async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
