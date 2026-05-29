@@ -597,6 +597,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
                   }}
                 />
                 <YAxis
+                  domain={['auto', 'auto']}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
                   tick={{ fill: "#64748b", fontSize: 10 }}
@@ -639,7 +640,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
                     strokeDasharray="4 4"
                   />
                 )}
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} minPointSize={5} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -516,8 +516,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
                 }}
               />
               <YAxis
-                domain={[0, 30]}
-                ticks={[0, 5, 10, 15, 20, 25, 30]}
+                domain={['auto', 'auto']}
                 axisLine={{ stroke: "#e2e8f0" }}
                 tickLine={false}
                 tick={{ fill: "#64748b", fontSize: 10 }}
@@ -555,6 +554,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
                 fill="#3b82f6"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={16}
+                minPointSize={5}
               />
             </BarChart>
           </ResponsiveContainer>

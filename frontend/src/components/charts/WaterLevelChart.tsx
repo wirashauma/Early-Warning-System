@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -341,13 +341,13 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
     if (isDemo) {
       const baseTime = Date.now();
       return [
-        { label: "08:00", value: 2.1, timestamp: baseTime - 6 * 60 * 60 * 1000 },
-        { label: "09:00", value: 2.5, timestamp: baseTime - 5 * 60 * 60 * 1000 },
-        { label: "10:00", value: 3.8, timestamp: baseTime - 4 * 60 * 60 * 1000 },
-        { label: "11:00", value: 5.2, timestamp: baseTime - 3 * 60 * 60 * 1000 },
-        { label: "12:00", value: 8.5, timestamp: baseTime - 2 * 60 * 60 * 1000 },
-        { label: "13:00", value: 11.0, timestamp: baseTime - 1 * 60 * 60 * 1000 }, // Peak
-        { label: "14:00", value: 9.2, timestamp: baseTime },
+        { label: "08:00", value: 2.1, waterLevel: 2.1, timestamp: baseTime - 6 * 60 * 60 * 1000 },
+        { label: "09:00", value: 2.5, waterLevel: 2.5, timestamp: baseTime - 5 * 60 * 60 * 1000 },
+        { label: "10:00", value: 3.8, waterLevel: 3.8, timestamp: baseTime - 4 * 60 * 60 * 1000 },
+        { label: "11:00", value: 5.2, waterLevel: 5.2, timestamp: baseTime - 3 * 60 * 60 * 1000 },
+        { label: "12:00", value: 8.5, waterLevel: 8.5, timestamp: baseTime - 2 * 60 * 60 * 1000 },
+        { label: "13:00", value: 11.0, waterLevel: 11.0, timestamp: baseTime - 1 * 60 * 60 * 1000 }, // Peak
+        { label: "14:00", value: 9.2, waterLevel: 9.2, timestamp: baseTime },
       ];
     }
 
@@ -368,6 +368,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
             minute: "2-digit",
           }),
           value: point.levelCm,
+          waterLevel: point.levelCm,
           timestamp: new Date(point.timestamp).getTime(),
         }));
     }
@@ -395,12 +396,18 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
           weekday: "short",
         }),
         value: Math.round(value.sum / Math.max(value.count, 1)),
+        waterLevel: Math.round(value.sum / Math.max(value.count, 1)),
         timestamp: value.ts,
       }));
   }, [validPoints, range, referenceNow, isDemo]);
 
+  // CRITICAL FIX: Before returning the data array to the chart, add a strict JavaScript filter to remove any data points where waterLevel is 0 or falsy.
+  const filteredData = useMemo(() => {
+    return chartData.filter((item) => item.waterLevel > 0);
+  }, [chartData]);
+
   // Calculations for stats boxes at the bottom
-  const values = chartData.map((p) => p.value);
+  const values = filteredData.map((p) => p.waterLevel);
   const min = isDemo ? 2.1 : (values.length > 0 ? Math.min(...values) : 0);
   const max = isDemo ? 11.0 : (values.length > 0 ? Math.max(...values) : 0);
   const latest = isDemo ? 9.2 : (validPoints.length > 0 ? validPoints[validPoints.length - 1].levelCm : 0);
@@ -490,13 +497,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
         ) : (
           <div className="chart-container-capture h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorWaterLevel" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
+              <LineChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="timestamp"
@@ -524,6 +525,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                   }}
                 />
                 <YAxis
+                  domain={['auto', 'auto']}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
                   tick={{ fill: "#64748b", fontSize: 11 }}
@@ -555,16 +557,15 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                     return null;
                   }}
                 />
-                <Area
+                <Line
                   type="monotone"
-                  dataKey="value"
+                  dataKey="waterLevel"
                   stroke="#3b82f6"
                   strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorWaterLevel)"
+                  dot={false}
                   connectNulls={true}
                 />
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           </div>
         )}
