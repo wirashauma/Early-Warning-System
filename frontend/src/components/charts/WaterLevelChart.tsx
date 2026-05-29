@@ -22,6 +22,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
   const [mounted, setMounted] = useState(false);
   const [range, setRange] = useState<"day" | "week">("day");
   const cardRef = useRef<HTMLDivElement>(null);
+  const isEmpty = !points || points.length === 0;
 
   useEffect(() => {
     setMounted(true);
@@ -144,6 +145,9 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
 
   // Reactive stats — auto-recompute when chart data changes
   const stats = useMemo(() => {
+    if (isEmpty) {
+      return { min: 0, max: 0, latest: 0, average: 0 };
+    }
     const vals = filteredData.map((p) => p.waterLevel);
     return {
       min: isDemo ? 2.1 : (vals.length > 0 ? Math.min(...vals) : 0),
@@ -151,7 +155,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
       latest: isDemo ? 9.2 : (validPoints.length > 0 ? validPoints[validPoints.length - 1].levelCm : 0),
       average: isDemo ? 6.0 : (vals.length > 0 ? Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length) : 0),
     };
-  }, [filteredData, validPoints, isDemo]);
+  }, [filteredData, validPoints, isDemo, isEmpty]);
 
   const handleExportPDF = async () => {
     if (!cardRef.current) return;
@@ -421,8 +425,6 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
     return <div className="h-[430px] w-full animate-pulse rounded-xl bg-slate-50" />;
   }
 
-  const isEmpty = false;
-
   return (
     <div ref={cardRef} className="flex flex-col h-full justify-between">
       {/* Unified Header - 2 Rows Compact Layout to prevent wrapping */}
@@ -498,7 +500,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
             </p>
           </div>
         ) : (
-          <div className="chart-container-capture h-[250px] w-full">
+          <div className="chart-container-capture w-full h-[300px] min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />

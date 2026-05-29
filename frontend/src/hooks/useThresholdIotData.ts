@@ -122,191 +122,19 @@ export function useThresholdIotData(refreshMs = DEFAULT_POLL_MS) {
       }
     };
 
-    // 1. SSE Connection setup
-    const directApiUrl = WS_URL.replace(/^ws/, "http");
-    const streamUrl = `${directApiUrl}/api/sensors/stream`;
-
-    const eventSource = new EventSource(streamUrl);
-    let lastMessageTime = Date.now();
-
-    eventSource.onopen = () => {
-      // SSE connection opened
-    };
-
-    eventSource.onmessage = (event) => {
-      if (cancelled) return;
-      try {
-        lastMessageTime = Date.now();
-        const data = JSON.parse(event.data);
-
-        setState((prev) => {
-          let nextRain = [...prev.rainfallData];
-          let nextFlow = [...prev.flowRateData];
-          let nextWater = [...prev.waterLevelData];
-          let updated = false;
-
-          if (data.water) {
-            const idx = nextWater.findIndex((x) => x.sensorId === data.water.sensorId);
-            const newPt = {
-              sensorId: data.water.sensorId,
-              sensorName: data.water.sensorName ?? (idx !== -1 ? nextWater[idx].sensorName : data.water.sensorId),
-              value: Number(data.water.waterLevel),
-              recordedAt: data.recordedAt ?? new Date().toISOString(),
-            };
-            if (idx !== -1) nextWater[idx] = newPt;
-            else nextWater.push(newPt);
-            updated = true;
-          }
-
-          if (data.rainfall) {
-            const idx = nextRain.findIndex((x) => x.sensorId === data.rainfall.sensorId);
-            const newPt = {
-              sensorId: data.rainfall.sensorId,
-              sensorName: data.rainfall.sensorName ?? (idx !== -1 ? nextRain[idx].sensorName : data.rainfall.sensorId),
-              value: Number(data.rainfall.rainfall),
-              recordedAt: data.recordedAt ?? new Date().toISOString(),
-            };
-            if (idx !== -1) nextRain[idx] = newPt;
-            else nextRain.push(newPt);
-            updated = true;
-          }
-
-          if (data.flowRate) {
-            const idx = nextFlow.findIndex((x) => x.sensorId === data.flowRate.sensorId);
-            const newPt = {
-              sensorId: data.flowRate.sensorId,
-              sensorName: data.flowRate.sensorName ?? (idx !== -1 ? nextFlow[idx].sensorName : data.flowRate.sensorId),
-              value: Number(data.flowRate.flowRate),
-              recordedAt: data.recordedAt ?? new Date().toISOString(),
-            };
-            if (idx !== -1) nextFlow[idx] = newPt;
-            else nextFlow.push(newPt);
-            updated = true;
-          }
-
-          if (!updated) return prev;
-
-          return {
-            ...prev,
-            rainfallData: nextRain,
-            flowRateData: nextFlow,
-            waterLevelData: nextWater,
-            lastUpdated: new Date().toISOString(),
-          };
-        });
-      } catch (err) {
-        console.error("❌ [useThresholdIotData SSE] Error parsing SSE data:", err);
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.warn("⚠️ [useThresholdIotData SSE] SSE stream closed or error, will reconnect...", err);
-    };
-
-    // Listen to custom Supabase Realtime telemetry update events
-    const handleRealtimeTelemetry = (e: Event) => {
-      if (cancelled) return;
-      const customEvent = e as CustomEvent<{
-        sensorUuid: string;
-        sensorId: string;
-        waterLevel?: number;
-        rainfall?: number;
-        flowRate?: number;
-        status?: string;
-        recordedAt: string;
-      }>;
-      
-      if (!customEvent.detail) return;
-      const { sensorId, waterLevel, rainfall, flowRate, recordedAt } = customEvent.detail;
-      
-      if (!sensorId) return;
-
-      setState((prev) => {
-        let nextRain = [...prev.rainfallData];
-        let nextFlow = [...prev.flowRateData];
-        let nextWater = [...prev.waterLevelData];
-        let updated = false;
-
-        if (waterLevel !== undefined) {
-          const idx = nextWater.findIndex((x) => x.sensorId === sensorId);
-          const newPt = {
-            sensorId,
-            sensorName: idx !== -1 ? nextWater[idx].sensorName : sensorId,
-            value: Number(waterLevel),
-            recordedAt: recordedAt ?? new Date().toISOString(),
-          };
-          if (idx !== -1) nextWater[idx] = newPt;
-          else nextWater.push(newPt);
-          updated = true;
-        }
-
-        if (rainfall !== undefined) {
-          const idx = nextRain.findIndex((x) => x.sensorId === sensorId);
-          const newPt = {
-            sensorId,
-            sensorName: idx !== -1 ? nextRain[idx].sensorName : sensorId,
-            value: Number(rainfall),
-            recordedAt: recordedAt ?? new Date().toISOString(),
-          };
-          if (idx !== -1) nextRain[idx] = newPt;
-          else nextRain.push(newPt);
-          updated = true;
-        }
-
-        if (flowRate !== undefined) {
-          const idx = nextFlow.findIndex((x) => x.sensorId === sensorId);
-          const newPt = {
-            sensorId,
-            sensorName: idx !== -1 ? nextFlow[idx].sensorName : sensorId,
-            value: Number(flowRate),
-            recordedAt: recordedAt ?? new Date().toISOString(),
-          };
-          if (idx !== -1) nextFlow[idx] = newPt;
-          else nextFlow.push(newPt);
-          updated = true;
-        }
-
-        if (!updated) return prev;
-
-        return {
-          ...prev,
-          rainfallData: nextRain,
-          flowRateData: nextFlow,
-          waterLevelData: nextWater,
-          lastUpdated: new Date().toISOString(),
-        };
-      });
-    };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
-    }
-
+    // Immediate initial fetch
     void run();
 
-    // Smooth fallback polling (reduced rate to 30s to respect SSE stream)
+    // Setup bulletproof 60-second silent background polling
     const timer = window.setInterval(() => {
       void run();
-    }, Math.max(refreshMs, 30_000));
-
-    // Active 3s polling fallback: if no SSE events received for > 8 seconds, poll backend
-    const fallbackTimer = window.setInterval(() => {
-      const timeSinceLastMessage = Date.now() - lastMessageTime;
-      if (timeSinceLastMessage > 8000) {
-        void run();
-      }
-    }, 3000);
+    }, 60000);
 
     return () => {
       cancelled = true;
       window.clearInterval(timer);
-      window.clearInterval(fallbackTimer);
-      eventSource.close();
-      if (typeof window !== "undefined") {
-        window.removeEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
-      }
     };
-  }, [loadIotData, refreshMs]);
+  }, [loadIotData]);
 
   return state;
 }

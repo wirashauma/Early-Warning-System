@@ -2,42 +2,37 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
-import { FLOW_SENSOR_ID, API_URL, WS_URL } from "@/constants";
-import type { LiveFlowRate, WaterLevelPoint } from "@/types/water-level";
+import { PRIMARY_SENSOR_ID } from "@/constants";
+import type { WaterLevelPoint } from "@/types/water-level";
 
-interface UseFlowRateOptions {
+interface UseRainfallOptions {
   sensorId?: string;
   refreshMs?: number;
 }
 
-interface ApiFlowCurrent {
+interface ApiRainfallCurrent {
   sensorId: string;
   sensorName?: string;
-  flowRate: number;
+  rainfall: number;
   recordedAt: string;
 }
 
-interface ApiFlowHistory {
+interface ApiRainfallHistory {
   sensorId: string;
-  flowRate: number;
+  rainfall: number;
   recordedAt: string;
 }
 
 const DEFAULT_REFRESH_MS = 5_000;
 const HISTORY_HOURS = 7 * 24;
-const MAX_HISTORY_POINTS = 500;
 const STABLE_FALLBACK_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
-function toIsoNow() {
-  return new Date().toISOString();
-}
-
-export function useFlowRate(options: UseFlowRateOptions = {}) {
+export function useRainfall(options: UseRainfallOptions = {}) {
   const { sensorId, refreshMs = DEFAULT_REFRESH_MS } = options;
-  const [latest, setLatest] = useState<LiveFlowRate>({
-    sensorId: sensorId ?? FLOW_SENSOR_ID ?? "",
-    sensorName: "Sensor",
-    flowRateLpm: 0,
+  const [latest, setLatest] = useState({
+    sensorId: sensorId ?? PRIMARY_SENSOR_ID ?? "EWS-RF-002",
+    sensorName: "Sensor Curah Hujan",
+    rainfallMm: 0,
     updatedAt: STABLE_FALLBACK_TIMESTAMP,
   });
   const [history, setHistory] = useState<WaterLevelPoint[]>([]);
@@ -52,44 +47,35 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
 
   const loadCurrent = useCallback(async () => {
     try {
-      const response = await api.get("/flow-rate/current");
+      const response = await api.get("/rainfall/current");
       if (!isMountedRef.current) {
         return;
       }
 
-      const rows = (response.data?.data ?? []) as ApiFlowCurrent[];
-      const preferredId = (sensorId ?? FLOW_SENSOR_ID ?? "").trim();
+      const rows = (response.data?.data ?? []) as ApiRainfallCurrent[];
+      const preferredId = (sensorId ?? PRIMARY_SENSOR_ID ?? "EWS-RF-002").trim();
       const selected = preferredId
         ? rows.find((row) => row.sensorId === preferredId)
         : rows[0];
 
       if (!selected) {
-        setLatest((prev) => ({
-          ...prev,
-          updatedAt: toIsoNow(),
-        }));
         return;
       }
 
       setLatest({
         sensorId: selected.sensorId,
         sensorName: selected.sensorName ?? selected.sensorId,
-        flowRateLpm: selected.flowRate ?? 0,
-        updatedAt: selected.recordedAt ?? toIsoNow(),
+        rainfallMm: selected.rainfall ?? 0,
+        updatedAt: selected.recordedAt ?? new Date().toISOString(),
       });
-    } catch {
-      if (isMountedRef.current) {
-        setLatest((prev) => ({
-          ...prev,
-          updatedAt: toIsoNow(),
-        }));
-      }
+    } catch (e) {
+      // ignore
     }
   }, [sensorId]);
 
   const loadHistory = useCallback(async () => {
     try {
-      const activeId = latest.sensorId || (sensorId ?? FLOW_SENSOR_ID ?? "").trim();
+      const activeId = latest.sensorId || (sensorId ?? PRIMARY_SENSOR_ID ?? "EWS-RF-002").trim();
       if (!activeId) {
         return;
       }
@@ -97,7 +83,7 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - HISTORY_HOURS * 60 * 60 * 1000);
 
-      const historyResp = await api.get("/flow-rate/history", {
+      const historyResp = await api.get("/rainfall/history", {
         params: {
           sensorId: activeId,
           startDate: startDate.toISOString(),
@@ -113,7 +99,7 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
       const historyPayload = historyResp.data?.data;
       const rows = (Array.isArray(historyPayload)
         ? historyPayload
-        : historyPayload?.items ?? []) as ApiFlowHistory[];
+        : historyPayload?.items ?? []) as ApiRainfallHistory[];
 
       const sortedRows = [...rows].sort(
         (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
@@ -122,13 +108,13 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
       const mapped: WaterLevelPoint[] = sortedRows.map((row) => ({
         timestamp: row.recordedAt,
         levelCm: 0,
-        rainfallMm: 0,
-        flowRateLpm: row.flowRate ?? 0,
+        rainfallMm: row.rainfall ?? 0,
+        flowRateLpm: 0,
         sensorId: row.sensorId,
       }));
 
       setHistory(mapped);
-    } catch {
+    } catch (e) {
       if (isMountedRef.current) {
         setHistory([]);
       }
@@ -136,11 +122,9 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
   }, [latest.sensorId, sensorId]);
 
   useEffect(() => {
-    // Immediate initial fetch
     void loadCurrent();
     void loadHistory();
 
-    // Setup bulletproof 60-second silent background polling
     const timer = window.setInterval(() => {
       void loadCurrent();
       void loadHistory();

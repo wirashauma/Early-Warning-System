@@ -60,6 +60,7 @@ class _StatusScreenState extends State<StatusScreen> {
     final color = _sensorColor(sensor);
     final waterLevel = sensor.waterLevel?.toInt() ?? 0;
     final rainfall = sensor.rainfall ?? 0.0;
+    final flowRate = sensor.flowRate ?? 0.0;
     final battery = sensor.batteryLevel;
     final connectivity = sensor.displayConnectivity;
     final lastSeen = sensor.effectiveLastSeenAt?.toIso8601String() ?? '-';
@@ -134,7 +135,7 @@ class _StatusScreenState extends State<StatusScreen> {
                     child: _buildMetricTile(
                       Icons.grain,
                       'Curah Hujan',
-                      '$rainfall mm/jam',
+                      '${rainfall.toStringAsFixed(1)} mm',
                     ),
                   ),
                 ],
@@ -144,11 +145,23 @@ class _StatusScreenState extends State<StatusScreen> {
                 children: [
                   Expanded(
                     child: _buildMetricTile(
+                      Icons.speed,
+                      'Debit Air',
+                      '${flowRate.toStringAsFixed(1)} LPM',
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildMetricTile(
                       Icons.battery_charging_full,
                       'Baterai',
                       battery != null ? '$battery%' : 'N/A',
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
                   Expanded(
                     child: _buildMetricTile(
                       Icons.wifi,
@@ -794,6 +807,8 @@ class _SensorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final waterLevel = sensor.waterLevel ?? 0.0;
+    final rainfall = sensor.rainfall ?? 0.0;
+    final flowRate = sensor.flowRate ?? 0.0;
     final battery = sensor.batteryLevel;
     final lat = sensor.latitude;
     final lng = sensor.longitude;
@@ -806,43 +821,35 @@ class _SensorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.sensors, color: statusColor, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sensor.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Lat/Lng: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textGrey,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Baterai: ${battery ?? '-'}%',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textGrey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: [
+              Icon(Icons.sensors, color: statusColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sensor.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Lat/Lng: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Text(
                 statusLabel,
                 style: TextStyle(
@@ -850,11 +857,51 @@ class _SensorCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                '${waterLevel.toInt()} cm',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
-              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 12),
+          // Symmetrical 2x2 grid for metrics
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 3.0,
+            children: [
+              _buildMinicard('Tinggi Air', '${waterLevel.toInt()} cm'),
+              _buildMinicard('Curah Hujan', '${rainfall.toStringAsFixed(1)} mm'),
+              _buildMinicard('Debit Air', '${flowRate.toStringAsFixed(1)} LPM'),
+              _buildMinicard('Baterai', battery != null ? '$battery%' : 'N/A'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMinicard(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9, color: AppTheme.textGrey, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textDark),
           ),
         ],
       ),

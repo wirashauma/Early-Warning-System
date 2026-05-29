@@ -1,7 +1,8 @@
-import { Controller, Get, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Res, StreamableFile, UseGuards, Delete } from '@nestjs/common';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ReportService } from './report.service';
+import { ok } from '../common/api-response';
 
 @Controller('reports')
 export class ReportController {
@@ -29,5 +30,20 @@ export class ReportController {
     res.setHeader('Cache-Control', 'no-store');
 
     return new StreamableFile(report.buffer);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('delete-filtered')
+  async deleteFiltered(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('sensorId') sensorId?: string,
+  ) {
+    const result = await this.reportService.deleteFiltered({
+      startDate,
+      endDate,
+      sensorId,
+    });
+    return ok(result);
   }
 }

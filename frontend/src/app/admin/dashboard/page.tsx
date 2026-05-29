@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
     void loadActivity();
     const timer = window.setInterval(() => {
       void loadActivity();
-    }, 15_000);
+    }, 60000);
 
     return () => {
       cancelled = true;
@@ -256,48 +256,22 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  {(() => {
-                    if (sensor.type === "RAINFALL") {
-                      return (
-                        <>
-                          <p className="text-xs text-slate-500">Curah Hujan</p>
-                          {sensor.hasRainfallData ? (
-                            <p className="mt-1 font-semibold text-slate-900">{(sensor.lastRainfall ?? 0).toFixed(1)} mm/jam</p>
-                          ) : (
-                            <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
-                          )}
-                        </>
-                      );
-                    }
-                    if (sensor.type === "FLOW_RATE") {
-                      return (
-                        <>
-                          <p className="text-xs text-slate-500">Debit Air</p>
-                          {sensor.hasFlowRateData ? (
-                            <p className="mt-1 font-semibold text-slate-900">{(sensor.lastFlowRate ?? 0).toFixed(1)} LPM</p>
-                          ) : (
-                            <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
-                          )}
-                        </>
-                      );
-                    }
-                    return (
-                      <>
-                        <p className="text-xs text-slate-500">Ketinggian Air</p>
-                        {sensor.hasWaterLevelData ? (
-                          <p className="mt-1 font-semibold text-slate-900">{sensor.lastLevelCm.toFixed(1)} cm</p>
-                        ) : (
-                          <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
-                        )}
-                      </>
-                    );
-                  })()}
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tinggi Air</p>
+                  <p className="mt-0.5 font-bold text-slate-800">{sensor.lastLevelCm.toFixed(1)} cm</p>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Baterai</p>
-                  <p className="mt-1 font-semibold text-slate-900">{sensor.batteryPercent}%</p>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Curah Hujan</p>
+                  <p className="mt-0.5 font-bold text-slate-800">{(sensor.lastRainfall ?? 0).toFixed(1)} mm</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Debit Air</p>
+                  <p className="mt-0.5 font-bold text-slate-800">{(sensor.lastFlowRate ?? 0).toFixed(1)} LPM</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Baterai</p>
+                  <p className="mt-0.5 font-bold text-slate-800">{sensor.batteryPercent}%</p>
                 </div>
               </div>
 

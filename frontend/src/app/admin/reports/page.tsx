@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { RainfallChart } from "@/components/charts/RainfallChart";
@@ -9,6 +9,7 @@ import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { formatTimestamp } from "@/lib/utils";
 import type { WaterLevelPoint } from "@/types/water-level";
 import api from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface FilterState {
   fromDate: string;
@@ -42,6 +43,37 @@ export default function AdminReportsPage() {
     toDate: initialToDate,
     sensorId: "all",
   });
+
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteFiltered = async () => {
+    setDeleteLoading(true);
+    setErrorMessage(null);
+    try {
+      const response = await api.delete("/reports/delete-filtered", {
+        params: {
+          startDate: `${appliedFilter.fromDate}T00:00:00.000Z`,
+          endDate: `${appliedFilter.toDate}T23:59:59.999Z`,
+          sensorId: appliedFilter.sensorId,
+        },
+      });
+
+      const deletedCounts = response.data?.data?.deletedCounts;
+      const totalDeleted = deletedCounts?.total ?? 0;
+      showToast(`Berhasil menghapus ${totalDeleted} baris data logs.`);
+
+      // Reload history to refresh view
+      await loadHistory(appliedFilter, sensorOptions);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus data.";
+      setErrorMessage(message);
+      showToast(message);
+    } finally {
+      setDeleteLoading(false);
+      setIsConfirmOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -188,6 +220,40 @@ export default function AdminReportsPage() {
     void bootstrap();
   }, [initialFromDate, initialToDate]);
 
+  useEffect(() => {
+    // Setup bulletproof 60-second silent background polling for reports
+    const timer = window.setInterval(() => {
+      if (sensorOptions.length > 0) {
+        void loadHistory(appliedFilter, sensorOptions);
+      }
+    }, 60000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [appliedFilter, sensorOptions]);
+
+  const waterLevelPoints = useMemo(() => {
+    return filteredData.filter((point) => {
+      const sensor = sensorOptions.find((s) => s.sensorId === point.sensorId);
+      return sensor?.type === "WATER_LEVEL";
+    });
+  }, [filteredData, sensorOptions]);
+
+  const rainfallPoints = useMemo(() => {
+    return filteredData.filter((point) => {
+      const sensor = sensorOptions.find((s) => s.sensorId === point.sensorId);
+      return sensor?.type === "RAINFALL";
+    });
+  }, [filteredData, sensorOptions]);
+
+  const flowRatePoints = useMemo(() => {
+    return filteredData.filter((point) => {
+      const sensor = sensorOptions.find((s) => s.sensorId === point.sensorId);
+      return sensor?.type === "FLOW_RATE";
+    });
+  }, [filteredData, sensorOptions]);
+
   const isDownloading = downloadLoading !== null;
 
   return (
@@ -278,13 +344,13 @@ export default function AdminReportsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow border-slate-200 bg-white/95 shadow-sm">
-          <WaterLevelChart points={filteredData} />
+          <WaterLevelChart points={waterLevelPoints} />
         </Card>
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow border-slate-200 bg-white/95 shadow-sm">
-          <RainfallChart points={filteredData} />
+          <RainfallChart points={rainfallPoints} />
         </Card>
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow border-slate-200 bg-white/95 shadow-sm">
-          <FlowSpeedChart points={filteredData} />
+          <FlowSpeedChart points={flowRatePoints} />
         </Card>
       </div>
 
@@ -306,7 +372,7 @@ export default function AdminReportsPage() {
                 "Unduh PDF"
               )}
             </Button>
-            <Button onClick={() => void downloadReport("excel")} disabled={isDownloading}>
+            <Button onClick={() => void downloadReport("excel")} disabled={isDownloading || deleteLoading}>
               {downloadLoading === "excel" ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-flex size-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
@@ -314,6 +380,20 @@ export default function AdminReportsPage() {
                 </span>
               ) : (
                 "Unduh Excel (.xlsx)"
+              )}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={isDownloading || deleteLoading}
+            >
+              {deleteLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex size-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                  Menghapus...
+                </span>
+              ) : (
+                "Hapus Data Terfilter"
               )}
             </Button>
           </div>
@@ -360,6 +440,20 @@ export default function AdminReportsPage() {
           <p className="mt-1 text-sm text-slate-600">{toastMessage}</p>
         </div>
       )}
+
+      <ConfirmDialog
+        open={isConfirmOpen}
+        title="Hapus Data Terfilter"
+        description={`Apakah Anda yakin ingin menghapus seluruh data logs untuk sensor "${
+          appliedFilter.sensorId === "all" ? "Semua Sensor" : appliedFilter.sensorId
+        }" dari tanggal ${appliedFilter.fromDate} s.d. ${
+          appliedFilter.toDate
+        } dari database secara permanen? Tindakan ini bersifat destruktif dan tidak dapat dibatalkan.`}
+        confirmText="Ya, Hapus Data"
+        cancelText="Batal"
+        onConfirm={handleDeleteFiltered}
+        onCancel={() => setIsConfirmOpen(false)}
+      />
     </main>
   );
 }

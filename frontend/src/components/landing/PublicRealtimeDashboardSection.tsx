@@ -8,6 +8,7 @@ import { RainfallChart } from "@/components/charts/RainfallChart";
 import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
 import { useFlowRate } from "@/hooks/useFlowRate";
+import { useRainfall } from "@/hooks/useRainfall";
 import { cn, formatRelativeTime, formatTimestamp, getRainfallCategory, isSensorOnline } from "@/lib/utils";
 import type { Sensor } from "@/types/sensor";
 import type { WaterStatus } from "@/types/water-level";
@@ -49,6 +50,7 @@ export function PublicRealtimeDashboardSection() {
   const [selectedSensorId, setSelectedSensorId] = useState("SEN-01");
   const { latest, history, sensorsSnapshot } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000, showAll: true });
   const { history: flowHistory } = useFlowRate();
+  const { history: rainHistory } = useRainfall();
 
   const sensorState = useMemo(
     () =>
@@ -168,10 +170,22 @@ export function PublicRealtimeDashboardSection() {
                   <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-500">Menunggu Data</span>
                 )}
                 <p className="text-sm text-slate-600">Ketinggian air saat ini</p>
-                <p className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${rainfallCategory.color}`}>
-                  Curah hujan {rainfallCategory.label} ({rainfallCategory.detail})
-                </p>
-                <p className="text-sm text-slate-700">{latest.rainfallMm} mm/jam</p>
+                
+                <div className="mt-4 space-y-1 text-sm text-slate-700 border-t border-slate-100 pt-3">
+                  <p className="flex justify-between gap-4">
+                    <span className="text-slate-500 font-medium">Curah Hujan:</span>
+                    <span className="font-semibold">{latest.rainfallMm} mm/jam</span>
+                  </p>
+                  <p className="flex justify-between gap-4">
+                    <span className="text-slate-500 font-medium">Debit Air:</span>
+                    <span className="font-semibold">{latest.flowRateLpm} LPM</span>
+                  </p>
+                  <p className="flex justify-between gap-4">
+                    <span className="text-slate-500 font-medium">Baterai:</span>
+                    <span className="font-semibold">{selectedSensor.batteryPercent}%</span>
+                  </p>
+                </div>
+
                 <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
                   Terakhir Update: <span className="font-semibold text-slate-900">{formatRelativeTime(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)}</span>
                   <div className="text-[11px] text-slate-500">{formatTimestamp(selectedSensor.lastSeenAt ?? selectedSensor.updatedAt)}</div>
@@ -195,13 +209,13 @@ export function PublicRealtimeDashboardSection() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
+          <Card className="flex flex-col h-full hover:shadow-md transition-shadow min-w-0">
             <WaterLevelChart points={history} />
           </Card>
-          <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
-            <RainfallChart points={history} />
+          <Card className="flex flex-col h-full hover:shadow-md transition-shadow min-w-0">
+            <RainfallChart points={rainHistory} />
           </Card>
-          <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
+          <Card className="flex flex-col h-full hover:shadow-md transition-shadow min-w-0">
             <FlowSpeedChart points={flowHistory} />
           </Card>
         </div>

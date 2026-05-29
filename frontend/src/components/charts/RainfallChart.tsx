@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -36,11 +36,12 @@ export function RainfallChart({ points }: RainfallChartProps) {
   const [threshold, setThreshold] = useState<number>(150);
   const [range, setRange] = useState<"day" | "week">("day");
   const cardRef = useRef<HTMLDivElement>(null);
-  const isDemo = !points || points.length === 0;
+  const isEmpty = points && points.length === 0;
+  const isDemo = !points;
 
   const validPoints = useMemo(() => {
     if (isDemo || !points) return [];
-    return points.filter((point) => point && point.rainfallMm !== null && point.rainfallMm !== undefined && point.rainfallMm !== 0);
+    return points.filter((point) => point && point.rainfallMm !== null && point.rainfallMm !== undefined);
   }, [points, isDemo]);
 
   const isMultiDay = useMemo(() => {
@@ -500,6 +501,9 @@ export function RainfallChart({ points }: RainfallChartProps) {
 
   // Reactive stats — auto-recompute when chart data changes
   const stats = useMemo(() => {
+    if (isEmpty) {
+      return { min: 0, max: 0, average: 0, latest: 0 };
+    }
     const vals = computedChartData.map((p) => p.value);
     return {
       min: vals.length > 0 ? Math.min(...vals) : 0,
@@ -507,7 +511,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
       average: vals.length > 0 ? parseFloat((vals.reduce((sum, v) => sum + v, 0) / vals.length).toFixed(1)) : 0,
       latest: vals.length > 0 ? vals[vals.length - 1] : 0,
     };
-  }, [computedChartData]);
+  }, [computedChartData, isEmpty]);
 
   if (!mounted) {
     return <div className="h-[430px] w-full animate-pulse rounded-xl bg-slate-50" />;
@@ -573,7 +577,30 @@ export function RainfallChart({ points }: RainfallChartProps) {
 
       {/* Chart Wrapper Area */}
       <div className="relative flex-grow flex flex-col justify-center min-h-[250px] w-full mb-4">
-        {loading ? (
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center h-[250px] rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center">
+            <div className="rounded-full bg-slate-100 p-3 text-slate-400 mb-2 border border-slate-200/60 shadow-2xs">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="h-6 w-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20.25 14.15v4.25c0 .414-.336.75-.75.75H4.5a.75.75 0 0 1-.75-.75v-4.25m16.5 0a3 3 0 0 0-3-3H6.75a3 3 0 0 0-3 3m16.5 0V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9v5.15"
+                />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-slate-600">No Data Available</p>
+            <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+              Belum ada data curah hujan yang masuk untuk sensor ini.
+            </p>
+          </div>
+        ) : loading ? (
           <div className="flex h-[250px] flex-col items-center justify-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
             <p className="text-sm font-semibold text-slate-500">Memuat data real-time...</p>
@@ -583,9 +610,9 @@ export function RainfallChart({ points }: RainfallChartProps) {
             <p className="text-sm font-semibold text-rose-500">{error}</p>
           </div>
         ) : (
-          <div className="chart-container-capture h-[250px] w-full">
+          <div className="chart-container-capture w-full h-[300px] min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={computedChartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
+              <LineChart data={computedChartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey={isDemo ? "month" : "timestamp"}
@@ -604,7 +631,6 @@ export function RainfallChart({ points }: RainfallChartProps) {
                   tick={{ fill: "#64748b", fontSize: 10 }}
                 />
                 <Tooltip
-                  cursor={{ fill: "#f8fafc", opacity: 0.8 }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const datum = payload[0].payload;
@@ -641,8 +667,19 @@ export function RainfallChart({ points }: RainfallChartProps) {
                     strokeDasharray="4 4"
                   />
                 )}
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} minPointSize={5} isAnimationActive={true} animationDuration={500} animationEasing="ease-out" />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+                  connectNulls={true}
+                  isAnimationActive={true}
+                  animationDuration={600}
+                  animationEasing="ease-in-out"
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         )}

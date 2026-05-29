@@ -141,7 +141,7 @@ export function ThresholdRainfallChart({ data, loading }: ThresholdRainfallChart
           </div>
 
           <div className="h-62.5 rounded-2xl border border-slate-100 bg-linear-to-b from-white to-sky-50/50 p-3">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="thresholdRainfallFill" x1="0" y1="0" x2="0" y2="1">

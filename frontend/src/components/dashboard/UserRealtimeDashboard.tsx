@@ -11,6 +11,7 @@ import { FlowSpeedChart } from "@/components/charts/FlowSpeedChart";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { useWaterLevel } from "@/hooks/useWaterLevel";
 import { useFlowRate } from "@/hooks/useFlowRate";
+import { useRainfall } from "@/hooks/useRainfall";
 import { cn, getRainfallCategory, formatRelativeTime, formatTimestamp, isSensorOnline } from "@/lib/utils";
 import type { WaterStatus } from "@/types/water-level";
 
@@ -94,6 +95,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const [selectedSensorId, setSelectedSensorId] = useState("");
   const { latest, history, sensorsSnapshot, liveBySensor } = useWaterLevel({ sensorId: selectedSensorId, refreshMs: 12_000, showAll: true });
   const { history: flowHistory } = useFlowRate();
+  const { latest: rainLatest, history: rainHistory } = useRainfall();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -135,7 +137,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
   const selectedSensorLevel = selectedSensorHasData ? latest.levelCm : null;
   const selectedSensorLastSeen = selectedSensor?.lastSeenAt ?? selectedSensor?.updatedAt ?? latest.updatedAt;
 
-  const rainfallCategory = getRainfallCategory(latest.rainfallMm);
+  const rainfallCategory = getRainfallCategory(rainLatest.rainfallMm);
   const onlineCount = sensorState.filter((sensor) => sensor.online).length;
   const activeMeta = statusMeta[latest.status];
   const globalMeta = statusMeta[overallStatus];
@@ -215,7 +217,7 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
               </div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Curah Hujan</p>
             </div>
-            <p className="text-2xl font-extrabold text-slate-900 transition-all duration-300">{latest.rainfallMm} <span className="text-sm font-medium text-slate-400">mm/j</span></p>
+            <p className="text-2xl font-extrabold text-slate-900 transition-all duration-300">{rainLatest.rainfallMm} <span className="text-sm font-medium text-slate-400">mm/j</span></p>
             <p className="mt-1.5 text-[11px] text-slate-400 truncate">{rainfallCategory.label}</p>
           </div>
 
@@ -430,13 +432,21 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
 
                 {/* Metrics */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="rounded-xl bg-slate-50 p-2.5">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Tinggi Air</p>
-                    {hasData ? <p className="text-base font-bold text-slate-800">{item.levelCm} <span className="text-[10px] font-medium text-slate-400">cm</span></p> : <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-400">Menunggu</span>}
+                    {hasData ? <p className="text-sm font-bold text-slate-800">{item.levelCm} <span className="text-[10px] font-medium text-slate-400">cm</span></p> : <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-400">Menunggu</span>}
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="rounded-xl bg-slate-50 p-2.5">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Curah Hujan</p>
-                    <p className="text-base font-bold text-slate-800">{item.rainfallMm} <span className="text-[10px] font-medium text-slate-400">mm</span></p>
+                    <p className="text-sm font-bold text-slate-800">{item.rainfallMm} <span className="text-[10px] font-medium text-slate-400">mm</span></p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Debit Air</p>
+                    <p className="text-sm font-bold text-slate-800">{item.flowRateLpm} <span className="text-[10px] font-medium text-slate-400">L/m</span></p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Baterai</p>
+                    <p className="text-sm font-bold text-slate-800">{sensor?.batteryPercent ?? 0}%</p>
                   </div>
                 </div>
 
@@ -474,20 +484,18 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
 
             {/* Rainfall Widget */}
             <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
-              <RainfallCard rainfallMm={latest.rainfallMm} />
+              <RainfallCard rainfallMm={rainLatest.rainfallMm} />
             </div>
 
-            {/* Charts Row 1 */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
+            {/* Charts Row - Lined up 3 in a row */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1 min-w-0">
               <WaterLevelChart points={history} />
             </div>
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
+            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1 min-w-0">
               <FlowSpeedChart points={flowHistory} />
             </div>
-
-            {/* Chart Row 2 */}
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-3">
-              <RainfallChart points={history} />
+            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1 min-w-0">
+              <RainfallChart points={rainHistory} />
             </div>
           </div>
         </section>

@@ -22,6 +22,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
   const [mounted, setMounted] = useState(false);
   const [range, setRange] = useState<"day" | "week">("day");
   const cardRef = useRef<HTMLDivElement>(null);
+  const isEmpty = !points || points.length === 0;
 
   const handleExportPDF = async () => {
     if (!cardRef.current) return;
@@ -409,6 +410,9 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
 
   // Reactive stats — auto-recompute when chart data changes
   const stats = useMemo(() => {
+    if (isEmpty) {
+      return { min: 0, max: 0, latest: 0, average: 0 };
+    }
     const values = chartData.map((p) => p.value);
     const min = isDemo ? 10.6 : (values.length > 0 ? Math.min(...values) : 0);
     const max = isDemo ? 26.6 : (values.length > 0 ? Math.max(...values) : 0);
@@ -421,7 +425,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
         ? parseFloat((values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(2))
         : 0);
     return { min, max, latest, average };
-  }, [chartData, validPoints, isDemo]);
+  }, [chartData, validPoints, isDemo, isEmpty]);
 
   // Status Badge and Trend Resolution
   const trendClass =
@@ -435,8 +439,6 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
   if (!mounted) {
     return <div className="h-[430px] w-full animate-pulse rounded-xl bg-slate-50" />;
   }
-
-  const isEmpty = false;
 
   return (
     <div ref={cardRef} className="flex flex-col h-full justify-between">
@@ -488,10 +490,34 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
 
       {/* Chart Wrapper Area */}
       <div className="relative flex-grow flex flex-col justify-center min-h-[250px] w-full mb-4">
-        <div className="chart-container-capture h-[250px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center h-[250px] rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-6 text-center">
+            <div className="rounded-full bg-slate-100 p-3 text-slate-400 mb-2 border border-slate-200/60 shadow-2xs">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="h-6 w-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20.25 14.15v4.25c0 .414-.336.75-.75.75H4.5a.75.75 0 0 1-.75-.75v-4.25m16.5 0a3 3 0 0 0-3-3H6.75a3 3 0 0 0-3 3m16.5 0V9a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9v5.15"
+                />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-slate-600">No Data Available</p>
+            <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+              Belum ada data debit air yang masuk untuk sensor ini.
+            </p>
+          </div>
+        ) : (
+          <div className="chart-container-capture w-full h-[300px] min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               
               <XAxis
                 dataKey="timestamp"
@@ -557,7 +583,6 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
                 fill="#3b82f6"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={16}
-                minPointSize={5}
                 isAnimationActive={true}
                 animationDuration={500}
                 animationEasing="ease-out"
@@ -565,6 +590,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
       </div>
 
       {/* Reactive Statistics Indicators */}

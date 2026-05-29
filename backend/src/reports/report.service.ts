@@ -753,6 +753,105 @@ export class ReportService {
     };
   }
 
+  async deleteFiltered(input: {
+    startDate?: string;
+    endDate?: string;
+    sensorId?: string;
+  }) {
+    const { startDate, endDate, sensorId } = input;
+
+    // Build the date range condition
+    const dateCondition: any = {};
+    if (startDate) {
+      dateCondition.gte = new Date(startDate);
+    }
+    if (endDate) {
+      dateCondition.lte = new Date(endDate);
+    }
+
+    const whereClause: any = {};
+    if (Object.keys(dateCondition).length > 0) {
+      whereClause.recordedAt = dateCondition;
+    }
+
+    let deletedWaterLevels = 0;
+    let deletedRainfalls = 0;
+    let deletedFlowRates = 0;
+
+    if (!sensorId || sensorId === 'all') {
+      // If sensorId is "all" or not provided, delete from all active sensors' logs
+      const [wlResult, rfResult, frResult] = await Promise.all([
+        this.prisma.waterLevelLog.deleteMany({
+          where: {
+            ...whereClause,
+            sensor: { isActive: true },
+          },
+        }),
+        this.prisma.rainfallLog.deleteMany({
+          where: {
+            ...whereClause,
+            sensor: { isActive: true },
+          },
+        }),
+        this.prisma.flowRateLog.deleteMany({
+          where: {
+            ...whereClause,
+            sensor: { isActive: true },
+          },
+        }),
+      ]);
+      deletedWaterLevels = wlResult.count;
+      deletedRainfalls = rfResult.count;
+      deletedFlowRates = frResult.count;
+    } else {
+      // Find the sensor first to check its type and get its internal UUID id
+      const sensor = await this.prisma.sensor.findFirst({
+        where: { sensorId, isActive: true },
+      });
+
+      if (!sensor) {
+        throw new BadRequestException('Sensor tidak ditemukan atau tidak aktif.');
+      }
+
+      // Delete only from the specific sensor's log table
+      if (sensor.type === SensorType.WATER_LEVEL) {
+        const result = await this.prisma.waterLevelLog.deleteMany({
+          where: {
+            ...whereClause,
+            sensorId: sensor.id,
+          },
+        });
+        deletedWaterLevels = result.count;
+      } else if (sensor.type === SensorType.RAINFALL) {
+        const result = await this.prisma.rainfallLog.deleteMany({
+          where: {
+            ...whereClause,
+            sensorId: sensor.id,
+          },
+        });
+        deletedRainfalls = result.count;
+      } else if (sensor.type === SensorType.FLOW_RATE) {
+        const result = await this.prisma.flowRateLog.deleteMany({
+          where: {
+            ...whereClause,
+            sensorId: sensor.id,
+          },
+        });
+        deletedFlowRates = result.count;
+      }
+    }
+
+    return {
+      message: 'Data terfilter berhasil dihapus.',
+      deletedCounts: {
+        waterLevels: deletedWaterLevels,
+        rainfalls: deletedRainfalls,
+        flowRates: deletedFlowRates,
+        total: deletedWaterLevels + deletedRainfalls + deletedFlowRates,
+      },
+    };
+  }
+
   private mapReportTypeToSensorType(type: Exclude<ReportType, 'combined'>): SensorType {
     if (type === 'water_level') {
       return SensorType.WATER_LEVEL;

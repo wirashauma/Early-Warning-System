@@ -71,21 +71,27 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
   // Initialize Audio
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const audio = new Audio(sirenUrl);
-      audio.loop = true;
-      audioRef.current = audio;
+      try {
+        const audio = new Audio(sirenUrl);
+        audio.loop = true;
+        audioRef.current = audio;
 
-      // Sync playing state from audio events
-      audio.onplay = () => {
-        setIsSirenPlaying(true);
-        setAutoplayBlocked(false);
-      };
-      audio.onpause = () => setIsSirenPlaying(false);
+        // Sync playing state from audio events
+        audio.onplay = () => {
+          setIsSirenPlaying(true);
+          setAutoplayBlocked(false);
+        };
+        audio.onpause = () => setIsSirenPlaying(false);
 
-      return () => {
-        audio.pause();
-        audioRef.current = null;
-      };
+        return () => {
+          try {
+            audio.pause();
+          } catch {}
+          audioRef.current = null;
+        };
+      } catch (err) {
+        // Silenced initialization error
+      }
     }
   }, [sirenUrl]);
 
@@ -97,7 +103,7 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
         setIsSirenPlaying(true);
         setAutoplayBlocked(false);
       } catch (err: any) {
-        console.warn("⚠️ Autoplay blocked by browser. User interaction is required to play sound:", err);
+        // Completely silenced to stop console pollution
         setAutoplayBlocked(true);
         setIsSirenPlaying(false);
       }
@@ -107,8 +113,12 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
   // Stop Siren Helper
   const stopSiren = useCallback(() => {
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (err) {
+        // Silenced pause/currentTime reset errors
+      }
       setIsSirenPlaying(false);
       setAutoplayBlocked(false);
     }

@@ -226,247 +226,19 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   }, []);
 
   useEffect(() => {
-    const applyRealtimeUpdate = (payload: RealtimeSensorUpdatePayload) => {
-      if (!payload.sensorId) {
-        return;
-      }
-
-      const timestamp = payload.recordedAt ?? payload.lastActiveAt ?? toIsoNow();
-
-      // Functional updates keep the merge atomic and avoid stale closure/race-condition issues.
-      setSensorsSnapshot((prev) => {
-        const sensorIndex = prev.findIndex((sensor) => sensor.id === payload.sensorId);
-
-        if (sensorIndex === -1) {
-          return prev;
-        }
-
-        const next = [...prev];
-        const currentSensor = next[sensorIndex];
-
-        next[sensorIndex] = {
-          ...currentSensor,
-          name: payload.sensorName ?? currentSensor.name,
-          riverName: payload.sensorName ?? currentSensor.riverName,
-          latitude: payload.latitude ?? currentSensor.latitude,
-          longitude: payload.longitude ?? currentSensor.longitude,
-          connectivity:
-            payload.connectivity !== undefined
-              ? mapConnectivity(payload.connectivity)
-              : currentSensor.connectivity,
-          batteryPercent: payload.batteryLevel ?? currentSensor.batteryPercent,
-          lastLevelCm: payload.waterLevel ?? currentSensor.lastLevelCm,
-          hasWaterLevelData:
-            payload.waterLevel !== undefined && payload.waterLevel !== null
-              ? true
-              : currentSensor.hasWaterLevelData,
-          lastRainfall: payload.rainfall ?? currentSensor.lastRainfall,
-          hasRainfallData:
-            payload.rainfall !== undefined && payload.rainfall !== null
-              ? true
-              : currentSensor.hasRainfallData,
-          lastFlowRate: payload.flowRate ?? currentSensor.lastFlowRate,
-          hasFlowRateData:
-            payload.flowRate !== undefined && payload.flowRate !== null
-              ? true
-              : currentSensor.hasFlowRateData,
-          lastSeenAt: timestamp,
-          status: payload.status ? mapStatus(payload.status) : currentSensor.status,
-          updatedAt: timestamp,
-        };
-
-        return next;
-      });
-
-      setLatestBySensor((prev) => {
-        const currentLive = prev[payload.sensorId];
-
-        if (!currentLive) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          [payload.sensorId]: {
-            sensorId: payload.sensorId,
-            sensorName: payload.sensorName ?? currentLive.sensorName,
-            levelCm: payload.waterLevel ?? currentLive.levelCm,
-            rainfallMm: payload.rainfall ?? currentLive.rainfallMm,
-            flowRateLpm: payload.flowRate ?? currentLive.flowRateLpm,
-            status: payload.status ? mapStatus(payload.status) : currentLive.status,
-            updatedAt: timestamp,
-          },
-        };
-      });
-
-      setHistoryBySensor((prev) => {
-        const currentHistory = prev[payload.sensorId] ?? [];
-        
-        // Find if there is an existing point with the exact same timestamp
-        const existingIndex = currentHistory.findIndex((p) => p.timestamp === timestamp);
-
-        let newHistory = [...currentHistory];
-        if (existingIndex !== -1) {
-          // Merge updates into the existing point
-          newHistory[existingIndex] = {
-            ...newHistory[existingIndex],
-            levelCm: payload.waterLevel !== undefined ? payload.waterLevel : newHistory[existingIndex].levelCm,
-            rainfallMm: payload.rainfall !== undefined ? payload.rainfall : newHistory[existingIndex].rainfallMm,
-            flowRateLpm: payload.flowRate !== undefined ? payload.flowRate : newHistory[existingIndex].flowRateLpm,
-          };
-        } else {
-          // Get the last known values as fallback
-          const lastPoint = currentHistory[currentHistory.length - 1];
-          const newPoint: WaterLevelPoint = {
-            timestamp,
-            levelCm: payload.waterLevel ?? lastPoint?.levelCm ?? 0,
-            rainfallMm: payload.rainfall ?? lastPoint?.rainfallMm ?? 0,
-            flowRateLpm: payload.flowRate ?? lastPoint?.flowRateLpm ?? 0,
-            sensorId: payload.sensorId,
-          };
-          newHistory.push(newPoint);
-        }
-
-        // Sort strictly chronologically to prevent visual shifts or backwards loops!
-        newHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-        // Rolling window: trim old points to keep chart x-axis stable
-        if (newHistory.length > MAX_HISTORY_POINTS) {
-          newHistory = newHistory.slice(newHistory.length - MAX_HISTORY_POINTS);
-        }
-
-        return {
-          ...prev,
-          [payload.sensorId]: newHistory,
-        };
-      });
-    };
-
-    // 1. Establish SSE EventSource connection
-    const directApiUrl = WS_URL.replace(/^ws/, "http");
-    const streamUrl = `${directApiUrl}/api/sensors/stream`;
-
-    console.log("⚡ SSE Connecting to stream:", streamUrl);
-    const eventSource = new EventSource(streamUrl);
-    let lastMessageTime = Date.now();
-
-    eventSource.onopen = () => {
-      console.log("🟢 [useWaterLevel SSE] Connection successfully opened to:", streamUrl);
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        lastMessageTime = Date.now();
-        const data = JSON.parse(event.data);
-        console.log("⚡ [useWaterLevel SSE] Real-Time Event received:", data);
-
-        if (data.water) {
-          applyRealtimeUpdate({
-            sensorId: data.water.sensorId,
-            waterLevel: data.water.waterLevel,
-            status: data.water.status,
-            recordedAt: data.recordedAt,
-          });
-        }
-        if (data.rainfall) {
-          applyRealtimeUpdate({
-            sensorId: data.rainfall.sensorId,
-            rainfall: data.rainfall.rainfall,
-            status: data.rainfall.intensity,
-            recordedAt: data.recordedAt,
-          });
-        }
-        if (data.flowRate) {
-          applyRealtimeUpdate({
-            sensorId: data.flowRate.sensorId,
-            flowRate: data.flowRate.flowRate,
-            recordedAt: data.recordedAt,
-          });
-        }
-      } catch (err) {
-        console.error("❌ [useWaterLevel SSE] Error parsing message:", err);
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.warn("⚠️ [useWaterLevel SSE] Connection encountered error or closed. Reconnecting...", err);
-    };
-
-    // Listen to custom Supabase Realtime connectivity update events
-    const handleRealtimeSensorUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ sensor_id: string; connectivity: string }>;
-      if (customEvent?.detail?.sensor_id) {
-        const { sensor_id, connectivity } = customEvent.detail;
-        const mappedConn = connectivity.toLowerCase() === "online" ? "online" : "offline";
-        setSensorsSnapshot((prev) =>
-          prev.map((sensor) =>
-            sensor.id === sensor_id ? { ...sensor, connectivity: mappedConn } : sensor
-          )
-        );
-      }
-      void loadCurrent();
-    };
-
-    // Listen to custom Supabase Realtime telemetry update events
-    const handleRealtimeTelemetry = (e: Event) => {
-      const customEvent = e as CustomEvent<{
-        sensorUuid: string;
-        sensorId: string;
-        waterLevel?: number;
-        rainfall?: number;
-        flowRate?: number;
-        status?: string;
-        recordedAt: string;
-      }>;
-      
-      if (!customEvent.detail) return;
-      const { sensorUuid, sensorId, waterLevel, rainfall, flowRate, status, recordedAt } = customEvent.detail;
-      
-      const resolvedSensorId = sensorId || sensorUuidMapRef.current[sensorUuid];
-      
-      if (resolvedSensorId) {
-        applyRealtimeUpdate({
-          sensorId: resolvedSensorId,
-          waterLevel,
-          rainfall,
-          flowRate,
-          status,
-          recordedAt,
-        });
-      }
-    };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
-      window.addEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
-    }
-
+    // Immediate initial fetch
     void loadCurrent();
-    
-    // Smooth fallback polling (reduced rate to 30s to respect SSE stream)
+
+    // Setup bulletproof 60-second silent background polling
     const timer = window.setInterval(() => {
       void loadCurrent();
-    }, Math.max(refreshMs, 30_000));
-
-    // Active 3s polling fallback: if no SSE events received for > 8 seconds, poll backend
-    const fallbackTimer = window.setInterval(() => {
-      const timeSinceLastMessage = Date.now() - lastMessageTime;
-      if (timeSinceLastMessage > 8000) {
-        void loadCurrent();
-        setHistoryVersion((v) => v + 1);
-      }
-    }, 3000);
+      setHistoryVersion((v) => v + 1);
+    }, 60000);
 
     return () => {
       window.clearInterval(timer);
-      window.clearInterval(fallbackTimer);
-      eventSource.close();
-      if (typeof window !== "undefined") {
-        window.removeEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
-        window.removeEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
-      }
     };
-  }, [loadCurrent, refreshMs]);
+  }, [loadCurrent]);
 
   const preferredWaterSensorId =
     sensorsSnapshot.find((sensor) => waterSensorIdsRef.current.has(sensor.id))?.id ?? "";
@@ -552,16 +324,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     // Initial load
     void loadHistory();
 
-    // Periodic history refresh — keeps charts current even when SSE is down
-    const historyTimer = window.setInterval(() => {
-      if (!cancelled) {
-        void loadHistory();
-      }
-    }, 12_000);
-
     return () => {
       cancelled = true;
-      window.clearInterval(historyTimer);
     };
   }, [activeSensorId, isRainSensor, isFlowSensor, historyVersion]);
 

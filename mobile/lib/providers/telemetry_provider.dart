@@ -28,6 +28,8 @@ class TelemetryProvider extends ChangeNotifier {
   SseClient? _sseClient;
   StreamSubscription<SseEvent>? _sseSub;
 
+  Timer? _pollingTimer;
+
   // Getters
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -67,101 +69,13 @@ class TelemetryProvider extends ChangeNotifier {
       .length;
 
   TelemetryProvider() {
-    _initRealtimeSubscriptions();
+    _startBackgroundPolling();
   }
 
-  void _initRealtimeSubscriptions() {
-    final streamUrl = '${_apiService.baseUrl}/sensors/stream';
-    debugPrint('⚡ [SSE] Connecting TelemetryProvider to $streamUrl');
-
-    _sseClient = SseClient(streamUrl);
-    _sseSub = _sseClient!.stream.listen((event) {
-      try {
-        final Map<String, dynamic> data = jsonDecode(event.data);
-        debugPrint('⚡ [SSE] Real-Time Event received in TelemetryProvider: $data');
-
-        final String recordedAtStr = data['recordedAt'] ?? DateTime.now().toUtc().toIso8601String();
-        final DateTime recordedAt = DateTime.parse(recordedAtStr);
-
-        // 1. Process Water Level update
-        if (data.containsKey('water') && data['water'] != null) {
-          final water = data['water'] as Map<String, dynamic>;
-          final String sensorId = water['sensorId'];
-          final double waterLevel = (water['waterLevel'] as num).toDouble();
-          final String status = water['status'];
-
-          final log = WaterLevelLog(
-            id: '',
-            sensorId: sensorId,
-            waterLevel: waterLevel,
-            unit: 'cm',
-            status: status,
-            recordedAt: recordedAt,
-          );
-
-          _waterLevelHistory.add(log);
-          if (_waterLevelHistory.length > 50) {
-            _waterLevelHistory.removeAt(0);
-          }
-
-          final idx = _sensors.indexWhere((s) => s.id == sensorId || s.sensorId == sensorId);
-          if (idx != -1) {
-            _sensors[idx] = _sensors[idx].copyWith(
-              waterLevel: waterLevel,
-              status: status,
-              updatedAt: recordedAt,
-            );
-          }
-
-          // Trigger Danger warning overlay if status reaches danger
-          if (status.toUpperCase() == 'DANGER') {
-            _activeRealtimeAlert = AlertModel(
-              id: 'realtime-danger-${DateTime.now().millisecondsSinceEpoch}',
-              title: 'CRITICAL FLOOD WARNING ($sensorId)',
-              message: 'Sensor has detected water levels reaching $waterLevel cm (DANGER). Please follow evacuation guides immediately.',
-              severity: 'DANGER',
-              channels: const ['PUSH'],
-              sentAt: recordedAt,
-            );
-          }
-        }
-
-        // 2. Process Rainfall update
-        if (data.containsKey('rainfall') && data['rainfall'] != null) {
-          final rain = data['rainfall'] as Map<String, dynamic>;
-          final String sensorId = rain['sensorId'];
-          final double rainfall = (rain['rainfall'] as num).toDouble();
-          final String intensity = rain['intensity'];
-
-          final idx = _sensors.indexWhere((s) => s.id == sensorId || s.sensorId == sensorId);
-          if (idx != -1) {
-            _sensors[idx] = _sensors[idx].copyWith(
-              rainfall: rainfall,
-              status: intensity,
-              updatedAt: recordedAt,
-            );
-          }
-        }
-
-        // 3. Process Flow Rate update
-        if (data.containsKey('flowRate') && data['flowRate'] != null) {
-          final flow = data['flowRate'] as Map<String, dynamic>;
-          final String sensorId = flow['sensorId'];
-          final double flowRate = (flow['flowRate'] as num).toDouble();
-
-          final idx = _sensors.indexWhere((s) => s.id == sensorId || s.sensorId == sensorId);
-          if (idx != -1) {
-            _sensors[idx] = _sensors[idx].copyWith(
-              flowRate: flowRate,
-              updatedAt: recordedAt,
-            );
-          }
-        }
-
-        notifyListeners();
-      } catch (e) {
-        debugPrint('❌ [SSE] Error parsing dynamic event chunk: $e');
-      }
+  void _startBackgroundPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+      loadInitialData(silent: true);
     });
   }
 
@@ -172,8 +86,12 @@ class TelemetryProvider extends ChangeNotifier {
   }
 
   // REST Data Loading
-  Future<void> loadInitialData({String? sensorId}) async {
-    _isLoading = true;
+  Future<void> loadInitialData({String? sensorId, bool silent = false}) async {
+    if (!silent) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -295,6 +213,7 @@ class TelemetryProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _sseSub?.cancel();
     _sseClient?.close();
     super.dispose();
