@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
-import { API_URL } from "@/constants";
+import { API_URL, WS_URL } from "@/constants";
 
 export interface ThresholdIotPoint {
   sensorId: string;
@@ -123,18 +123,21 @@ export function useThresholdIotData(refreshMs = DEFAULT_POLL_MS) {
     };
 
     // 1. SSE Connection setup
-    const streamUrl = API_URL.startsWith("/")
-      ? `${window.location.protocol}//${window.location.host}${API_URL}/sensors/stream`
-      : `${API_URL}/sensors/stream`;
+    const directApiUrl = WS_URL.replace(/^ws/, "http");
+    const streamUrl = `${directApiUrl}/api/sensors/stream`;
 
-    console.log("⚡ useThresholdIotData: SSE Connecting to stream:", streamUrl);
     const eventSource = new EventSource(streamUrl);
+    let lastMessageTime = Date.now();
+
+    eventSource.onopen = () => {
+      // SSE connection opened
+    };
 
     eventSource.onmessage = (event) => {
       if (cancelled) return;
       try {
+        lastMessageTime = Date.now();
         const data = JSON.parse(event.data);
-        console.log("⚡ useThresholdIotData: SSE Event received:", data);
 
         setState((prev) => {
           let nextRain = [...prev.rainfallData];
@@ -192,26 +195,116 @@ export function useThresholdIotData(refreshMs = DEFAULT_POLL_MS) {
           };
         });
       } catch (err) {
-        console.error("Error parsing SSE data in useThresholdIotData:", err);
+        console.error("❌ [useThresholdIotData SSE] Error parsing SSE data:", err);
       }
     };
 
     eventSource.onerror = (err) => {
-      console.warn("useThresholdIotData: SSE stream error or disconnect:", err);
+      console.warn("⚠️ [useThresholdIotData SSE] SSE stream closed or error, will reconnect...", err);
     };
 
+    // Listen to custom Supabase Realtime telemetry update events
+    const handleRealtimeTelemetry = (e: Event) => {
+      if (cancelled) return;
+      const customEvent = e as CustomEvent<{
+        sensorUuid: string;
+        sensorId: string;
+        waterLevel?: number;
+        rainfall?: number;
+        flowRate?: number;
+        status?: string;
+        recordedAt: string;
+      }>;
+      
+      if (!customEvent.detail) return;
+      const { sensorId, waterLevel, rainfall, flowRate, recordedAt } = customEvent.detail;
+      
+      if (!sensorId) return;
+
+      setState((prev) => {
+        let nextRain = [...prev.rainfallData];
+        let nextFlow = [...prev.flowRateData];
+        let nextWater = [...prev.waterLevelData];
+        let updated = false;
+
+        if (waterLevel !== undefined) {
+          const idx = nextWater.findIndex((x) => x.sensorId === sensorId);
+          const newPt = {
+            sensorId,
+            sensorName: idx !== -1 ? nextWater[idx].sensorName : sensorId,
+            value: Number(waterLevel),
+            recordedAt: recordedAt ?? new Date().toISOString(),
+          };
+          if (idx !== -1) nextWater[idx] = newPt;
+          else nextWater.push(newPt);
+          updated = true;
+        }
+
+        if (rainfall !== undefined) {
+          const idx = nextRain.findIndex((x) => x.sensorId === sensorId);
+          const newPt = {
+            sensorId,
+            sensorName: idx !== -1 ? nextRain[idx].sensorName : sensorId,
+            value: Number(rainfall),
+            recordedAt: recordedAt ?? new Date().toISOString(),
+          };
+          if (idx !== -1) nextRain[idx] = newPt;
+          else nextRain.push(newPt);
+          updated = true;
+        }
+
+        if (flowRate !== undefined) {
+          const idx = nextFlow.findIndex((x) => x.sensorId === sensorId);
+          const newPt = {
+            sensorId,
+            sensorName: idx !== -1 ? nextFlow[idx].sensorName : sensorId,
+            value: Number(flowRate),
+            recordedAt: recordedAt ?? new Date().toISOString(),
+          };
+          if (idx !== -1) nextFlow[idx] = newPt;
+          else nextFlow.push(newPt);
+          updated = true;
+        }
+
+        if (!updated) return prev;
+
+        return {
+          ...prev,
+          rainfallData: nextRain,
+          flowRateData: nextFlow,
+          waterLevelData: nextWater,
+          lastUpdated: new Date().toISOString(),
+        };
+      });
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
+    }
+
     void run();
-    
+
     // Smooth fallback polling (reduced rate to 30s to respect SSE stream)
     const timer = window.setInterval(() => {
-      console.log("🔄 useThresholdIotData: SSE Heartbeat Sync...");
       void run();
     }, Math.max(refreshMs, 30_000));
 
+    // Active 3s polling fallback: if no SSE events received for > 8 seconds, poll backend
+    const fallbackTimer = window.setInterval(() => {
+      const timeSinceLastMessage = Date.now() - lastMessageTime;
+      if (timeSinceLastMessage > 8000) {
+        void run();
+      }
+    }, 3000);
+
     return () => {
       cancelled = true;
-      eventSource.close();
       window.clearInterval(timer);
+      window.clearInterval(fallbackTimer);
+      eventSource.close();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
+      }
     };
   }, [loadIotData, refreshMs]);
 

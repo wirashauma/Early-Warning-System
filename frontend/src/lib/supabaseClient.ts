@@ -1,26 +1,41 @@
 import { createClient } from "@supabase/supabase-js";
 
-function requireSupabaseEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_ANON_KEY") {
-  const value = process.env[name]?.trim();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  if (!value) {
-    // Graceful fallbacks for development / hot-reloads to prevent runtime crashes
-    if (name === "NEXT_PUBLIC_SUPABASE_URL") return "https://iizjtnuydhwrggsmtood.supabase.co";
-    if (name === "NEXT_PUBLIC_SUPABASE_ANON_KEY") return "your-actual-supabase-anon-key-here";
+const isPlaceholder = (val?: string) => {
+  if (!val) return true;
+  const lower = val.toLowerCase();
+  return (
+    lower.includes("placeholder") ||
+    lower.includes("your-") ||
+    lower.includes("actual-supabase-anon-key")
+  );
+};
 
-    throw new Error(
-      `[EWS] Missing required environment variable: ${name}. Configure your Supabase env vars before running the app.`,
+// Log prominent developer warnings on the client-side instead of throwing hard errors that crash the React render tree!
+if (typeof window !== "undefined") {
+  if (!supabaseUrl || isPlaceholder(supabaseUrl)) {
+    console.error(
+      "❌ [EWS Warning] NEXT_PUBLIC_SUPABASE_URL is missing or contains placeholder values. Please configure it in frontend/.env.local to enable real-time alert sirens and sensor online/offline status updates."
     );
   }
 
-  return value;
+  if (!supabaseAnonKey || isPlaceholder(supabaseAnonKey)) {
+    console.error(
+      "❌ [EWS Warning] NEXT_PUBLIC_SUPABASE_ANON_KEY is missing or contains placeholder values. Please configure it in frontend/.env.local to enable real-time alert sirens and sensor online/offline status updates."
+    );
+  }
 }
 
-const supabaseUrl = requireSupabaseEnv("NEXT_PUBLIC_SUPABASE_URL");
-const supabaseAnonKey = requireSupabaseEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false, // Client-side listeners don't require session persistence
-  },
-});
+// We pass fallback strings if real credentials are missing to prevent NextJS client crashing,
+// allowing the rest of the dashboard (SSE stream, charts, 3s polling) to work perfectly.
+export const supabase = createClient(
+  supabaseUrl && !isPlaceholder(supabaseUrl) ? supabaseUrl : "https://placeholder-project.supabase.co",
+  supabaseAnonKey && !isPlaceholder(supabaseAnonKey) ? supabaseAnonKey : "placeholder-anon-key",
+  {
+    auth: {
+      persistSession: false, // Client-side listeners don't require session persistence
+    },
+  }
+);

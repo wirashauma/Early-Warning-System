@@ -15,9 +15,11 @@ interface UseWaterLevelOptions {
 
 const DEFAULT_REFRESH_MS = 5_000;
 const HISTORY_HOURS = 7 * 24;
+const MAX_HISTORY_POINTS = 500;
 const STABLE_FALLBACK_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 interface ApiSensor {
+  id: string;
   sensorId: string;
   name: string;
   type?: "WATER_LEVEL" | "RAINFALL" | "FLOW_RATE";
@@ -102,11 +104,13 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   const { sensorId, refreshMs = DEFAULT_REFRESH_MS, showAll = false } = options;
   const [historyBySensor, setHistoryBySensor] = useState<Record<string, WaterLevelPoint[]>>({});
   const [latestBySensor, setLatestBySensor] = useState<Record<string, LiveWaterLevel>>({});
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [sensorsSnapshot, setSensorsSnapshot] = useState<Sensor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const waterSensorIdsRef = useRef<Set<string>>(new Set());
+  const sensorUuidMapRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -134,6 +138,15 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       const sensors = (Array.isArray(sensorPayload)
         ? sensorPayload
         : sensorPayload?.items ?? []) as ApiSensor[];
+
+      const uuidMap: Record<string, string> = {};
+      sensors.forEach((s) => {
+        if (s.id && s.sensorId) {
+          uuidMap[s.id] = s.sensorId;
+        }
+      });
+      sensorUuidMapRef.current = uuidMap;
+
       const waterRows = (waterResp.data?.data ?? []) as ApiWaterCurrent[];
       const rainfallRows = (rainfallResp.data?.data ?? []) as ApiRainfallCurrent[];
       const flowRows = (flowResp.data?.data ?? []) as ApiFlowCurrent[];
@@ -317,6 +330,11 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
         // Sort strictly chronologically to prevent visual shifts or backwards loops!
         newHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+        // Rolling window: trim old points to keep chart x-axis stable
+        if (newHistory.length > MAX_HISTORY_POINTS) {
+          newHistory = newHistory.slice(newHistory.length - MAX_HISTORY_POINTS);
+        }
+
         return {
           ...prev,
           [payload.sensorId]: newHistory,
@@ -325,17 +343,22 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     };
 
     // 1. Establish SSE EventSource connection
-    const streamUrl = API_URL.startsWith("/")
-      ? `${window.location.protocol}//${window.location.host}${API_URL}/sensors/stream`
-      : `${API_URL}/sensors/stream`;
+    const directApiUrl = WS_URL.replace(/^ws/, "http");
+    const streamUrl = `${directApiUrl}/api/sensors/stream`;
 
     console.log("⚡ SSE Connecting to stream:", streamUrl);
     const eventSource = new EventSource(streamUrl);
+    let lastMessageTime = Date.now();
+
+    eventSource.onopen = () => {
+      console.log("🟢 [useWaterLevel SSE] Connection successfully opened to:", streamUrl);
+    };
 
     eventSource.onmessage = (event) => {
       try {
+        lastMessageTime = Date.now();
         const data = JSON.parse(event.data);
-        console.log("⚡ SSE Real-Time Event received in useWaterLevel:", data);
+        console.log("⚡ [useWaterLevel SSE] Real-Time Event received:", data);
 
         if (data.water) {
           applyRealtimeUpdate({
@@ -361,17 +384,16 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
           });
         }
       } catch (err) {
-        console.error("Error parsing SSE message in useWaterLevel:", err);
+        console.error("❌ [useWaterLevel SSE] Error parsing message:", err);
       }
     };
 
     eventSource.onerror = (err) => {
-      console.warn("SSE Connection encountered an error or closed. Reconnecting...", err);
+      console.warn("⚠️ [useWaterLevel SSE] Connection encountered error or closed. Reconnecting...", err);
     };
 
     // Listen to custom Supabase Realtime connectivity update events
     const handleRealtimeSensorUpdate = (e: Event) => {
-      console.log("⚡ Supabase Realtime Event: Reloading sensor data...");
       const customEvent = e as CustomEvent<{ sensor_id: string; connectivity: string }>;
       if (customEvent?.detail?.sensor_id) {
         const { sensor_id, connectivity } = customEvent.detail;
@@ -385,23 +407,63 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       void loadCurrent();
     };
 
+    // Listen to custom Supabase Realtime telemetry update events
+    const handleRealtimeTelemetry = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        sensorUuid: string;
+        sensorId: string;
+        waterLevel?: number;
+        rainfall?: number;
+        flowRate?: number;
+        status?: string;
+        recordedAt: string;
+      }>;
+      
+      if (!customEvent.detail) return;
+      const { sensorUuid, sensorId, waterLevel, rainfall, flowRate, status, recordedAt } = customEvent.detail;
+      
+      const resolvedSensorId = sensorId || sensorUuidMapRef.current[sensorUuid];
+      
+      if (resolvedSensorId) {
+        applyRealtimeUpdate({
+          sensorId: resolvedSensorId,
+          waterLevel,
+          rainfall,
+          flowRate,
+          status,
+          recordedAt,
+        });
+      }
+    };
+
     if (typeof window !== "undefined") {
       window.addEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
+      window.addEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
     }
 
     void loadCurrent();
     
     // Smooth fallback polling (reduced rate to 30s to respect SSE stream)
     const timer = window.setInterval(() => {
-      console.log("🔄 SSE Heartbeat Sync: Reloading sensor data...");
       void loadCurrent();
     }, Math.max(refreshMs, 30_000));
 
+    // Active 3s polling fallback: if no SSE events received for > 8 seconds, poll backend
+    const fallbackTimer = window.setInterval(() => {
+      const timeSinceLastMessage = Date.now() - lastMessageTime;
+      if (timeSinceLastMessage > 8000) {
+        void loadCurrent();
+        setHistoryVersion((v) => v + 1);
+      }
+    }, 3000);
+
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(fallbackTimer);
       eventSource.close();
       if (typeof window !== "undefined") {
         window.removeEventListener("sensorConnectivityUpdated", handleRealtimeSensorUpdate);
+        window.removeEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
       }
     };
   }, [loadCurrent, refreshMs]);
@@ -415,6 +477,12 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   const activeSensor = sensorsSnapshot.find((sensor) => sensor.id === activeSensorId);
   const isRainSensor = activeSensor?.type === "RAINFALL";
   const isFlowSensor = activeSensor?.type === "FLOW_RATE";
+
+  // Stable ref to access latestBySensor without triggering history re-fetches
+  const latestBySensorRef = useRef(latestBySensor);
+  useEffect(() => {
+    latestBySensorRef.current = latestBySensor;
+  }, [latestBySensor]);
 
   useEffect(() => {
     const activeId = activeSensorId;
@@ -451,7 +519,7 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
           : historyPayload?.items ?? []) as Array<
           ApiWaterHistory & Partial<ApiRainHistory> & Partial<ApiFlowHistory>
         >;
-        const latestRain = latestBySensor[activeId]?.rainfallMm ?? 0;
+        const latestRain = latestBySensorRef.current[activeId]?.rainfallMm ?? 0;
 
         const sortedRows = [...rows].sort(
           (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
@@ -481,11 +549,21 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       }
     };
 
+    // Initial load
     void loadHistory();
+
+    // Periodic history refresh — keeps charts current even when SSE is down
+    const historyTimer = window.setInterval(() => {
+      if (!cancelled) {
+        void loadHistory();
+      }
+    }, 12_000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(historyTimer);
     };
-  }, [activeSensorId, isRainSensor, isFlowSensor, latestBySensor]);
+  }, [activeSensorId, isRainSensor, isFlowSensor, historyVersion]);
 
   const latest = latestBySensor[activeSensorId] ?? {
     sensorId: activeSensorId,

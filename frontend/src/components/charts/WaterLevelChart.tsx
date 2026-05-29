@@ -23,270 +23,6 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
   const [range, setRange] = useState<"day" | "week">("day");
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const handleExportPDF = async () => {
-    if (!cardRef.current) return;
-    try {
-      const exportBtn = cardRef.current.querySelector(".pdf-export-btn") as HTMLElement;
-      if (exportBtn) exportBtn.style.opacity = "0";
-
-      // Capture chart visual cleanly
-      const chartEl = cardRef.current.querySelector(".chart-container-capture") as HTMLElement;
-      let chartImg = "";
-      if (chartEl) {
-        const canvas = await html2canvas(chartEl, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-        });
-        chartImg = canvas.toDataURL("image/png");
-      }
-
-      if (exportBtn) exportBtn.style.opacity = "1";
-
-      // Initialize jsPDF A4 portrait
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      // Page dimensions
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 15;
-      const contentWidth = pageWidth - 2 * margin;
-
-      // 1. TOP HEADER BANNER (Navy Theme)
-      pdf.setFillColor(30, 58, 138); // Navy blue
-      pdf.rect(0, 0, pageWidth, 38, "F");
-
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text("LAPORAN RESMI PEMANTAUAN KETINGGIAN AIR", margin, 13);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(226, 232, 240);
-      pdf.text("Early Warning System (EWS) • Flood Guard Portal Pemantauan", margin, 19);
-
-      // Current formatted date
-      const now = new Date();
-      const formattedDate = now.toLocaleDateString("id-ID", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      pdf.setFontSize(8);
-      pdf.text(`Waktu Cetak: ${formattedDate} WIB`, margin, 31);
-
-      // Decorative accent line
-      pdf.setFillColor(59, 130, 246); // Accent blue
-      pdf.rect(0, 38, pageWidth, 2, "F");
-
-      // 2. METADATA SECTION
-      let currentY = 49;
-      pdf.setTextColor(15, 23, 42); // slate-900
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.text("I. METADATA SENSOR & PARAMETER", margin, currentY);
-
-      // Separator Line
-      pdf.setDrawColor(226, 232, 240);
-      pdf.setLineWidth(0.3);
-      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
-
-      // Metadata values
-      currentY += 8;
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(71, 85, 105); // slate-600
-      pdf.text("Parameter:", margin, currentY);
-      pdf.text("Tipe Sensor:", margin + 85, currentY);
-      
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(15, 23, 42);
-      pdf.text("Ketinggian Air Terintegrasi (Water Level)", margin + 22, currentY);
-      pdf.text("Telemetri Radar / Ultrasonik IoT", margin + 110, currentY);
-
-      currentY += 5;
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(71, 85, 105);
-      pdf.text("Rentang Waktu:", margin, currentY);
-      pdf.text("Status Sistem:", margin + 85, currentY);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(15, 23, 42);
-      pdf.text(range === "day" ? "Harian (24 Jam Terakhir)" : "Mingguan (7 Hari Terakhir)", margin + 22, currentY);
-      pdf.text(`Live Telemetri (${latest} cm)`, margin + 110, currentY);
-
-      // 3. STATISTIK SUMMARY CARD BOXES
-      currentY += 12;
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text("II. RINGKASAN STATISTIK PENGUKURAN", margin, currentY);
-      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
-
-      currentY += 6;
-      const cardWidth = 56;
-      const cardHeight = 15;
-      const cardGap = 6;
-
-      // Card 1: Minimum
-      pdf.setFillColor(248, 250, 252);
-      pdf.setDrawColor(226, 232, 240);
-      pdf.roundedRect(margin, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(100, 116, 139);
-      pdf.text("Nilai Minimum", margin + 4, currentY + 5);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10.5);
-      pdf.setTextColor(30, 58, 138);
-      pdf.text(`${min} cm`, margin + 4, currentY + 11);
-
-      // Card 2: Rata-rata
-      pdf.setFillColor(248, 250, 252);
-      pdf.roundedRect(margin + cardWidth + cardGap, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(100, 116, 139);
-      pdf.text("Nilai Rata-rata", margin + cardWidth + cardGap + 4, currentY + 5);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10.5);
-      pdf.setTextColor(30, 58, 138);
-      pdf.text(`${average} cm`, margin + cardWidth + cardGap + 4, currentY + 11);
-
-      // Card 3: Terkini / Maksimum
-      pdf.setFillColor(248, 250, 252);
-      pdf.roundedRect(margin + (cardWidth + cardGap) * 2, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(100, 116, 139);
-      pdf.text("Tinggi Air Maksimum", margin + (cardWidth + cardGap) * 2 + 4, currentY + 5);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10.5);
-      pdf.setTextColor(30, 58, 138);
-      pdf.text(`${max} cm`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
-
-      // 4. CHART IMAGE
-      currentY += cardHeight + 8;
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text("III. VISUALISASI TREN GRAFIK", margin, currentY);
-      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
-
-      currentY += 6;
-      if (chartImg) {
-        pdf.addImage(chartImg, "PNG", margin, currentY, contentWidth, 54);
-        currentY += 58;
-      } else {
-        currentY += 4;
-      }
-
-      // 5. DETAILED DATA TABLE
-      currentY += 4;
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text("IV. TABEL DETAIL HASIL PENGUKURAN", margin, currentY);
-      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
-
-      currentY += 6;
-      
-      // Draw Table Header
-      const colWidths = [20, 85, 45, 30]; // Sums up to 180
-      const colNames = ["No.", range === "day" ? "Waktu Pengambilan / Jam" : "Hari Pengukuran", "Nilai Parameter", "Satuan"];
-      
-      pdf.setFillColor(30, 58, 138);
-      pdf.rect(margin, currentY, contentWidth, 7, "F");
-      
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      
-      let colX = margin;
-      for (let i = 0; i < colNames.length; i++) {
-        pdf.text(colNames[i], colX + 4, currentY + 5);
-        colX += colWidths[i];
-      }
-      
-      currentY += 7;
-      
-      // Draw Table Rows
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
-      
-      chartData.forEach((row, idx) => {
-        if (currentY > pageHeight - 20) {
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(7);
-          pdf.setTextColor(148, 163, 184);
-          pdf.text("EWS Flood Guard • Halaman 1", pageWidth / 2, pageHeight - 10, { align: "center" });
-
-          pdf.addPage();
-          currentY = 20;
-
-          pdf.setFillColor(30, 58, 138);
-          pdf.rect(margin, currentY, contentWidth, 7, "F");
-          pdf.setTextColor(255, 255, 255);
-          pdf.setFont("helvetica", "bold");
-          let subColX = margin;
-          for (let i = 0; i < colNames.length; i++) {
-            pdf.text(colNames[i], subColX + 4, currentY + 5);
-            subColX += colWidths[i];
-          }
-          currentY += 7;
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(8);
-        }
-
-        if (idx % 2 === 0) {
-          pdf.setFillColor(248, 250, 252);
-        } else {
-          pdf.setFillColor(255, 255, 255);
-        }
-        pdf.rect(margin, currentY, contentWidth, 5.5, "F");
-        
-        pdf.setDrawColor(241, 245, 249);
-        pdf.line(margin, currentY + 5.5, pageWidth - margin, currentY + 5.5);
-        
-        pdf.setTextColor(15, 23, 42);
-        
-        pdf.text((idx + 1).toString(), margin + 4, currentY + 4);
-        pdf.text(row.label, margin + colWidths[0] + 4, currentY + 4);
-        pdf.text(row.value.toString(), margin + colWidths[0] + colWidths[1] + 4, currentY + 4);
-        pdf.text("cm", margin + colWidths[0] + colWidths[1] + colWidths[2] + 4, currentY + 4);
-        
-        currentY += 5.5;
-      });
-
-      // 6. BOTTOM FOOTER SIGNATURE & BRANDING
-      const totalPages = pdf.getNumberOfPages();
-      for (let p = 1; p <= totalPages; p++) {
-        pdf.setPage(p);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7);
-        pdf.setTextColor(148, 163, 184);
-        pdf.text(
-          `Laporan otomatis digenerate oleh EWS Flood Guard • Halaman ${p} dari ${totalPages}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: "center" }
-        );
-      }
-
-      pdf.save(`Laporan_Ketinggian_Air_${range.toUpperCase()}_${now.toISOString().slice(0,10)}.pdf`);
-    } catch (err) {
-      console.error("PDF Export failed:", err);
-    }
-  };
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -406,13 +142,280 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
     return chartData.filter((item) => item.waterLevel > 0);
   }, [chartData]);
 
-  // Calculations for stats boxes at the bottom
-  const values = filteredData.map((p) => p.waterLevel);
-  const min = isDemo ? 2.1 : (values.length > 0 ? Math.min(...values) : 0);
-  const max = isDemo ? 11.0 : (values.length > 0 ? Math.max(...values) : 0);
-  const latest = isDemo ? 9.2 : (validPoints.length > 0 ? validPoints[validPoints.length - 1].levelCm : 0);
-  const average =
-    isDemo ? 6.0 : (values.length > 0 ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : 0);
+  // Reactive stats — auto-recompute when chart data changes
+  const stats = useMemo(() => {
+    const vals = filteredData.map((p) => p.waterLevel);
+    return {
+      min: isDemo ? 2.1 : (vals.length > 0 ? Math.min(...vals) : 0),
+      max: isDemo ? 11.0 : (vals.length > 0 ? Math.max(...vals) : 0),
+      latest: isDemo ? 9.2 : (validPoints.length > 0 ? validPoints[validPoints.length - 1].levelCm : 0),
+      average: isDemo ? 6.0 : (vals.length > 0 ? Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length) : 0),
+    };
+  }, [filteredData, validPoints, isDemo]);
+
+  const handleExportPDF = async () => {
+    if (!cardRef.current) return;
+    try {
+      const exportBtn = cardRef.current.querySelector(".pdf-export-btn") as HTMLElement;
+      if (exportBtn) exportBtn.style.opacity = "0";
+
+      // Capture chart visual cleanly
+      const chartEl = cardRef.current.querySelector(".chart-container-capture") as HTMLElement;
+      let chartImg = "";
+      if (chartEl) {
+        const canvas = await html2canvas(chartEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+        chartImg = canvas.toDataURL("image/png");
+      }
+
+      if (exportBtn) exportBtn.style.opacity = "1";
+
+      // Initialize jsPDF A4 portrait
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Page dimensions
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 15;
+      const contentWidth = pageWidth - 2 * margin;
+
+      // 1. TOP HEADER BANNER (Navy Theme)
+      pdf.setFillColor(30, 58, 138); // Navy blue
+      pdf.rect(0, 0, pageWidth, 38, "F");
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("LAPORAN RESMI PEMANTAUAN KETINGGIAN AIR", margin, 13);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(226, 232, 240);
+      pdf.text("Early Warning System (EWS) • Flood Guard Portal Pemantauan", margin, 19);
+
+      // Current formatted date
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      pdf.setFontSize(8);
+      pdf.text(`Waktu Cetak: ${formattedDate} WIB`, margin, 31);
+
+      // Decorative accent line
+      pdf.setFillColor(59, 130, 246); // Accent blue
+      pdf.rect(0, 38, pageWidth, 2, "F");
+
+      // 2. METADATA SECTION
+      let currentY = 49;
+      pdf.setTextColor(15, 23, 42); // slate-900
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("I. METADATA SENSOR & PARAMETER", margin, currentY);
+
+      // Separator Line
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      // Metadata values
+      currentY += 8;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(71, 85, 105); // slate-600
+      pdf.text("Parameter:", margin, currentY);
+      pdf.text("Tipe Sensor:", margin + 85, currentY);
+      
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("Ketinggian Air Terintegrasi (Water Level)", margin + 22, currentY);
+      pdf.text("Telemetri Radar / Ultrasonik IoT", margin + 110, currentY);
+
+      currentY += 5;
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(71, 85, 105);
+      pdf.text("Rentang Waktu:", margin, currentY);
+      pdf.text("Status Sistem:", margin + 85, currentY);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(15, 23, 42);
+      pdf.text(range === "day" ? "Harian (24 Jam Terakhir)" : "Mingguan (7 Hari Terakhir)", margin + 22, currentY);
+      pdf.text(`Live Telemetri (${stats.latest} cm)`, margin + 110, currentY);
+
+      // 3. STATISTIK SUMMARY CARD BOXES
+      currentY += 12;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("II. RINGKASAN STATISTIK PENGUKURAN", margin, currentY);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      currentY += 6;
+      const cardWidth = 56;
+      const cardHeight = 15;
+      const cardGap = 6;
+
+      // Card 1: Minimum
+      pdf.setFillColor(248, 250, 252);
+      pdf.setDrawColor(226, 232, 240);
+      pdf.roundedRect(margin, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Nilai Minimum", margin + 4, currentY + 5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 58, 138);
+      pdf.text(`${stats.min} cm`, margin + 4, currentY + 11);
+
+      // Card 2: Rata-rata
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(margin + cardWidth + cardGap, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Nilai Rata-rata", margin + cardWidth + cardGap + 4, currentY + 5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 58, 138);
+      pdf.text(`${stats.average} cm`, margin + cardWidth + cardGap + 4, currentY + 11);
+
+      // Card 3: Terkini / Maksimum
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(margin + (cardWidth + cardGap) * 2, currentY, cardWidth, cardHeight, 1.5, 1.5, "FD");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Tinggi Air Maksimum", margin + (cardWidth + cardGap) * 2 + 4, currentY + 5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 58, 138);
+      pdf.text(`${stats.max} cm`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
+
+      // 4. CHART IMAGE
+      currentY += cardHeight + 8;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("III. VISUALISASI TREN GRAFIK", margin, currentY);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      currentY += 6;
+      if (chartImg) {
+        pdf.addImage(chartImg, "PNG", margin, currentY, contentWidth, 54);
+        currentY += 58;
+      } else {
+        currentY += 4;
+      }
+
+      // 5. DETAILED DATA TABLE
+      currentY += 4;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("IV. TABEL DETAIL HASIL PENGUKURAN", margin, currentY);
+      pdf.line(margin, currentY + 2, pageWidth - margin, currentY + 2);
+
+      currentY += 6;
+      
+      // Draw Table Header
+      const colWidths = [20, 85, 45, 30]; // Sums up to 180
+      const colNames = ["No.", range === "day" ? "Waktu Pengambilan / Jam" : "Hari Pengukuran", "Nilai Parameter", "Satuan"];
+      
+      pdf.setFillColor(30, 58, 138);
+      pdf.rect(margin, currentY, contentWidth, 7, "F");
+      
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      
+      let colX = margin;
+      for (let i = 0; i < colNames.length; i++) {
+        pdf.text(colNames[i], colX + 4, currentY + 5);
+        colX += colWidths[i];
+      }
+      
+      currentY += 7;
+      
+      // Draw Table Rows
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      
+      chartData.forEach((row, idx) => {
+        if (currentY > pageHeight - 20) {
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(7);
+          pdf.setTextColor(148, 163, 184);
+          pdf.text("EWS Flood Guard • Halaman 1", pageWidth / 2, pageHeight - 10, { align: "center" });
+
+          pdf.addPage();
+          currentY = 20;
+
+          pdf.setFillColor(30, 58, 138);
+          pdf.rect(margin, currentY, contentWidth, 7, "F");
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFont("helvetica", "bold");
+          let subColX = margin;
+          for (let i = 0; i < colNames.length; i++) {
+            pdf.text(colNames[i], subColX + 4, currentY + 5);
+            subColX += colWidths[i];
+          }
+          currentY += 7;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(8);
+        }
+
+        if (idx % 2 === 0) {
+          pdf.setFillColor(248, 250, 252);
+        } else {
+          pdf.setFillColor(255, 255, 255);
+        }
+        pdf.rect(margin, currentY, contentWidth, 5.5, "F");
+        
+        pdf.setDrawColor(241, 245, 249);
+        pdf.line(margin, currentY + 5.5, pageWidth - margin, currentY + 5.5);
+        
+        pdf.setTextColor(15, 23, 42);
+        
+        pdf.text((idx + 1).toString(), margin + 4, currentY + 4);
+        pdf.text(row.label, margin + colWidths[0] + 4, currentY + 4);
+        pdf.text(row.value.toString(), margin + colWidths[0] + colWidths[1] + 4, currentY + 4);
+        pdf.text("cm", margin + colWidths[0] + colWidths[1] + colWidths[2] + 4, currentY + 4);
+        
+        currentY += 5.5;
+      });
+
+      // 6. BOTTOM FOOTER SIGNATURE & BRANDING
+      const totalPages = pdf.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        pdf.setPage(p);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7);
+        pdf.setTextColor(148, 163, 184);
+        pdf.text(
+          `Laporan otomatis digenerate oleh EWS Flood Guard • Halaman ${p} dari ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: "center" }
+        );
+      }
+
+      pdf.save(`Laporan_Ketinggian_Air_${range.toUpperCase()}_${now.toISOString().slice(0,10)}.pdf`);
+    } catch (err) {
+      console.error("PDF Export failed:", err);
+    }
+  };
 
   if (!mounted) {
     return <div className="h-[430px] w-full animate-pulse rounded-xl bg-slate-50" />;
@@ -463,7 +466,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
             </button>
           </div>
           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-100 whitespace-nowrap">
-            Live: {latest} cm
+            Live: {stats.latest} cm
           </span>
         </div>
       </div>
@@ -561,9 +564,13 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
                   type="monotone"
                   dataKey="waterLevel"
                   stroke="#3b82f6"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   dot={false}
+                  activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
                   connectNulls={true}
+                  isAnimationActive={true}
+                  animationDuration={600}
+                  animationEasing="ease-in-out"
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -571,19 +578,47 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
         )}
       </div>
 
-      {/* Standardized Statistics Grid Footer */}
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Minimum</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{min} cm</p>
+      {/* Reactive Statistics Indicators */}
+      <div className="grid grid-cols-3 gap-3 mt-2">
+        {/* Minimum */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-slate-200/60 transition-all hover:shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-50">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3 text-blue-500">
+                <path d="M8 3v10M5 10l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Minimum</p>
+          </div>
+          <p className="text-lg font-extrabold text-slate-800 transition-all duration-300">{stats.min} <span className="text-[10px] font-medium text-slate-400">cm</span></p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Rata-rata</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{average} cm</p>
+
+        {/* Rata-rata */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-slate-200/60 transition-all hover:shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-50">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3 text-emerald-500">
+                <path d="M2 8h12M5 5l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Rata-rata</p>
+          </div>
+          <p className="text-lg font-extrabold text-slate-800 transition-all duration-300">{stats.average} <span className="text-[10px] font-medium text-slate-400">cm</span></p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Saat Ini</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{latest} cm</p>
+
+        {/* Saat Ini (Live) */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-emerald-200/60 transition-all hover:shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-emerald-500 rounded-l-xl" />
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-50">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+            </div>
+            <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Saat Ini</p>
+          </div>
+          <p className="text-lg font-extrabold text-emerald-700 transition-all duration-300">{stats.latest} <span className="text-[10px] font-medium text-emerald-400">cm</span></p>
         </div>
       </div>
     </div>

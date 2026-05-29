@@ -199,7 +199,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 58, 138);
-      pdf.text(`${min} mm`, margin + 4, currentY + 11);
+      pdf.text(`${stats.min} mm`, margin + 4, currentY + 11);
 
       // Card 2: Rata-rata
       pdf.setFillColor(248, 250, 252);
@@ -211,7 +211,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 58, 138);
-      pdf.text(`${average} mm`, margin + cardWidth + cardGap + 4, currentY + 11);
+      pdf.text(`${stats.average} mm`, margin + cardWidth + cardGap + 4, currentY + 11);
 
       // Card 3: Puncak
       pdf.setFillColor(248, 250, 252);
@@ -223,7 +223,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 58, 138);
-      pdf.text(`${max} mm`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
+      pdf.text(`${stats.max} mm`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
 
       // 4. CHART IMAGE
       currentY += cardHeight + 8;
@@ -498,15 +498,16 @@ export function RainfallChart({ points }: RainfallChartProps) {
       }));
   }, [validPoints, range, referenceNow, isDemo, chartData]);
 
-  // Calculations for stats boxes at the bottom
-  const values = useMemo(() => computedChartData.map((p) => p.value), [computedChartData]);
-  const min = values.length > 0 ? Math.min(...values) : 0;
-  const max = values.length > 0 ? Math.max(...values) : 0;
-  const average =
-    values.length > 0
-      ? parseFloat((values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(1))
-      : 0;
-  const latest = values.length > 0 ? values[values.length - 1] : 0;
+  // Reactive stats — auto-recompute when chart data changes
+  const stats = useMemo(() => {
+    const vals = computedChartData.map((p) => p.value);
+    return {
+      min: vals.length > 0 ? Math.min(...vals) : 0,
+      max: vals.length > 0 ? Math.max(...vals) : 0,
+      average: vals.length > 0 ? parseFloat((vals.reduce((sum, v) => sum + v, 0) / vals.length).toFixed(1)) : 0,
+      latest: vals.length > 0 ? vals[vals.length - 1] : 0,
+    };
+  }, [computedChartData]);
 
   if (!mounted) {
     return <div className="h-[430px] w-full animate-pulse rounded-xl bg-slate-50" />;
@@ -565,7 +566,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
             )}
           </div>
           <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-100 whitespace-nowrap">
-            {isDemo ? "Kenten: Live" : `Live: ${latest} mm`}
+            {isDemo ? "Kenten: Live" : `Live: ${stats.latest} mm`}
           </span>
         </div>
       </div>
@@ -640,26 +641,54 @@ export function RainfallChart({ points }: RainfallChartProps) {
                     strokeDasharray="4 4"
                   />
                 )}
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} minPointSize={5} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} minPointSize={5} isAnimationActive={true} animationDuration={500} animationEasing="ease-out" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
 
-      {/* Standardized Statistics Grid Footer */}
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Minimum</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{min} mm</p>
+      {/* Reactive Statistics Indicators */}
+      <div className="grid grid-cols-3 gap-3 mt-2">
+        {/* Minimum */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-slate-200/60 transition-all hover:shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-50">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3 text-blue-500">
+                <path d="M8 3v10M5 10l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Minimum</p>
+          </div>
+          <p className="text-lg font-extrabold text-slate-800 transition-all duration-300">{stats.min} <span className="text-[10px] font-medium text-slate-400">mm</span></p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Rata-rata</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{average} mm</p>
+
+        {/* Rata-rata */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-slate-200/60 transition-all hover:shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-cyan-50">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3 text-cyan-500">
+                <path d="M2 8h12M5 5l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Rata-rata</p>
+          </div>
+          <p className="text-lg font-extrabold text-slate-800 transition-all duration-300">{stats.average} <span className="text-[10px] font-medium text-slate-400">mm</span></p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">{isDemo ? "Puncak" : "Saat Ini"}</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{latest} mm</p>
+
+        {/* Saat Ini / Puncak */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-cyan-200/60 transition-all hover:shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-cyan-500 rounded-l-xl" />
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-cyan-50">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-500" />
+              </span>
+            </div>
+            <p className="text-[10px] font-semibold text-cyan-600 uppercase tracking-wider">{isDemo ? "Puncak" : "Saat Ini"}</p>
+          </div>
+          <p className="text-lg font-extrabold text-cyan-700 transition-all duration-300">{stats.latest} <span className="text-[10px] font-medium text-cyan-400">mm</span></p>
         </div>
       </div>
     </div>

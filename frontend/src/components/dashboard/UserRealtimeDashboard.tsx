@@ -183,34 +183,75 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
           </div>
         </section>
 
-        {/* 2. STATISTIK CEPAT - Tanpa border kasar */}
-        <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
-          <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-slate-500">Tinggi Air (Aktif)</p>
+        {/* 2. STATISTIK CEPAT */}
+        <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+          {/* Water Level */}
+          <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
+            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-emerald-500" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-emerald-600">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.5c-3.04 0-5.5-2.24-5.5-5 0-3.08 3.63-7.78 4.82-9.26a.88.88 0 011.36 0C13.87 8.72 17.5 13.42 17.5 16.5c0 2.76-2.46 5-5.5 5z" />
+                </svg>
+              </div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tinggi Air</p>
+            </div>
             {selectedSensorHasData ? (
-              <p className="mt-1 text-3xl font-extrabold text-slate-900">{latest.levelCm} <span className="text-lg font-medium text-slate-500">cm</span></p>
+              <p className="text-2xl font-extrabold text-slate-900 transition-all duration-300">{latest.levelCm} <span className="text-sm font-medium text-slate-400">cm</span></p>
             ) : (
-              <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-500">Menunggu Data</span>
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
             )}
-            <p className="mt-1 text-xs text-slate-400 truncate">{selectedSensor?.name ?? latest.sensorName}</p>
+            <p className="mt-1.5 text-[11px] text-slate-400 truncate">{selectedSensor?.name ?? latest.sensorName}</p>
           </div>
 
-          <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-slate-500">Curah Hujan</p>
-            <p className="mt-1 text-3xl font-extrabold text-cyan-600">{latest.rainfallMm} <span className="text-lg font-medium text-cyan-600/70">mm/j</span></p>
-            <p className="mt-1 text-xs text-slate-400 truncate">{rainfallCategory.label}</p>
+          {/* Rainfall */}
+          <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
+            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-cyan-500" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-cyan-600">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 12h2m4-7l1 1m7-1l-1 1m5 5h2M6.34 17.66l1.41-1.41M17.66 17.66l-1.41-1.41M12 2v2m0 16v2m5-9a5 5 0 11-10 0 5 5 0 0110 0z" />
+                </svg>
+              </div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Curah Hujan</p>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-900 transition-all duration-300">{latest.rainfallMm} <span className="text-sm font-medium text-slate-400">mm/j</span></p>
+            <p className="mt-1.5 text-[11px] text-slate-400 truncate">{rainfallCategory.label}</p>
           </div>
 
-          <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-slate-500">Sensor Berisiko</p>
-            <p className="mt-1 text-3xl font-extrabold text-rose-600">{dangerCount + alertCount + warningCount}</p>
-            <p className="mt-1 text-xs text-slate-400 truncate">Bahaya: {dangerCount} • Siaga: {alertCount} • Waspada: {warningCount}</p>
+          {/* Sensors at Risk */}
+          <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
+            <div className={cn("absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl", dangerCount > 0 ? "bg-rose-500" : alertCount > 0 ? "bg-orange-500" : warningCount > 0 ? "bg-amber-500" : "bg-emerald-500")} />
+            <div className="flex items-center gap-2 mb-2">
+              <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", dangerCount > 0 ? "bg-rose-50" : "bg-slate-50")}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cn("h-4 w-4", dangerCount > 0 ? "text-rose-600" : "text-slate-500")}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Berisiko</p>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-900">{dangerCount + alertCount + warningCount}</p>
+            <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-400">
+              {dangerCount > 0 && <span className="flex items-center gap-0.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />{dangerCount}</span>}
+              {alertCount > 0 && <span className="flex items-center gap-0.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />{alertCount}</span>}
+              {warningCount > 0 && <span className="flex items-center gap-0.5"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />{warningCount}</span>}
+              {dangerCount === 0 && alertCount === 0 && warningCount === 0 && <span>Semua aman</span>}
+            </div>
           </div>
 
-          <div className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-slate-500">Konektivitas</p>
-            <p className="mt-1 text-3xl font-extrabold text-slate-900">{onlineCount}/{sensorsSnapshot.length}</p>
-            <p className="mt-1 text-xs text-slate-400 truncate">Sensor online aktif</p>
+          {/* Connectivity */}
+          <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-shadow hover:shadow-md">
+            <div className={cn("absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl", onlineCount === sensorsSnapshot.length ? "bg-emerald-500" : "bg-amber-500")} />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-emerald-600">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                </svg>
+              </div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Konektivitas</p>
+            </div>
+            <p className="text-2xl font-extrabold text-slate-900">{onlineCount}<span className="text-sm font-medium text-slate-400">/{sensorsSnapshot.length}</span></p>
+            <p className="mt-1.5 text-[11px] text-slate-400">Sensor online aktif</p>
           </div>
         </section>
 
@@ -248,39 +289,39 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
               </div>
 
               {/* Status Spesifik Sensor */}
-              <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Status</p>
-                  <div className="mt-2 flex justify-center">
-                    <StatusIndicator status={latest.status} />
+              <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-4">
+                <div className="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Status</p>
+                  <div className="flex justify-center">
+                    <StatusIndicator status={latest.status} size="md" />
                   </div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Tinggi Air</p>
+                <div className="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Tinggi Air</p>
                   {selectedSensorHasData ? (
-                    <p className="mt-1 text-xl font-bold text-slate-800">{latest.levelCm} cm</p>
+                    <p className="text-2xl font-extrabold text-slate-800 transition-all duration-300">{latest.levelCm} <span className="text-xs font-medium text-slate-400">cm</span></p>
                   ) : (
-                    <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>
                   )}
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Koneksi</p>
-                  <div className="mt-2 flex items-center justify-center gap-2">
-                    <span className={cn("relative inline-flex h-3 w-3")}>{selectedSensorOnline ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /> : null}<span className={cn("relative inline-flex h-3 w-3 rounded-full", selectedSensorOnline ? "bg-emerald-500" : "bg-slate-400")} /></span>
-                    <p className={cn("text-xl font-bold", selectedSensorOnline ? "text-emerald-700" : "text-slate-600")}>{selectedSensorOnline ? "Online" : "Offline"}</p>
+                <div className="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Koneksi</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={cn("relative inline-flex h-3 w-3")}>{selectedSensorOnline ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /> : null}<span className={cn("relative inline-flex h-3 w-3 rounded-full", selectedSensorOnline ? "bg-emerald-500" : "bg-slate-300")} /></span>
+                    <p className={cn("text-lg font-bold", selectedSensorOnline ? "text-emerald-600" : "text-slate-500")}>{selectedSensorOnline ? "Online" : "Offline"}</p>
                   </div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4 text-center ring-1 ring-slate-100">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Baterai</p>
-                  <p className="mt-1 text-xl font-bold text-slate-800">{selectedSensor?.batteryPercent ?? 0}%</p>
+                <div className="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Baterai</p>
+                  <p className="text-2xl font-extrabold text-slate-800">{selectedSensor?.batteryPercent ?? 0}<span className="text-xs font-medium text-slate-400">%</span></p>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <span>
-                  Terakhir Update: <span className="font-semibold text-slate-900">{formatRelativeTime(selectedSensorLastSeen, nowMs)}</span>
+                  Terakhir Update: <span className="font-semibold text-slate-800">{formatRelativeTime(selectedSensorLastSeen, nowMs)}</span>
                 </span>
-                <span className="text-xs text-slate-500">{formatTimestamp(selectedSensorLastSeen)}</span>
+                <span className="text-xs text-slate-400">{formatTimestamp(selectedSensorLastSeen)}</span>
               </div>
 
               {/* Kotak Rekomendasi (Warna Menyesuaikan Status) */}
@@ -359,40 +400,56 @@ export function UserRealtimeDashboard({ headline, subtitle, roleLabel }: UserRea
 
         {/* 4. DAFTAR SEMUA SENSOR */}
         <section className="mb-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100 md:p-8">
-          <h3 className="text-lg font-bold text-slate-900">Daftar Pantauan Semua Wilayah</h3>
-          <p className="mt-1 text-sm text-slate-500">Diurutkan otomatis dari wilayah paling berisiko.</p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Daftar Pantauan Semua Wilayah</h3>
+              <p className="mt-1 text-sm text-slate-500">Diurutkan otomatis dari wilayah paling berisiko.</p>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              {onlineCount} online
+            </span>
+          </div>
           
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {sortedSensors.map((item) => {
               const sensor = sensorState.find((entry) => entry.id === item.sensorId);
               const online = sensor ? isSensorOnline(sensor.lastSeenAt ?? sensor.updatedAt, nowMs) : false;
               const hasData = sensor?.hasWaterLevelData ?? true;
 
               return (
-              <div key={item.sensorId} className={cn("flex flex-col justify-between rounded-2xl p-5 ring-1 transition", online ? "bg-slate-50 ring-slate-100 hover:bg-slate-100" : "bg-slate-100/80 ring-slate-200 opacity-80 grayscale-[0.08]") }>
-                <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-4">
-                  <div>
-                    <p className="font-bold text-slate-800">{item.sensorName}</p>
-                    <p className="text-xs text-slate-500">{item.sensorId}</p>
+              <div key={item.sensorId} className={cn("group relative overflow-hidden rounded-2xl bg-white p-5 ring-1 transition-all duration-200 hover:shadow-md", online ? "ring-slate-200 hover:ring-slate-300" : "ring-slate-200 opacity-70")}>
+                {/* Top: Name + Status */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-800 truncate">{item.sensorName}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{item.sensorId}</p>
                   </div>
                   <StatusIndicator status={item.status} />
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-xs text-slate-500">Tinggi Air</p>
-                    {hasData ? <p className="font-bold text-slate-900">{item.levelCm} cm</p> : <span className="inline-flex rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-500">Menunggu Data</span>}
+
+                {/* Metrics */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="rounded-xl bg-slate-50 p-3">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Tinggi Air</p>
+                    {hasData ? <p className="text-base font-bold text-slate-800">{item.levelCm} <span className="text-[10px] font-medium text-slate-400">cm</span></p> : <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-400">Menunggu</span>}
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Curah Hujan</p>
-                    <p className="font-bold text-slate-900">{item.rainfallMm} mm</p>
+                  <div className="rounded-xl bg-slate-50 p-3">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Curah Hujan</p>
+                    <p className="text-base font-bold text-slate-800">{item.rainfallMm} <span className="text-[10px] font-medium text-slate-400">mm</span></p>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
-                  <span className={cn("inline-flex items-center gap-2 rounded-full px-2 py-1 font-semibold", online ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-600") }>
-                    <span className={cn("relative inline-flex h-3 w-3")}>{online ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /> : null}<span className={cn("relative inline-flex h-3 w-3 rounded-full", online ? "bg-emerald-500" : "bg-slate-400")} /></span>
+
+                {/* Footer: Online + Last Update */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold", online ? "text-emerald-600" : "text-slate-400")}>
+                    <span className="relative inline-flex">
+                      {online && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />}
+                      <span className={cn("relative inline-block h-2 w-2 rounded-full", online ? "bg-emerald-500" : "bg-slate-300")} />
+                    </span>
                     {online ? "Online" : "Offline"}
                   </span>
-                  <span>Terakhir Update: {formatRelativeTime(sensor?.lastSeenAt ?? item.updatedAt, nowMs)}</span>
+                  <span className="text-[11px] text-slate-400">{formatRelativeTime(sensor?.lastSeenAt ?? item.updatedAt, nowMs)}</span>
                 </div>
               </div>
             );})}

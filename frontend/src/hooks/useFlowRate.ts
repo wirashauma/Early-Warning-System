@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
-import { FLOW_SENSOR_ID, API_URL } from "@/constants";
+import { FLOW_SENSOR_ID, API_URL, WS_URL } from "@/constants";
 import type { LiveFlowRate, WaterLevelPoint } from "@/types/water-level";
 
 interface UseFlowRateOptions {
@@ -25,6 +25,7 @@ interface ApiFlowHistory {
 
 const DEFAULT_REFRESH_MS = 5_000;
 const HISTORY_HOURS = 7 * 24;
+const MAX_HISTORY_POINTS = 500;
 const STABLE_FALLBACK_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 function toIsoNow() {
@@ -176,22 +177,31 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
         }
 
         newHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        // Rolling window: trim old points to keep chart x-axis stable
+        if (newHistory.length > MAX_HISTORY_POINTS) {
+          newHistory = newHistory.slice(newHistory.length - MAX_HISTORY_POINTS);
+        }
+
         return newHistory;
       });
     };
 
     // 1. Establish SSE EventSource connection
-    const streamUrl = API_URL.startsWith("/")
-      ? `${window.location.protocol}//${window.location.host}${API_URL}/sensors/stream`
-      : `${API_URL}/sensors/stream`;
+    const directApiUrl = WS_URL.replace(/^ws/, "http");
+    const streamUrl = `${directApiUrl}/api/sensors/stream`;
 
-    console.log("⚡ useFlowRate: SSE Connecting to stream:", streamUrl);
     const eventSource = new EventSource(streamUrl);
+    let lastMessageTime = Date.now();
+
+    eventSource.onopen = () => {
+      // SSE connection opened
+    };
 
     eventSource.onmessage = (event) => {
       try {
+        lastMessageTime = Date.now();
         const data = JSON.parse(event.data);
-        console.log("⚡ useFlowRate: SSE Real-Time Event received:", data);
 
         if (data.flowRate) {
           applyRealtimeUpdate({
@@ -201,26 +211,63 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
           });
         }
       } catch (err) {
-        console.error("Error parsing SSE message in useFlowRate:", err);
+        console.error("❌ [useFlowRate SSE] Error parsing SSE message:", err);
       }
     };
 
     eventSource.onerror = (err) => {
-      console.warn("useFlowRate: SSE stream closed or error, will reconnect...", err);
+      console.warn("⚠️ [useFlowRate SSE] SSE stream closed or error, will reconnect...", err);
     };
+
+    // Listen to custom Supabase Realtime telemetry update events
+    const handleRealtimeTelemetry = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        sensorUuid: string;
+        sensorId: string;
+        flowRate?: number;
+        recordedAt: string;
+      }>;
+      
+      if (!customEvent.detail) return;
+      const { sensorId, flowRate, recordedAt } = customEvent.detail;
+      
+      if (sensorId && flowRate !== undefined) {
+        applyRealtimeUpdate({
+          sensorId,
+          flowRate,
+          recordedAt,
+        });
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
+    }
 
     void loadCurrent();
     void loadHistory();
 
     const timer = window.setInterval(() => {
-      console.log("🔄 useFlowRate: Heartbeat sync...");
       void loadCurrent();
       void loadHistory();
-    }, Math.max(refreshMs, 30_000));
+    }, Math.max(refreshMs, 12_000));
+
+    // Active 3s polling fallback: if no SSE events received for > 8 seconds, poll backend
+    const fallbackTimer = window.setInterval(() => {
+      const timeSinceLastMessage = Date.now() - lastMessageTime;
+      if (timeSinceLastMessage > 8000) {
+        void loadCurrent();
+        void loadHistory();
+      }
+    }, 3000);
 
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(fallbackTimer);
       eventSource.close();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("sensorTelemetryUpdated", handleRealtimeTelemetry);
+      }
     };
   }, [loadCurrent, loadHistory, refreshMs, sensorId]);
 

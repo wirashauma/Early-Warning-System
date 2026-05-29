@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import api from "@/lib/api";
 
 export interface RealtimeAlert {
   id: string;
@@ -34,6 +35,38 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const sensorMapRef = useRef<Record<string, string>>({});
+
+  // Fetch all sensors on mount to build a stable database ID (UUID) -> human-readable sensorId mapping
+  useEffect(() => {
+    let active = true;
+    const fetchSensors = async () => {
+      try {
+        const response = await api.get("/sensors");
+        const payload = response.data?.data;
+        const items = (Array.isArray(payload)
+          ? payload
+          : payload?.items ?? []) as Array<{ id: string; sensorId: string }>;
+        
+        if (active) {
+          const mapping: Record<string, string> = {};
+          items.forEach((sensor) => {
+            if (sensor.id && sensor.sensorId) {
+              mapping[sensor.id] = sensor.sensorId;
+            }
+          });
+          sensorMapRef.current = mapping;
+        }
+      } catch (err) {
+        console.error("Failed to load sensors map in useSupabaseRealtime:", err);
+      }
+    };
+    
+    void fetchSensors();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Initialize Audio
   useEffect(() => {
@@ -100,7 +133,6 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
         },
         (payload) => {
           const newAlert = payload.new as RealtimeAlert;
-          console.log("🔥 Realtime Alert Received:", newAlert);
 
           if (newAlert.severity === "DANGER") {
             setActiveAlert(newAlert);
@@ -108,9 +140,7 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
           }
         }
       )
-      .subscribe((status) => {
-        console.log(`Supabase Alerts channel status: ${status}`);
-      });
+      .subscribe();
 
     // 2. Subscribe to 'sensors' table UPDATE events
     const sensorsChannel = supabase
@@ -124,21 +154,110 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
         },
         (payload) => {
           const updatedSensor = payload.new as RealtimeSensor;
-          console.log("📡 Realtime Sensor Updated:", updatedSensor);
 
           if (onSensorChange) {
             onSensorChange(updatedSensor);
           }
         }
       )
-      .subscribe((status) => {
-        console.log(`Supabase Sensors channel status: ${status}`);
-      });
+      .subscribe();
+
+    // 3. Subscribe to 'water_level_logs' table INSERT events
+    const waterLevelLogsChannel = supabase
+      .channel("public-water-level-logs-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "water_level_logs",
+        },
+        (payload) => {
+          const newLog = payload.new;
+          if (typeof window !== "undefined") {
+            const sensorId = sensorMapRef.current[newLog.sensor_id] || "";
+            window.dispatchEvent(
+              new CustomEvent("sensorTelemetryUpdated", {
+                detail: {
+                  sensorUuid: newLog.sensor_id,
+                  sensorId,
+                  waterLevel: Number(newLog.water_level),
+                  status: newLog.status,
+                  recordedAt: newLog.recorded_at,
+                },
+              })
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // 4. Subscribe to 'rainfall_logs' table INSERT events
+    const rainfallLogsChannel = supabase
+      .channel("public-rainfall-logs-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "rainfall_logs",
+        },
+        (payload) => {
+          const newLog = payload.new;
+          if (typeof window !== "undefined") {
+            const sensorId = sensorMapRef.current[newLog.sensor_id] || "";
+            window.dispatchEvent(
+              new CustomEvent("sensorTelemetryUpdated", {
+                detail: {
+                  sensorUuid: newLog.sensor_id,
+                  sensorId,
+                  rainfall: Number(newLog.rainfall),
+                  status: newLog.intensity,
+                  recordedAt: newLog.recorded_at,
+                },
+              })
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // 5. Subscribe to 'flow_rate_logs' table INSERT events
+    const flowRateLogsChannel = supabase
+      .channel("public-flow-rate-logs-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "flow_rate_logs",
+        },
+        (payload) => {
+          const newLog = payload.new;
+          if (typeof window !== "undefined") {
+            const sensorId = sensorMapRef.current[newLog.sensor_id] || "";
+            window.dispatchEvent(
+              new CustomEvent("sensorTelemetryUpdated", {
+                detail: {
+                  sensorUuid: newLog.sensor_id,
+                  sensorId,
+                  flowRate: Number(newLog.flow_rate),
+                  recordedAt: newLog.recorded_at,
+                },
+              })
+            );
+          }
+        }
+      )
+      .subscribe();
 
     // Cleanup subscriptions on unmount
     return () => {
       void supabase.removeChannel(alertsChannel);
       void supabase.removeChannel(sensorsChannel);
+      void supabase.removeChannel(waterLevelLogsChannel);
+      void supabase.removeChannel(rainfallLogsChannel);
+      void supabase.removeChannel(flowRateLogsChannel);
     };
   }, [onSensorChange, playSiren]);
 

@@ -121,7 +121,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(15, 23, 42);
       pdf.text(range === "day" ? "Harian (24 Jam Terakhir)" : "Mingguan (7 Hari Terakhir)", margin + 22, currentY);
-      pdf.text(`${trendLabel} (${latest} L/m)`, margin + 110, currentY);
+      pdf.text(`${trendLabel} (${stats.latest} L/m)`, margin + 110, currentY);
 
       // 3. STATISTIK SUMMARY CARD BOXES
       currentY += 12;
@@ -147,7 +147,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 58, 138);
-      pdf.text(`${min} L/m`, margin + 4, currentY + 11);
+      pdf.text(`${stats.min} L/m`, margin + 4, currentY + 11);
 
       // Card 2: Rata-rata
       pdf.setFillColor(248, 250, 252);
@@ -159,7 +159,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 58, 138);
-      pdf.text(`${average} L/m`, margin + cardWidth + cardGap + 4, currentY + 11);
+      pdf.text(`${stats.average} L/m`, margin + cardWidth + cardGap + 4, currentY + 11);
 
       // Card 3: Terkini
       pdf.setFillColor(248, 250, 252);
@@ -171,7 +171,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 58, 138);
-      pdf.text(`${latest} L/m`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
+      pdf.text(`${stats.latest} L/m`, margin + (cardWidth + cardGap) * 2 + 4, currentY + 11);
 
       // 4. CHART IMAGE
       currentY += cardHeight + 8;
@@ -407,27 +407,30 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
 
   // Hardcoded ticks removed in favor of responsive, auto-calculated date/time ticks.
 
-  // Calculations for stats boxes at the bottom
-  const values = chartData.map((p) => p.value);
-  const min = isDemo ? 10.6 : (values.length > 0 ? Math.min(...values) : 0);
-  const max = isDemo ? 26.6 : (values.length > 0 ? Math.max(...values) : 0);
-  const latest =
-    isDemo ? 20.3 : (validPoints.length > 0
-      ? parseFloat((validPoints[validPoints.length - 1].flowRateLpm ?? Number((validPoints[validPoints.length - 1].levelCm / 260 + validPoints[validPoints.length - 1].rainfallMm / 40).toFixed(2))).toFixed(2))
-      : 0);
-  const average =
-    isDemo ? 15.5 : (values.length > 0
-      ? parseFloat((values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(2))
-      : 0);
+  // Reactive stats — auto-recompute when chart data changes
+  const stats = useMemo(() => {
+    const values = chartData.map((p) => p.value);
+    const min = isDemo ? 10.6 : (values.length > 0 ? Math.min(...values) : 0);
+    const max = isDemo ? 26.6 : (values.length > 0 ? Math.max(...values) : 0);
+    const latest =
+      isDemo ? 20.3 : (validPoints.length > 0
+        ? parseFloat((validPoints[validPoints.length - 1].flowRateLpm ?? Number((validPoints[validPoints.length - 1].levelCm / 260 + validPoints[validPoints.length - 1].rainfallMm / 40).toFixed(2))).toFixed(2))
+        : 0);
+    const average =
+      isDemo ? 15.5 : (values.length > 0
+        ? parseFloat((values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(2))
+        : 0);
+    return { min, max, latest, average };
+  }, [chartData, validPoints, isDemo]);
 
   // Status Badge and Trend Resolution
   const trendClass =
-    latest >= 20
+    stats.latest >= 20
       ? "bg-rose-50 text-rose-700 border-rose-100"
-      : latest >= 10
+      : stats.latest >= 10
       ? "bg-amber-50 text-amber-700 border-amber-100"
       : "bg-emerald-50 text-emerald-700 border-emerald-100";
-  const trendLabel = latest >= 20 ? "Debit Tinggi" : latest >= 10 ? "Debit Sedang" : "Debit Rendah";
+  const trendLabel = stats.latest >= 20 ? "Debit Tinggi" : stats.latest >= 10 ? "Debit Sedang" : "Debit Rendah";
 
   if (!mounted) {
     return <div className="h-[430px] w-full animate-pulse rounded-xl bg-slate-50" />;
@@ -478,7 +481,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
             </button>
           </div>
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold border whitespace-nowrap ${trendClass}`}>
-            {trendLabel} ({latest} L/m)
+            {trendLabel} ({stats.latest} L/m)
           </span>
         </div>
       </div>
@@ -555,25 +558,56 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
                 radius={[4, 4, 0, 0]}
                 maxBarSize={16}
                 minPointSize={5}
+                isAnimationActive={true}
+                animationDuration={500}
+                animationEasing="ease-out"
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-       {/* Standardized Statistics Grid Footer */}
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Minimum</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{min} L/m</p>
+      {/* Reactive Statistics Indicators */}
+      <div className="grid grid-cols-3 gap-3 mt-2">
+        {/* Minimum */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-slate-200/60 transition-all hover:shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-50">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3 text-blue-500">
+                <path d="M8 3v10M5 10l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Minimum</p>
+          </div>
+          <p className="text-lg font-extrabold text-slate-800 transition-all duration-300">{stats.min} <span className="text-[10px] font-medium text-slate-400">L/m</span></p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Rata-rata</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{average} L/m</p>
+
+        {/* Rata-rata */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-slate-200/60 transition-all hover:shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-50">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3 text-emerald-500">
+                <path d="M2 8h12M5 5l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Rata-rata</p>
+          </div>
+          <p className="text-lg font-extrabold text-slate-800 transition-all duration-300">{stats.average} <span className="text-[10px] font-medium text-slate-400">L/m</span></p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-2.5 text-center border border-slate-100/40">
-          <p className="text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">Saat Ini</p>
-          <p className="text-xs sm:text-sm font-bold text-slate-700 mt-0.5 whitespace-nowrap">{latest} L/m</p>
+
+        {/* Saat Ini / Live */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-3 ring-1 ring-emerald-200/60 transition-all hover:shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-emerald-500 rounded-l-xl" />
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-50">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+            </div>
+            <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Saat Ini</p>
+          </div>
+          <p className="text-lg font-extrabold text-emerald-700 transition-all duration-300">{stats.latest} <span className="text-[10px] font-medium text-emerald-400">L/m</span></p>
         </div>
       </div>
     </div>

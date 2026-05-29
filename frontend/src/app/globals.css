@@ -51,3 +51,18 @@ html {
     transition: none;
   }
 }
+
+/* Dashboard value update flash */
+@keyframes value-flash {
+  0% { background-color: rgba(16, 185, 129, 0.12); }
+  100% { background-color: transparent; }
+}
+
+.animate-value-flash {
+  animation: value-flash 800ms ease-out;
+}
+
+/* Smooth gauge arc transition */
+.gauge-arc {
+  transition: stroke-dashoffset 700ms ease-in-out;
+}
