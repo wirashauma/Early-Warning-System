@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart'; // Ditambahkan untuk membaca state login global
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../models/auth_provider.dart'; // Ditambahkan untuk membedakan Admin/User
 import '../models/admin_provider.dart';
 import '../providers/telemetry_provider.dart';
@@ -47,38 +48,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final startIso = oneDayAgo.toUtc().toIso8601String();
       final endIso = now.toUtc().toIso8601String();
 
-      final sensorType = sensor.type.toUpperCase();
+      final telemetry = context.read<TelemetryProvider>();
+      final wlSensor = telemetry.sensors.firstWhere(
+        (s) => s.type.toUpperCase() == 'WATER_LEVEL',
+        orElse: () => sensor,
+      );
+      final rfSensor = telemetry.sensors.firstWhere(
+        (s) => s.type.toUpperCase() == 'RAINFALL',
+        orElse: () => sensor,
+      );
+      final frSensor = telemetry.sensors.firstWhere(
+        (s) => s.type.toUpperCase() == 'FLOW_RATE',
+        orElse: () => sensor,
+      );
+
       final results = await Future.wait([
-        sensorType == 'WATER_LEVEL'
-            ? _api
-                  .fetchWaterLevelHistory(
-                    sensorId: sensor.sensorId,
-                    startDate: startIso,
-                    endDate: endIso,
-                    limit: 100,
-                  )
-                  .catchError((e) => <WaterLevelLog>[])
-            : Future.value(<WaterLevelLog>[]),
-        sensorType == 'RAINFALL'
-            ? _api
-                  .fetchRainfallHistory(
-                    sensorId: sensor.sensorId,
-                    startDate: startIso,
-                    endDate: endIso,
-                    limit: 100,
-                  )
-                  .catchError((e) => <RainfallLog>[])
-            : Future.value(<RainfallLog>[]),
-        sensorType == 'FLOW_RATE'
-            ? _api
-                  .fetchFlowRateHistory(
-                    sensorId: sensor.sensorId,
-                    startDate: startIso,
-                    endDate: endIso,
-                    limit: 100,
-                  )
-                  .catchError((e) => <FlowRateLog>[])
-            : Future.value(<FlowRateLog>[]),
+        _api
+            .fetchWaterLevelHistory(
+              sensorId: wlSensor.sensorId,
+              startDate: startIso,
+              endDate: endIso,
+              limit: 100,
+            )
+            .catchError((e) => <WaterLevelLog>[]),
+        _api
+            .fetchRainfallHistory(
+              sensorId: rfSensor.sensorId,
+              startDate: startIso,
+              endDate: endIso,
+              limit: 100,
+            )
+            .catchError((e) => <RainfallLog>[]),
+        _api
+            .fetchFlowRateHistory(
+              sensorId: frSensor.sensorId,
+              startDate: startIso,
+              endDate: endIso,
+              limit: 100,
+            )
+            .catchError((e) => <FlowRateLog>[]),
       ]);
 
       if (!mounted) return;
@@ -1098,6 +1106,153 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildSingleChartCard({
+    required String title,
+    required String liveValue,
+    required Color color,
+    required Widget chartWidget,
+    List<double> values = const [],
+    String unit = '',
+  }) {
+    double? minVal;
+    double? avgVal;
+    double? latestVal;
+    if (values.isNotEmpty) {
+      minVal = values.reduce((a, b) => a < b ? a : b);
+      avgVal = values.reduce((a, b) => a + b) / values.length;
+      latestVal = values.last;
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            spreadRadius: 2,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Terkini: $liveValue',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 140,
+            child: _loadingHistory
+                ? const Center(
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  )
+                : _historyError != null
+                ? const Center(
+                    child: Text(
+                      'Gagal memuat data riwayat.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.statusBahaya,
+                      ),
+                    ),
+                  )
+                : chartWidget,
+          ),
+          if (values.isNotEmpty && !_loadingHistory && _historyError == null) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatIndicator(
+                  label: 'MIN',
+                  value: unit == 'cm' 
+                      ? '${minVal!.toInt()} $unit' 
+                      : '${minVal!.toStringAsFixed(1)} $unit',
+                  color: const Color(0xFF64748B),
+                ),
+                _buildStatIndicator(
+                  label: 'RATA-RATA',
+                  value: unit == 'cm' 
+                      ? '${avgVal!.toInt()} $unit' 
+                      : '${avgVal!.toStringAsFixed(1)} $unit',
+                  color: color,
+                ),
+                _buildStatIndicator(
+                  label: 'TERKINI',
+                  value: unit == 'cm' 
+                      ? '${latestVal!.toInt()} $unit' 
+                      : '${latestVal!.toStringAsFixed(1)} $unit',
+                  color: const Color(0xFF22C55E),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatIndicator({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF94A3B8),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildChartSection(TelemetryProvider telemetryProvider) {
     final hasSensors = _hasInstalledSensors(telemetryProvider);
     if (!hasSensors) {
@@ -1110,204 +1265,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     final waterLevel = selectedSensor.waterLevel ?? 0.0;
     final rainfall = selectedSensor.rainfall ?? 0.0;
+    final currentFlow = _frHistory.isNotEmpty
+        ? _frHistory.last.flowRate
+        : 0.0;
 
-    Widget activeChart;
-    Color chartColor;
-    String chartTitle;
-    String currentValStr;
-
-    if (_selectedChartTab == 0) {
-      activeChart = _buildFlChart(
-        _wlHistory,
-        (log) => (log as WaterLevelLog).waterLevel,
-        AppTheme.accentBlue,
-        'cm',
-      );
-      chartColor = AppTheme.accentBlue;
-      chartTitle = 'Tinggi Air';
-      currentValStr = '${waterLevel.toInt()} cm';
-    } else if (_selectedChartTab == 1) {
-      activeChart = _buildFlChart(
-        _rfHistory,
-        (log) => (log as RainfallLog).rainfall,
-        const Color(0xFF10B981),
-        'mm',
-      );
-      chartColor = const Color(0xFF10B981);
-      chartTitle = 'Curah Hujan';
-      currentValStr = '${rainfall.toStringAsFixed(1)} mm/jam';
-    } else {
-      activeChart = _buildFlChart(
-        _frHistory,
-        (log) => (log as FlowRateLog).flowRate,
-        const Color(0xFFF59E0B),
-        'LPM',
-      );
-      chartColor = const Color(0xFFF59E0B);
-      chartTitle = 'Debit Aliran';
-      final currentFlow = _frHistory.isNotEmpty
-          ? _frHistory.last.flowRate
-          : 0.0;
-      currentValStr = '${currentFlow.toStringAsFixed(1)} LPM';
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Grafik Telemetri Historis',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: chartColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Live: $currentValStr',
-                  style: TextStyle(
-                    color: chartColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildTabPill(0, 'Tinggi Air', AppTheme.accentBlue),
-              const SizedBox(width: 8),
-              _buildTabPill(1, 'Curah Hujan', const Color(0xFF10B981)),
-              const SizedBox(width: 8),
-              _buildTabPill(2, 'Debit Aliran', const Color(0xFFF59E0B)),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 160,
-            child: _loadingHistory
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(strokeWidth: 3),
-                        SizedBox(height: 10),
-                        Text(
-                          'Memuat data riwayat...',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textGrey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : _historyError != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Gagal memuat: $_historyError',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.statusBahaya,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            final sensors = telemetryProvider.sensors;
-                            if (sensors.isNotEmpty &&
-                                _selectedSensorIndex < sensors.length) {
-                              _loadSensorHistory(
-                                telemetryProvider.sensors[_selectedSensorIndex],
-                              );
-                            }
-                          },
-                          child: const Text(
-                            'Coba Lagi',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : activeChart,
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Text(
-              'Riwayat $chartTitle dalam 24 jam terakhir',
-              style: const TextStyle(color: AppTheme.textGrey, fontSize: 10),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Text(
+            'Grafik Telemetri Historis',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: AppTheme.textDark,
             ),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Curah Hujan Terkini',
-                      style: TextStyle(fontSize: 11, color: AppTheme.textGrey),
-                    ),
-                    Text(
-                      '${rainfall.toStringAsFixed(1)} mm/jam',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.accentBlue,
-                      ),
-                    ),
-                    Text(
-                      rainfall < 5
-                          ? 'Ringan (0-5 mm/jam)'
-                          : rainfall < 20
-                          ? 'Sedang (5-20 mm/jam)'
-                          : 'Lebat (>20 mm/jam)',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textGrey,
-                      ),
-                    ),
-                  ],
-                ),
-                Icon(
-                  Icons.thunderstorm_outlined,
-                  color: AppTheme.accentBlue.withOpacity(0.3),
-                  size: 38,
-                ),
-              ],
-            ),
+        ),
+        _buildSingleChartCard(
+          title: 'Grafik Tinggi Air',
+          liveValue: '${waterLevel.toInt()} cm',
+          color: AppTheme.accentBlue,
+          values: _wlHistory.map((e) => (e as WaterLevelLog).waterLevel).toList(),
+          unit: 'cm',
+          chartWidget: _buildFlChart(
+            _wlHistory,
+            (log) => (log as WaterLevelLog).waterLevel,
+            AppTheme.accentBlue,
+            'cm',
           ),
-        ],
-      ),
+        ),
+        _buildSingleChartCard(
+          title: 'Grafik Curah Hujan',
+          liveValue: '${rainfall.toStringAsFixed(1)} mm/jam',
+          color: const Color(0xFF10B981),
+          values: _rfHistory.map((e) => (e as RainfallLog).rainfall).toList(),
+          unit: 'mm',
+          chartWidget: _buildFlChart(
+            _rfHistory,
+            (log) => (log as RainfallLog).rainfall,
+            const Color(0xFF10B981),
+            'mm',
+          ),
+        ),
+        _buildSingleChartCard(
+          title: 'Grafik Debit Aliran',
+          liveValue: '${currentFlow.toStringAsFixed(1)} LPM',
+          color: const Color(0xFFF59E0B),
+          values: _frHistory.map((e) => (e as FlowRateLog).flowRate).toList(),
+          unit: 'LPM',
+          chartWidget: _buildFlChart(
+            _frHistory,
+            (log) => (log as FlowRateLog).flowRate,
+            const Color(0xFFF59E0B),
+            'LPM',
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -1369,10 +1385,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String unit,
   ) {
     if (logs.isEmpty) {
-      return const Center(
-        child: Text(
-          'Tidak ada data dalam 24 jam terakhir.',
-          style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+      IconData iconData = Icons.waves;
+      if (unit == 'mm') iconData = Icons.umbrella;
+      if (unit == 'LPM') iconData = Icons.speed;
+
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(iconData, color: const Color(0xFF94A3B8), size: 28),
+            const SizedBox(height: 6),
+            Text(
+              'Tidak ada data dalam 24 jam terakhir.',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+            ),
+          ],
         ),
       );
     }
@@ -1382,8 +1409,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }).toList();
 
     final values = spots.map((s) => s.y).toList();
-    final minY = values.reduce((a, b) => a < b ? a : b);
-    final maxY = values.reduce((a, b) => a > b ? a : b);
+    final minY = values.isEmpty ? 0.0 : values.reduce((a, b) => a < b ? a : b);
+    final maxY = values.isEmpty ? 10.0 : values.reduce((a, b) => a > b ? a : b);
     final rangeY = maxY - minY;
     final paddingY = rangeY == 0 ? 5.0 : rangeY * 0.15;
 
@@ -1393,7 +1420,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           show: true,
           drawVerticalLine: false,
           getDrawingHorizontalLine: (value) =>
-              FlLine(color: const Color(0xFFE2E8F0), strokeWidth: 1),
+              FlLine(color: const Color(0xFFF1F5F9), strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           show: true,
@@ -1408,9 +1435,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               showTitles: true,
               reservedSize: 32,
               getTitlesWidget: (value, meta) {
-                return Text(
-                  '${value.toInt()}',
-                  style: const TextStyle(fontSize: 8, color: AppTheme.textGrey),
+                return SideTitleWidget(
+                  meta: meta,
+                  space: 6,
+                  child: Text(
+                    '${value.toInt()}',
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 );
               },
             ),
@@ -1419,23 +1454,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 22,
+              interval: (spots.length / 4).clamp(1.0, 100.0),
               getTitlesWidget: (value, meta) {
                 final idx = value.toInt();
-                if (idx >= 0 &&
-                    idx < logs.length &&
-                    (idx % (logs.length ~/ 4 + 1) == 0 ||
-                        idx == logs.length - 1)) {
-                  final rawTime = logs[idx].recordedAt;
-                  final time = rawTime is DateTime
-                      ? rawTime
-                      : DateTime.parse(rawTime.toString());
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
+                if (idx >= 0 && idx < logs.length) {
+                  DateTime? time;
+                  final log = logs[idx];
+                  if (log is WaterLevelLog) {
+                    time = log.recordedAt;
+                  } else if (log is RainfallLog) {
+                    time = log.recordedAt;
+                  } else if (log is FlowRateLog) {
+                    time = log.recordedAt;
+                  } else {
+                    final rawTime = log.recordedAt;
+                    time = rawTime is DateTime
+                        ? rawTime
+                        : DateTime.parse(rawTime.toString());
+                  }
+                  return SideTitleWidget(
+                    meta: meta,
+                    space: 6,
                     child: Text(
                       '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
                       style: const TextStyle(
-                        fontSize: 8,
-                        color: AppTheme.textGrey,
+                        color: Color(0xFF94A3B8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   );
@@ -1445,17 +1490,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
-        borderData: FlBorderData(
-          show: true,
-          border: const Border(
-            bottom: BorderSide(color: Color(0xFFE2E8F0)),
-            left: BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-        ),
+        borderData: FlBorderData(show: false),
         minX: 0,
-        maxX: (logs.length - 1).toDouble(),
+        maxX: logs.length > 1 ? (logs.length - 1).toDouble() : 1.0,
         minY: (minY - paddingY).clamp(0.0, double.infinity),
         maxY: maxY + paddingY,
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            tooltipBorderRadius: BorderRadius.circular(8),
+            getTooltipColor: (touchedSpot) =>
+                const Color(0xFF0F172A).withOpacity(0.9),
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                final log = logs[spot.spotIndex];
+                DateTime? dt;
+                if (log is WaterLevelLog) dt = log.recordedAt;
+                else if (log is RainfallLog) dt = log.recordedAt;
+                else if (log is FlowRateLog) dt = log.recordedAt;
+                final formattedTime = dt != null
+                    ? DateFormat('HH:mm:ss').format(dt)
+                    : '';
+                return LineTooltipItem(
+                  '${spot.y.toStringAsFixed(1)} $unit\n',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: formattedTime,
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.normal,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList();
+            },
+          ),
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -1463,10 +1539,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: lineColor,
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
+            dotData: FlDotData(
+              show: spots.length <= 15,
+              getDotPainter: (spot, percent, barData, index) =>
+                  FlDotCirclePainter(
+                    radius: 4,
+                    color: Colors.white,
+                    strokeWidth: 2,
+                    strokeColor: lineColor,
+                  ),
+            ),
             belowBarData: BarAreaData(
               show: true,
-              color: lineColor.withOpacity(0.1),
+              gradient: LinearGradient(
+                colors: [
+                  lineColor.withValues(alpha: 0.25),
+                  lineColor.withValues(alpha: 0.0),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ),
         ],
