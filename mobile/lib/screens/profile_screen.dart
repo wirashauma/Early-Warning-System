@@ -311,8 +311,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             user.phone?.isNotEmpty == true ? user.phone! : '-',
           ),
           _InfoRow(
-            Icons.location_on_outlined,
-            'Alamat',
+            Icons.business_outlined,
+            'Institusi / Instansi',
             user.address?.isNotEmpty == true ? user.address! : '-',
           ),
           const SizedBox(height: 8),
@@ -593,10 +593,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 14),
                 AuthTextField(
-                  label: 'Alamat',
-                  hint: 'Alamat tinggal Anda',
+                  label: 'Institusi / Instansi',
+                  hint: 'Nama instansi atau tempat kerja Anda',
                   controller: addressCtrl,
-                  maxLines: 2,
+                  prefixIcon: Icons.business_outlined,
+                  maxLines: 1,
                 ),
                 const SizedBox(height: 24),
                 AuthButton(

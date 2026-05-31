@@ -241,6 +241,7 @@ class ReportProvider extends ChangeNotifier {
         startDate: startIso,
         endDate: endIso,
         format: format,
+        sensorId: selectedSensorId == 'all' ? null : selectedSensorId,
       );
 
       final dir = await getApplicationDocumentsDirectory();

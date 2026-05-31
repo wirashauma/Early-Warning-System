@@ -492,6 +492,7 @@ class ApiService {
     required String startDate,
     required String endDate,
     required String format, // pdf | excel
+    String? sensorId,
   }) async {
     final queryParams = {
       'type': type,
@@ -499,6 +500,9 @@ class ApiService {
       'endDate': endDate,
       'format': format,
     };
+    if (sensorId != null && sensorId != 'all' && sensorId.isNotEmpty) {
+      queryParams['sensorId'] = sensorId;
+    }
     final uri = _buildUri('reports/generate', queryParams);
 
     try {

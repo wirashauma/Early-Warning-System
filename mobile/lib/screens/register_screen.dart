@@ -133,10 +133,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
                       AuthTextField(
-                        label: 'Alamat (Opsional)',
-                        hint: 'Masukkan alamat tinggal',
+                        label: 'Institusi / Instansi (Opsional)',
+                        hint: 'Masukkan nama instansi atau tempat kerja',
                         controller: _addressCtrl,
-                        prefixIcon: Icons.location_on_outlined,
+                        prefixIcon: Icons.business_outlined,
                       ),
                       const SizedBox(height: 16),
                       AuthTextField(

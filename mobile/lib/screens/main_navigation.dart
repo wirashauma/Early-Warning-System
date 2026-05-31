@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/app_theme.dart';
+import '../providers/telemetry_provider.dart';
 import 'alert_screen.dart';
 import 'dashboard_screen.dart';
 import 'profile_screen.dart';
@@ -115,6 +117,12 @@ class _ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final telemetry = context.watch<TelemetryProvider>();
+    final totalSensors = telemetry.sensors.length;
+    final onlineSensors = telemetry.onlineSensorsCount;
+    final warningCount = telemetry.warningCount;
+    final dangerCount = telemetry.dangerCount;
+
     return Scaffold(
       backgroundColor: AppTheme.pageBg,
       appBar: AppBar(
@@ -185,28 +193,28 @@ class _ReportsScreen extends StatelessWidget {
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
                 childAspectRatio: 1.35,
-                children: const [
+                children: [
                   _ReportMetricCard(
-                    title: 'Total Laporan',
-                    value: '12',
-                    icon: Icons.description_outlined,
+                    title: 'Total Sensor',
+                    value: totalSensors.toString(),
+                    icon: Icons.sensors,
                     color: AppTheme.primaryBlue,
                   ),
                   _ReportMetricCard(
-                    title: 'Aktif Hari Ini',
-                    value: '4',
-                    icon: Icons.today_outlined,
+                    title: 'Sensor Online',
+                    value: onlineSensors.toString(),
+                    icon: Icons.check_circle_outline,
                     color: AppTheme.statusNormal,
                   ),
                   _ReportMetricCard(
                     title: 'Status Waspada',
-                    value: '2',
+                    value: warningCount.toString(),
                     icon: Icons.warning_amber_outlined,
                     color: AppTheme.statusWaspada,
                   ),
                   _ReportMetricCard(
                     title: 'Status Bahaya',
-                    value: '1',
+                    value: dangerCount.toString(),
                     icon: Icons.error_outline,
                     color: AppTheme.statusBahaya,
                   ),
