@@ -12,6 +12,7 @@ interface GenerateReportInput {
   startDate: string;
   endDate: string;
   format: string;
+  sensorId?: string;
 }
 
 interface GeneratedReport {
@@ -88,7 +89,7 @@ export class ReportService {
       throw new BadRequestException('endDate harus lebih besar atau sama dengan startDate.');
     }
 
-    const dataset = await this.loadReportDataset(type, start, end);
+    const dataset = await this.loadReportDataset(type, start, end, input.sensorId);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     if (format === 'pdf') {
@@ -113,16 +114,21 @@ export class ReportService {
     type: ReportType,
     start: Date,
     end: Date,
+    sensorId?: string,
   ): Promise<ReportDataset> {
     const generatedAt = new Date();
     const formatDateRange = `${this.formatDateRange(start)} - ${this.formatDateRange(end)}`;
+
+    const sensorFilter = sensorId && sensorId !== 'all'
+      ? { sensorId: sensorId, isActive: true }
+      : { isActive: true };
 
     if (type === 'combined') {
       const [waterLevelLogs, rainfallLogs, flowRateLogs] = await Promise.all([
         this.prisma.waterLevelLog.findMany({
           where: {
             recordedAt: { gte: start, lte: end },
-            sensor: { isActive: true, type: SensorType.WATER_LEVEL },
+            sensor: { ...sensorFilter, type: SensorType.WATER_LEVEL },
           },
           orderBy: [{ recordedAt: 'asc' }, { sensorId: 'asc' }],
           include: {
@@ -134,7 +140,7 @@ export class ReportService {
         this.prisma.rainfallLog.findMany({
           where: {
             recordedAt: { gte: start, lte: end },
-            sensor: { isActive: true, type: SensorType.RAINFALL },
+            sensor: { ...sensorFilter, type: SensorType.RAINFALL },
           },
           orderBy: [{ recordedAt: 'asc' }, { sensorId: 'asc' }],
           include: {
@@ -146,7 +152,7 @@ export class ReportService {
         this.prisma.flowRateLog.findMany({
           where: {
             recordedAt: { gte: start, lte: end },
-            sensor: { isActive: true, type: SensorType.FLOW_RATE },
+            sensor: { ...sensorFilter, type: SensorType.FLOW_RATE },
           },
           orderBy: [{ recordedAt: 'asc' }, { sensorId: 'asc' }],
           include: {
@@ -216,7 +222,7 @@ export class ReportService {
           },
           {
             label: 'Filter Sensor',
-            value: 'Semua Sensor Aktif',
+            value: sensorId && sensorId !== 'all' ? sensorId : 'Semua Sensor Aktif',
             accent: '#0369A1',
           },
         ],
@@ -224,7 +230,7 @@ export class ReportService {
     }
 
     const sensorType = this.mapReportTypeToSensorType(type);
-    const rows = await this.loadSingleTypeRows(type, start, end, sensorType);
+    const rows = await this.loadSingleTypeRows(type, start, end, sensorType, sensorId);
     const values = rows.map((row) => row.value);
     const sensorCount = new Set(rows.map((row) => row.sensorId)).size;
 
@@ -262,12 +268,17 @@ export class ReportService {
     start: Date,
     end: Date,
     sensorType: SensorType,
+    sensorId?: string,
   ): Promise<SingleReportRow[]> {
+    const sensorFilter = sensorId && sensorId !== 'all'
+      ? { sensorId: sensorId, isActive: true }
+      : { isActive: true };
+
     if (type === 'water_level') {
       const logs = await this.prisma.waterLevelLog.findMany({
         where: {
           recordedAt: { gte: start, lte: end },
-          sensor: { isActive: true, type: sensorType },
+          sensor: { ...sensorFilter, type: sensorType },
         },
         orderBy: [{ recordedAt: 'asc' }, { sensorId: 'asc' }],
         include: {
@@ -290,7 +301,7 @@ export class ReportService {
       const logs = await this.prisma.rainfallLog.findMany({
         where: {
           recordedAt: { gte: start, lte: end },
-          sensor: { isActive: true, type: sensorType },
+          sensor: { ...sensorFilter, type: sensorType },
         },
         orderBy: [{ recordedAt: 'asc' }, { sensorId: 'asc' }],
         include: {
@@ -312,7 +323,7 @@ export class ReportService {
     const logs = await this.prisma.flowRateLog.findMany({
       where: {
         recordedAt: { gte: start, lte: end },
-        sensor: { isActive: true, type: sensorType },
+        sensor: { ...sensorFilter, type: sensorType },
       },
       orderBy: [{ recordedAt: 'asc' }, { sensorId: 'asc' }],
       include: {
@@ -333,60 +344,64 @@ export class ReportService {
 
   private async buildPdf(dataset: ReportDataset): Promise<Buffer> {
     return this.renderPdf((doc) => {
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 15;
+      const pageWidth = 595;
+      const pageHeight = 842;
+      const margin = 40;
       const contentWidth = pageWidth - margin * 2;
-      const footerY = pageHeight - 10;
+      const footerY = pageHeight - 20;
 
       const drawHeader = () => {
         doc.save();
-        doc.rect(0, 0, pageWidth, 38).fill('#1E3A8A');
+        doc.rect(0, 0, pageWidth, 60).fill('#1E3A8A');
         doc.restore();
 
-        doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(14).text(dataset.title, margin, 13);
-        doc.fillColor('#E2E8F0').font('Helvetica').fontSize(9).text('Early Warning System (EWS) • Flood Guard Portal Pemantauan', margin, 19);
-        doc.fillColor('#E2E8F0').font('Helvetica').fontSize(8).text(`Waktu Cetak: ${this.formatPrintedDate(dataset.generatedAt)} WIB`, margin, 31);
+        doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(16).text(dataset.title, margin, 15);
+        doc.fillColor('#E2E8F0').font('Helvetica').fontSize(9.5).text('Early Warning System (EWS) • Flood Guard Portal Pemantauan', margin, 32);
+        doc.fillColor('#E2E8F0').font('Helvetica').fontSize(8.5).text(`Waktu Cetak: ${this.formatPrintedDate(dataset.generatedAt)} WIB`, margin, 44);
 
         doc.save();
-        doc.rect(0, 38, pageWidth, 2).fill('#3B82F6');
+        doc.rect(0, 60, pageWidth, 3).fill('#3B82F6');
         doc.restore();
       };
 
       const drawSectionTitle = (title: string, y: number) => {
-        doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(10).text(title, margin, y);
-        doc.strokeColor('#E2E8F0').lineWidth(0.3).moveTo(margin, y + 2).lineTo(pageWidth - margin, y + 2).stroke();
-        return y + 8;
+        doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(11).text(title, margin, y);
+        doc.strokeColor('#3B82F6').lineWidth(1).moveTo(margin, y + 14).lineTo(pageWidth - margin, y + 14).stroke();
+        return y + 22;
       };
 
       const drawSummaryCards = (y: number) => {
-        const cardWidth = 56;
-        const cardHeight = dataset.type === 'combined' ? 22 : 18;
-        const gap = 6;
+        const cardWidth = 163;
+        const cardHeight = 40;
+        const gap = 13;
         const cardsPerRow = dataset.summaryCards.length;
 
         dataset.summaryCards.forEach((card, index) => {
           const x = margin + index * (cardWidth + gap);
           doc.save();
-          doc.roundedRect(x, y, cardWidth, cardHeight, 2).fillAndStroke('#F8FAFC', '#E2E8F0');
+          doc.roundedRect(x, y, cardWidth, cardHeight, 4).fillAndStroke('#F8FAFC', '#E2E8F0');
           doc.restore();
 
-          doc.fillColor('#64748B').font('Helvetica').fontSize(7.5).text(card.label, x + 4, y + 4, {
-            width: cardWidth - 8,
+          doc.fillColor('#64748B').font('Helvetica').fontSize(8).text(card.label, x + 8, y + 6, {
+            width: cardWidth - 16,
             align: 'left',
           });
-          doc.fillColor(card.accent).font('Helvetica-Bold').fontSize(10).text(card.value, x + 4, y + 10.5, {
-            width: cardWidth - 8,
+          doc.fillColor(card.accent).font('Helvetica-Bold').fontSize(13).text(card.value, x + 8, y + 18, {
+            width: cardWidth - 16,
             align: 'left',
-            height: cardHeight - 12,
+            height: cardHeight - 24,
           });
         });
 
-        return y + cardHeight + (cardsPerRow > 0 ? 4 : 0);
+        return y + cardHeight + (cardsPerRow > 0 ? 8 : 0);
       };
 
       const drawFooter = (pageNumber: number, totalPages: number) => {
-        doc.fillColor('#94A3B8').font('Helvetica').fontSize(7).text(
+        doc.save();
+        doc.strokeColor('#E2E8F0').lineWidth(0.5).moveTo(margin, footerY - 5).lineTo(pageWidth - margin, footerY - 5).stroke();
+        doc.restore();
+
+        doc.fillColor('#94A3B8').font('Helvetica').fontSize(7.5).text(
           `Laporan otomatis digenerate oleh EWS Flood Guard • Halaman ${pageNumber} dari ${totalPages}`,
           pageWidth / 2,
           footerY,
@@ -400,17 +415,17 @@ export class ReportService {
         y: number,
       ) => {
         doc.save();
-        doc.rect(margin, y, contentWidth, 7).fill('#1E3A8A');
+        doc.rect(margin, y, contentWidth, 20).fill('#1E3A8A');
         doc.restore();
 
-        doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8);
+        doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8.5);
         let currentX = margin;
         columns.forEach((column, index) => {
-          doc.text(column, currentX + 4, y + 5, { width: widths[index] - 8 });
+          doc.text(column, currentX + 6, y + 6, { width: widths[index] - 12, align: index === 0 ? 'center' : 'left' });
           currentX += widths[index];
         });
 
-        return y + 7;
+        return y + 20;
       };
 
       const drawRow = (
@@ -420,35 +435,35 @@ export class ReportService {
         rowIndex: number,
       ) => {
         const rowHeight = Math.max(
-          7,
+          18,
           ...cells.map((cell, index) =>
             Math.ceil(
               doc.heightOfString(cell, {
-                width: widths[index] - 8,
-                align: 'left',
+                width: widths[index] - 12,
+                align: index === 0 ? 'center' : 'left',
               }),
-            ) + 5,
+            ) + 10,
           ),
         );
 
-        if (y + rowHeight > pageHeight - 18) {
+        if (y + rowHeight > pageHeight - 35) {
           doc.addPage();
           drawHeader();
-          return { y: 44, needsHeader: true };
+          return { y: 75, needsHeader: true };
         }
 
         doc.save();
         doc.rect(margin, y, contentWidth, rowHeight).fill(rowIndex % 2 === 0 ? '#F8FAFC' : '#FFFFFF');
         doc.restore();
 
-        doc.strokeColor('#F1F5F9').lineWidth(0.4).moveTo(margin, y + rowHeight).lineTo(pageWidth - margin, y + rowHeight).stroke();
+        doc.strokeColor('#E2E8F0').lineWidth(0.5).moveTo(margin, y + rowHeight).lineTo(pageWidth - margin, y + rowHeight).stroke();
 
         let currentX = margin;
-        doc.fillColor('#0F172A').font('Helvetica').fontSize(8);
+        doc.fillColor('#0F172A').font('Helvetica').fontSize(8.5);
         cells.forEach((cell, index) => {
-          doc.text(cell, currentX + 4, y + 2, {
-            width: widths[index] - 8,
-            align: 'left',
+          doc.text(cell, currentX + 6, y + (rowHeight - doc.heightOfString(cell, { width: widths[index] - 12 })) / 2, {
+            width: widths[index] - 12,
+            align: index === 0 ? 'center' : 'left',
           });
           currentX += widths[index];
         });
@@ -458,18 +473,21 @@ export class ReportService {
 
       drawHeader();
 
-      let currentY = 49;
+      let currentY = 75;
 
       if (dataset.type === 'combined') {
         currentY = drawSectionTitle('I. RINGKASAN DATA LOGS', currentY);
-        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8);
+        
+        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8.5);
         doc.text('Parameter:', margin, currentY);
-        doc.text('Rentang Waktu:', margin + 85, currentY);
-        doc.text('Sensor Aktif:', margin + 140, currentY);
-        doc.fillColor('#0F172A').font('Helvetica').text('Data teragregasi dari water level, rainfall, dan flow rate', margin + 22, currentY);
-        doc.text(`${this.formatDateRange(dataset.start)} - ${this.formatDateRange(dataset.end)}`, margin + 108, currentY);
-        doc.text(dataset.summaryCards[2]?.value ?? '-', margin + 166, currentY);
-        currentY += 12;
+        doc.text('Rentang Waktu:', margin, currentY + 12);
+        doc.text('Sensor Aktif:', margin, currentY + 24);
+
+        doc.fillColor('#0F172A').font('Helvetica').fontSize(8.5);
+        doc.text('Data teragregasi dari water level, rainfall, dan flow rate', margin + 80, currentY);
+        doc.text(`${this.formatDateRange(dataset.start)} - ${this.formatDateRange(dataset.end)}`, margin + 80, currentY + 12);
+        doc.text(dataset.summaryCards[2]?.value ?? 'Semua Sensor Aktif', margin + 80, currentY + 24);
+        currentY += 40;
 
         currentY = drawSectionTitle('II. RINGKASAN STATISTIK PENGUKURAN', currentY);
         currentY = drawSummaryCards(currentY);
@@ -483,7 +501,7 @@ export class ReportService {
           'Intensitas Hujan (mm/jam)',
           'Debit Air (LPM)',
         ];
-        const widths = [12, 35, 34, 32, 38, 29];
+        const widths = [30, 90, 80, 95, 130, 90];
         currentY = drawTableHeader(columns, widths, currentY);
 
         dataset.combinedRows?.forEach((row, index) => {
@@ -504,24 +522,26 @@ export class ReportService {
       } else {
         const prettyType = this.getPrettyReportName(dataset.type);
         currentY = drawSectionTitle('I. METADATA SENSOR & PARAMETER', currentY);
-        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8);
+        
+        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8.5);
         doc.text('Parameter:', margin, currentY);
-        doc.text('Tipe Sensor:', margin + 85, currentY);
-        doc.text('Rentang Waktu:', margin, currentY + 5);
-        doc.text('Status Sistem:', margin + 85, currentY + 5);
+        doc.text('Tipe Sensor:', margin, currentY + 12);
+        doc.text('Rentang Waktu:', margin, currentY + 24);
+        doc.text('Status Sistem:', margin, currentY + 36);
 
-        doc.fillColor('#0F172A').font('Helvetica').text(prettyType, margin + 22, currentY);
-        doc.text(this.getSensorTypeLabel(dataset.type), margin + 110, currentY);
-        doc.text(`${this.formatDateRange(dataset.start)} - ${this.formatDateRange(dataset.end)}`, margin + 22, currentY + 5);
-        doc.text(`Aktif (${dataset.singleRows?.length ?? 0} data)`, margin + 110, currentY + 5);
-        currentY += 14;
+        doc.fillColor('#0F172A').font('Helvetica').fontSize(8.5);
+        doc.text(prettyType, margin + 80, currentY);
+        doc.text(this.getSensorTypeLabel(dataset.type), margin + 80, currentY + 12);
+        doc.text(`${this.formatDateRange(dataset.start)} - ${this.formatDateRange(dataset.end)}`, margin + 80, currentY + 24);
+        doc.text(`Aktif (${dataset.singleRows?.length ?? 0} data)`, margin + 80, currentY + 36);
+        currentY += 52;
 
         currentY = drawSectionTitle('II. RINGKASAN STATISTIK PENGUKURAN', currentY);
         currentY = drawSummaryCards(currentY);
 
         currentY = drawSectionTitle('III. TABEL DETAIL HASIL PENGUKURAN', currentY + 4);
         const columns = ['No.', 'Waktu Pengambilan', 'Nilai Parameter', 'Satuan'];
-        const widths = [12, 96, 42, 30];
+        const widths = [30, 200, 185, 100];
         currentY = drawTableHeader(columns, widths, currentY);
 
         dataset.singleRows?.forEach((row, index) => {
@@ -649,15 +669,26 @@ export class ReportService {
           index + 1,
           this.formatTableTimestamp(row.timestamp),
           row.sensorId,
-          this.formatNumber(row.levelCm),
-          this.formatNumber(row.rainfallMm),
-          this.formatNumber(row.flowRateLpm),
+          this.round(row.levelCm),
+          this.round(row.rainfallMm),
+          this.round(row.flowRateLpm),
         ];
 
         values.forEach((value, colIndex) => {
           const cell = worksheet.getCell(rowNumber, colIndex + 1);
           cell.value = value;
-          cell.alignment = { horizontal: colIndex === 0 ? 'center' : 'left', vertical: 'middle', wrapText: true };
+          
+          const alignment: Partial<ExcelJS.Alignment> = { vertical: 'middle', wrapText: true };
+          if (colIndex === 0) {
+            alignment.horizontal = 'center';
+          } else if (colIndex >= 3) {
+            alignment.horizontal = 'right';
+            cell.numFmt = '#,##0.00';
+          } else {
+            alignment.horizontal = 'left';
+          }
+          cell.alignment = alignment;
+
           cell.border = this.thinBorder();
           cell.fill = {
             type: 'pattern',
@@ -669,12 +700,28 @@ export class ReportService {
     } else {
       dataset.singleRows?.forEach((row, index) => {
         const rowNumber = tableHeaderRow + 1 + index;
-        const values = [index + 1, this.formatTableTimestamp(row.timestamp), this.formatNumber(row.value), row.unit];
+        const values = [
+          index + 1,
+          this.formatTableTimestamp(row.timestamp),
+          this.round(row.value),
+          row.unit,
+        ];
 
         values.forEach((value, colIndex) => {
           const cell = worksheet.getCell(rowNumber, colIndex + 1);
           cell.value = value;
-          cell.alignment = { horizontal: colIndex === 0 ? 'center' : 'left', vertical: 'middle', wrapText: true };
+          
+          const alignment: Partial<ExcelJS.Alignment> = { vertical: 'middle', wrapText: true };
+          if (colIndex === 0) {
+            alignment.horizontal = 'center';
+          } else if (colIndex === 2) {
+            alignment.horizontal = 'right';
+            cell.numFmt = '#,##0.00';
+          } else {
+            alignment.horizontal = 'left';
+          }
+          cell.alignment = alignment;
+
           cell.border = this.thinBorder();
           cell.fill = {
             type: 'pattern',

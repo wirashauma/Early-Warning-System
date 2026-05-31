@@ -15,6 +15,7 @@ export class ReportController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('format') format: string,
+    @Query('sensorId') sensorId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const report = await this.reportService.generateReport({
@@ -22,6 +23,7 @@ export class ReportController {
       startDate,
       endDate,
       format,
+      sensorId,
     });
 
     res.setHeader('Content-Type', report.contentType);
