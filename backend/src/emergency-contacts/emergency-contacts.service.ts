@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { EmergencyCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-export interface UpsertContactDto {
+export class UpsertContactDto {
   name: string;
   phone: string;
   category: EmergencyCategory;
