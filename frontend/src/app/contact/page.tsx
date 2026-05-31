@@ -1,5 +1,14 @@
 import { Card } from "@/components/ui/Card";
-import { emergencyContacts } from "@/constants";
+
+export const dynamic = "force-dynamic";
+
+interface EmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
+  category: string;
+  isActive: boolean;
+}
 
 const supportChannels = [
   {
@@ -22,7 +31,24 @@ const supportChannels = [
   },
 ];
 
-export default function ContactPage() {
+async function getEmergencyContacts(): Promise<EmergencyContact[]> {
+  try {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4101/api";
+    const cleanUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+    const res = await fetch(`${cleanUrl}/emergency-contacts`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return [];
+    const payload = await res.json();
+    return (payload.data || []).filter((c: EmergencyContact) => c.isActive);
+  } catch {
+    return [];
+  }
+}
+
+export default async function ContactPage() {
+  const emergencyContacts = await getEmergencyContacts();
+
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10">
       <section className="rounded-2xl bg-linear-to-br from-blue-900 via-blue-700 to-cyan-600 p-7 text-white md:p-10">
@@ -54,21 +80,30 @@ export default function ContactPage() {
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
         <h2 className="text-xl font-bold text-slate-900">Kontak Darurat Cepat</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Jika terjadi kondisi kritis, gunakan tombol telepon berikut untuk menghubungi layanan darurat.
+          Jika terjadi kondisi kritis, gunakan tombol telepon berikut untuk menghubungi layanan darurat resmi.
         </p>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {emergencyContacts.map((contact) => (
-            <a
-              key={contact.name}
-              href={`tel:${contact.phone}`}
-              className="rounded-lg border border-rose-200 bg-rose-50 p-4 transition-colors hover:bg-rose-100"
-            >
-              <p className="font-semibold text-rose-900">{contact.name}</p>
-              <p className="mt-1 text-sm text-rose-700">{contact.phone}</p>
-            </a>
-          ))}
-        </div>
+        {emergencyContacts.length > 0 ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {emergencyContacts.map((contact) => (
+              <a
+                key={contact.id}
+                href={`tel:${contact.phone}`}
+                className="rounded-lg border border-rose-200 bg-rose-50 p-4 transition-colors hover:bg-rose-100"
+              >
+                <p className="font-semibold text-rose-900">{contact.name}</p>
+                <span className="mt-0.5 inline-block rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-600">
+                  {contact.category}
+                </span>
+                <p className="mt-1 text-sm font-mono font-semibold text-rose-700">{contact.phone}</p>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-6 text-center text-sm text-slate-500">
+            Tidak ada data kontak darurat aktif saat ini.
+          </div>
+        )}
       </section>
     </main>
   );

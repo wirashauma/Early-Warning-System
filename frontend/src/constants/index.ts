@@ -51,10 +51,5 @@ export const adminNavLinks = [
   { href: "/admin/notifications", label: "Notifikasi" },
   { href: "/admin/reports", label: "Laporan" },
   { href: "/admin/users", label: "Pengguna" },
-];
-
-export const emergencyContacts = [
-  { name: "BPBD Kota", phone: "117" },
-  { name: "Basarnas", phone: "115" },
-  { name: "Ambulans", phone: "118" },
+  { href: "/admin/emergency-contacts", label: "Kontak Darurat" },
 ];
