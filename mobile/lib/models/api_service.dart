@@ -10,6 +10,7 @@ import 'rainfall_log.dart';
 import 'flow_rate_log.dart';
 import 'alert_model.dart';
 import 'sensor_model.dart';
+import 'emergency_contact_model.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -454,6 +455,35 @@ class ApiService {
     return list
         .map((item) => SensorModel.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Fetch active emergency contacts from the public backend endpoint.
+  /// Returns the database list or falls back to a hardcoded list when offline.
+  Future<List<EmergencyContactModel>> fetchEmergencyContacts() async {
+    try {
+      final response = await get('emergency-contacts');
+      final List<dynamic> list;
+      if (response is List<dynamic>) {
+        list = response;
+      } else if (response is Map<String, dynamic> &&
+          response.containsKey('items')) {
+        list = response['items'] as List<dynamic>? ?? [];
+      } else {
+        list = [];
+      }
+      final contacts = list
+          .map(
+            (item) =>
+                EmergencyContactModel.fromJson(item as Map<String, dynamic>),
+          )
+          .where((c) => c.isActive)
+          .toList();
+      return contacts.isEmpty
+          ? EmergencyContactModel.fallbackList
+          : contacts;
+    } catch (_) {
+      return EmergencyContactModel.fallbackList;
+    }
   }
 
   /// Download generated report file bytes (PDF or Excel) via authenticated API call.

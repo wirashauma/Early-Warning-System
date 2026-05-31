@@ -15,13 +15,11 @@ Panduan singkat untuk men-setup project agar backend, frontend, dan IoT berjalan
    npm install
    ```
 2. Buat file env:
-   - Salin `.env.example` ke `.env`, lalu isi:
-     - `DATABASE_URL`
-     - `DIRECT_URL`
-     - `FIREBASE_PROJECT_ID`
-     - `FIREBASE_SERVICE_ACCOUNT_PATH`
-     - `FCM_DEFAULT_TOPIC`
-     - (Opsional) `ALLOWED_ORIGINS` contoh: `http://localhost:3000,http://192.168.1.19:3000`
+   - Salin `.env.example` ke `.env` (file `.env` lokal sudah otomatis di-ignore oleh Git):
+     ```bash
+     cp .env.example .env
+     ```
+   - *Catatan:* `.env.example` sudah terkonfigurasi dengan database development bersama (Supabase) secara default, sehingga Anda bisa langsung menjalankannya tanpa konfigurasi tambahan!
 3. Generate dan migrate:
    ```bash
    npm run prisma:generate
@@ -36,7 +34,7 @@ Panduan singkat untuk men-setup project agar backend, frontend, dan IoT berjalan
    npm run start:dev
    ```
 6. Cek health:
-   - `http://localhost:3001/api/health/db`
+   - `http://localhost:4101/api/health/db` (Port default backend adalah 4101)
 
 ## 3) Frontend (Next.js)
 1. Masuk ke folder frontend:
@@ -44,19 +42,18 @@ Panduan singkat untuk men-setup project agar backend, frontend, dan IoT berjalan
    cd frontend
    npm install
    ```
-2. Pastikan `.env` terisi:
-   ```env
-   NEXT_PUBLIC_API_URL="/api"
-   NEXT_PUBLIC_WS_URL="ws://192.168.1.19:3001"
-   NEXT_PUBLIC_PRIMARY_SENSOR_ID="EWS-RF-002"
-   ```
-   Ganti IP sesuai host backend.
+2. Buat file env:
+   - Salin `.env.example` ke `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - *Catatan:* `.env.example` sudah berisi Maps Key, Firebase, dan konfigurasi API default yang langsung mengarah ke backend lokal.
 3. Jalankan frontend:
    ```bash
    npm run dev
    ```
 4. Buka web:
-   - `http://localhost:4100`
+   - `http://localhost:4000` (Port default frontend adalah 4000)
 
 ## 4) IoT (Arduino / NodeMCU)
 1. Set WiFi dan endpoint di Arduino:
@@ -66,8 +63,8 @@ Panduan singkat untuk men-setup project agar backend, frontend, dan IoT berjalan
 
 ## 5) Verifikasi Sinkronisasi
 Cek data live:
-- `http://<IP_BACKEND>:4101/api/rainfall/current`
-- `http://<IP_BACKEND>:4101/api/rainfall/history?sensorId=EWS-RF-002&startDate=2026-05-12T00:00:00.000Z&endDate=2026-05-12T23:59:59.000Z&interval=hourly`
+- `http://localhost:4101/api/rainfall/current`
+- `http://localhost:4101/api/rainfall/history?sensorId=EWS-RF-002&startDate=2026-05-12T00:00:00.000Z&endDate=2026-05-12T23:59:59.000Z&interval=hourly`
 
 Web melakukan polling setiap 5 detik, jadi nilai di UI harus mengikuti data terakhir dari Arduino.
 
@@ -77,8 +74,17 @@ Web melakukan polling setiap 5 detik, jadi nilai di UI harus mengikuti data tera
 - Data kosong: pastikan sensorId yang dikirim Arduino ada di database dan aktif.
 
 ## 7) (Opsional) Mobile
-```bash
-cd mobile
-flutter pub get
-flutter run
-```
+1. Masuk ke folder mobile:
+   ```bash
+   cd mobile
+   ```
+2. Buat file env:
+   - Salin `.env.example` ke `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+3. Jalankan aplikasi:
+   ```bash
+   flutter pub get
+   flutter run
+   ```

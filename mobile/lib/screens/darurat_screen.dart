@@ -1,31 +1,166 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../models/api_service.dart';
+import '../models/emergency_contact_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
 import 'main_navigation.dart';
 import 'edukasi_screen.dart';
 
-class DaruratScreen extends StatelessWidget {
+class DaruratScreen extends StatefulWidget {
   const DaruratScreen({super.key});
+
+  @override
+  State<DaruratScreen> createState() => _DaruratScreenState();
+}
+
+class _DaruratScreenState extends State<DaruratScreen> {
+  List<EmergencyContactModel> _contacts = [];
+  bool _isLoading = true;
+  bool _isOffline = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContacts();
+  }
+
+  Future<void> _loadContacts() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _isOffline = false;
+    });
+
+    final contacts = await ApiService().fetchEmergencyContacts();
+
+    // If every item is a fallback item, mark as offline for UI hint
+    final isFallback = contacts.every(
+      (c) => c.id.startsWith('fallback-'),
+    );
+
+    if (mounted) {
+      setState(() {
+        _contacts = contacts;
+        _isLoading = false;
+        _isOffline = isFallback;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const EWSAppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            _buildServices(context),
-            _buildBeforeCallingInfo(),
-            _buildQuickFlow(),
-            const SizedBox(height: 30), // Padding bawah
-          ],
+      body: RefreshIndicator(
+        onRefresh: _loadContacts,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildHeader(context),
+              if (_isOffline)
+                _buildOfflineBanner(),
+              if (_isLoading)
+                _buildLoadingShimmer()
+              else
+                _buildContactList(context),
+              _buildBeforeCallingInfo(),
+              _buildQuickFlow(),
+              const SizedBox(height: 30),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  // ── Offline Banner ────────────────────────────────────────────────────────
+  Widget _buildOfflineBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.statusWaspada.withAlpha(20),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.statusWaspada.withAlpha(80)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.wifi_off_rounded, size: 16, color: AppTheme.statusWaspada),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Tidak dapat menjangkau server. Menampilkan data cadangan. Tarik ke bawah untuk memuat ulang.',
+              style: TextStyle(
+                color: AppTheme.statusWaspada,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Loading Shimmer ───────────────────────────────────────────────────────
+  Widget _buildLoadingShimmer() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 180,
+            height: 18,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          ...List.generate(
+            3,
+            (i) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              height: 140,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Dynamic contact list ──────────────────────────────────────────────────
+  Widget _buildContactList(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Layanan Darurat Prioritas',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Tekan tombol panggil sesuai kebutuhan utama yang sedang terjadi.',
+            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          ..._contacts.map((c) => _ContactCard(contact: c)),
+        ],
+      ),
+    );
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -112,7 +247,9 @@ class DaruratScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const EdukasiScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const EdukasiScreen(),
+                    ),
                   );
                 },
               ),
@@ -123,76 +260,7 @@ class DaruratScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildServices(BuildContext context) {
-    final services = [
-      _Service(
-        'Ambulans',
-        '118',
-        'Prioritas',
-        AppTheme.statusBahaya,
-        'Pertolongan medis darurat untuk korban luka, sesak, atau kondisi gawat.',
-        'Secepat mungkin sesuai antrian darurat',
-        'Sampaikan kondisi pasien, usia, gejala utama, dan akses kendaraan.',
-      ),
-      _Service(
-        'Basarnas',
-        '115',
-        'Prioritas',
-        AppTheme.statusSiaga,
-        'Pencarian dan penyelamatan korban pada kondisi arus/akses berbahaya.',
-        'Prioritas tinggi untuk kondisi kritis',
-        'Hubungi jika ada korban terjebak, hanyut, atau butuh rescue segera.',
-      ),
-      _Service(
-        'BPBD Kota Padang',
-        '117',
-        'Prioritas',
-        AppTheme.accentBlue,
-        'Koordinasi tanggap bencana, evakuasi wilayah terdampak, dan aktivasi posko.',
-        '± 5-15 menit (tergantung akses lapangan)',
-        'Cocok dihubungi saat tinggi air naik cepat dan butuh koordinasi wilayah.',
-      ),
-      _Service(
-        'Polisi',
-        '110',
-        'Prioritas',
-        const Color(0xFF7C3AED),
-        'Pengamanan lokasi, pengaturan lalu lintas, dan dukungan evakuasi.',
-        'Sesuai prioritas kejadian lapangan',
-        'Hubungi jika perlu pengamanan area, rekayasa lalu lintas, atau dukungan keamanan.',
-      ),
-      _Service(
-        'RS Umum Daerah',
-        '119',
-        'Prioritas',
-        const Color(0xFF0D9488),
-        'Rujukan medis lanjutan dan penanganan kegawatdaruratan fasilitas kesehatan.',
-        'Bergantung kapasitas rumah sakit',
-        'Hubungi untuk koordinasi rujukan pasien banjir dan ketersediaan layanan.',
-      ),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Layanan Darurat Prioritas',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Tekan tombol panggil sesuai kebutuhan utama yang sedang terjadi.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          ...services.map((s) => _ServiceCard(service: s)),
-        ],
-      ),
-    );
-  }
-
+  // ── Before Calling Tips ───────────────────────────────────────────────────
   Widget _buildBeforeCallingInfo() {
     final tips = [
       'Sebutkan lokasi detail (alamat, patokan terdekat, atau titik Google Maps).',
@@ -256,6 +324,7 @@ class DaruratScreen extends StatelessWidget {
     );
   }
 
+  // ── Quick Flow ────────────────────────────────────────────────────────────
   Widget _buildQuickFlow() {
     final steps = [
       'Cek sensor paling berisiko di Dashboard/Peta.',
@@ -320,26 +389,31 @@ class DaruratScreen extends StatelessWidget {
   }
 }
 
-class _Service {
-  final String name, phone, badge, focus, response, note;
-  final Color color;
-  const _Service(
-    this.name,
-    this.phone,
-    this.badge,
-    this.color,
-    this.focus,
-    this.response,
-    this.note,
-  );
-}
+// ── Contact Card Widget ───────────────────────────────────────────────────────
+class _ContactCard extends StatelessWidget {
+  final EmergencyContactModel contact;
+  const _ContactCard({required this.contact});
 
-class _ServiceCard extends StatelessWidget {
-  final _Service service;
-  const _ServiceCard({required this.service});
+  Color get _cardColor {
+    switch (contact.category) {
+      case 'BPBD':
+        return AppTheme.accentBlue;
+      case 'SAR':
+        return AppTheme.statusSiaga;
+      case 'AMBULANCE':
+        return AppTheme.statusBahaya;
+      case 'POLICE':
+        return const Color(0xFF7C3AED);
+      case 'HOSPITAL':
+        return const Color(0xFF0D9488);
+      default:
+        return AppTheme.accentBlue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final color = _cardColor;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -355,7 +429,7 @@ class _ServiceCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                service.name,
+                contact.name,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -364,14 +438,14 @@ class _ServiceCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: service.color.withAlpha(20),
+                  color: color.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: service.color.withAlpha(80)),
+                  border: Border.all(color: color.withAlpha(80)),
                 ),
                 child: Text(
-                  service.badge,
+                  contact.categoryLabel,
                   style: TextStyle(
-                    color: service.color,
+                    color: color,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -385,7 +459,7 @@ class _ServiceCard extends StatelessWidget {
             style: TextStyle(color: AppTheme.textGrey, fontSize: 11),
           ),
           Text(
-            service.phone,
+            contact.phone,
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
@@ -409,7 +483,10 @@ class _ServiceCard extends StatelessWidget {
                           color: AppTheme.textGrey,
                         ),
                       ),
-                      Text(service.focus, style: const TextStyle(fontSize: 12)),
+                      Text(
+                        contact.focusLabel,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
@@ -427,7 +504,7 @@ class _ServiceCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        service.response,
+                        contact.responseTimeLabel,
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],
@@ -443,10 +520,9 @@ class _ServiceCard extends StatelessWidget {
               onPressed: () => showDialog(
                 context: context,
                 builder: (dialogCtx) => AlertDialog(
-                  // Menggunakan dialogCtx agar tidak konflik
-                  title: Text('Hubungi ${service.name}'),
+                  title: Text('Hubungi ${contact.name}'),
                   content: Text(
-                    'Apakah Anda ingin menghubungi ${service.phone}?\n\n${service.note}',
+                    'Apakah Anda ingin menghubungi ${contact.phone}?',
                   ),
                   actions: [
                     TextButton(
@@ -456,24 +532,24 @@ class _ServiceCard extends StatelessWidget {
                     ElevatedButton(
                       onPressed: () async {
                         Navigator.pop(dialogCtx);
-                        final uri = Uri(scheme: 'tel', path: service.phone);
+                        final uri = Uri(scheme: 'tel', path: contact.phone);
                         if (await canLaunchUrl(uri)) {
                           await launchUrl(uri);
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: service.color,
+                        backgroundColor: color,
                         foregroundColor: Colors.white,
                       ),
-                      child: Text('Hubungi ${service.phone}'),
+                      child: Text('Hubungi ${contact.phone}'),
                     ),
                   ],
                 ),
               ),
               icon: const Icon(Icons.phone, size: 16),
-              label: Text('Hubungi ${service.phone}'),
+              label: Text('Hubungi ${contact.phone}'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: service.color,
+                backgroundColor: color,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -482,21 +558,13 @@ class _ServiceCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            service.note,
-            style: const TextStyle(
-              color: AppTheme.textGrey,
-              fontSize: 11,
-              height: 1.4,
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
+// ── Nav Pill Helper ───────────────────────────────────────────────────────────
 class _NavPill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;

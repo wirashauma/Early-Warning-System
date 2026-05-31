@@ -21,21 +21,16 @@ mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 
 # Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
 backend/config/firebase-service-account.json
 backend/config/*firebase*adminsdk*.json
 *firebase-adminsdk*.json
 
-# Environment files - ensure local secrets are not tracked
-.env
-.env.*
-.env.local
-frontend/.env
-frontend/.env.local
-mobile/.env
-mobile/.env.local
-backend/.env
-backend/.env.local
-config/firebase-service-account.json
 
 # Debug
 npm-debug.log*
