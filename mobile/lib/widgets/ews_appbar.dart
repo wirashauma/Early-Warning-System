@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/auth_service.dart';
+import '../models/auth_provider.dart';
+import '../models/admin_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/notifikasi.dart'; // 1. PASTIKAN IMPORT INI ADA
@@ -15,8 +18,21 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = AuthService.instance.isLoggedIn;
-    final user = AuthService.instance.currentUser;
+    final authProvider = context.watch<AuthProvider>();
+    final adminProvider = context.watch<AdminProvider>();
+    final isLoggedIn = authProvider.isLoggedIn;
+    final user = authProvider.currentUser;
+
+    int unreadCount = 0;
+    if (isLoggedIn && user != null) {
+      final readAt = user.notificationReadAt;
+      final readIds = user.readNotificationIds;
+      unreadCount = adminProvider.alertHistory.where((a) {
+        if (readIds.contains(a.id)) return false;
+        final cutoff = readAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return a.sentAt.isAfter(cutoff);
+      }).length;
+    }
 
     return AppBar(
       title: const Text(
@@ -46,22 +62,35 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
                     MaterialPageRoute(
                       builder: (context) => const NotifikasiPage(),
                     ),
-                  );
+                  ).then((_) => onRefresh?.call());
                 },
               ),
-              // Badge Merah (Titik Notifikasi)
-              Positioned(
-                right: 12,
-                top: 12,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.statusBahaya,
-                    shape: BoxShape.circle,
+              // Badge Merah Dinamis (Titik Notifikasi dengan Angka)
+              if (unreadCount > 0)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.statusBahaya,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

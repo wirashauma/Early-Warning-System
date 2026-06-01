@@ -262,7 +262,28 @@ class AuthService {
       }
 
       await _apiService.markNotificationsReadAll();
-      _currentUser = _currentUser!.copyWith(notificationReadAt: DateTime.now());
+      _currentUser = _currentUser!.copyWith(
+        notificationReadAt: DateTime.now(),
+        readNotificationIds: [],
+      );
+      return AuthResult(isSuccess: true);
+    } catch (e) {
+      return AuthResult(isSuccess: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<AuthResult> markNotificationRead(String id) async {
+    try {
+      if (_currentUser == null) {
+        return AuthResult(isSuccess: false, errorMessage: 'User tidak login');
+      }
+
+      await _apiService.markNotificationRead(id);
+      final readIds = List<String>.from(_currentUser!.readNotificationIds);
+      if (!readIds.contains(id)) {
+        readIds.add(id);
+      }
+      _currentUser = _currentUser!.copyWith(readNotificationIds: readIds);
       return AuthResult(isSuccess: true);
     } catch (e) {
       return AuthResult(isSuccess: false, errorMessage: e.toString());

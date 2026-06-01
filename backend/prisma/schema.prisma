@@ -74,13 +74,14 @@ model User {
 
   alerts     Alert[]
   thresholds Threshold[]
+  notificationReads UserNotificationRead[]
 
   @@map("users")
 }
 
 model Sensor {
   id           String             @id @default(uuid())
-  sensorId     String             @unique @map("sensor_id")
+  sensorId     String             @map("sensor_id") @unique
   name         String
   type         SensorType
   latitude     Float
@@ -166,6 +167,7 @@ model Alert {
   createdAt  DateTime      @default(now()) @map("created_at")
 
   user User? @relation(fields: [sentBy], references: [id], onDelete: SetNull)
+  notificationReads UserNotificationRead[]
 
   @@index([sentAt])
   @@index([sentBy])
@@ -198,4 +200,17 @@ model FlowRateLog {
   @@index([sensorId, recordedAt])
   @@index([recordedAt])
   @@map("flow_rate_logs")
+}
+
+model UserNotificationRead {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  alertId   String   @map("alert_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alert     Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, alertId])
+  @@map("user_notification_reads")
 }

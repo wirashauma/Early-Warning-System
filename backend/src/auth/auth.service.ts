@@ -99,7 +99,7 @@ export class AuthService {
       },
     });
 
-    return this.toPublicUser(newUser);
+    return await this.toPublicUser(newUser);
   }
 
   // --- FUNGSI LOGIN ---
@@ -122,7 +122,7 @@ export class AuthService {
     return {
       accessToken: await this.buildToken(user, 900),
       refreshToken: await this.buildToken(user, 604800),
-      user: this.toPublicUser(user),
+      user: await this.toPublicUser(user),
     };
   }
 
@@ -196,7 +196,7 @@ export class AuthService {
       return {
         accessToken: await this.buildToken(user, 900),
         refreshToken: await this.buildToken(user, 604800),
-        user: this.toPublicUser(user),
+        user: await this.toPublicUser(user),
       };
     } catch (error) {
       if (
@@ -218,7 +218,7 @@ export class AuthService {
       throw new UnauthorizedException('User tidak ditemukan atau tidak aktif.');
     }
 
-    return this.toPublicUser(user);
+    return await this.toPublicUser(user);
   }
 
   // --- FUNGSI UPDATE PROFILE BARU ---
@@ -256,7 +256,7 @@ export class AuthService {
       data: updateData,
     });
 
-    return this.toPublicUser(updatedUser);
+    return await this.toPublicUser(updatedUser);
   }
 
   async markAllNotificationsRead(userId: string) {
@@ -265,7 +265,30 @@ export class AuthService {
       data: { notificationReadAt: new Date() },
     });
 
-    return this.toPublicUser(updatedUser);
+    return await this.toPublicUser(updatedUser);
+  }
+
+  async markNotificationRead(userId: string, alertId: string) {
+    await this.prisma.userNotificationRead.upsert({
+      where: {
+        userId_alertId: { userId, alertId },
+      },
+      update: {},
+      create: {
+        userId,
+        alertId,
+      },
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User tidak ditemukan.');
+    }
+
+    return await this.toPublicUser(user);
   }
 
   // --- FUNGSI DEFAULT ADMIN ---
@@ -291,7 +314,13 @@ export class AuthService {
   }
 
   // --- HELPER PUBLIC USER ---
-  private toPublicUser(user: PublicUserFields) {
+  private async toPublicUser(user: PublicUserFields) {
+    const reads = await this.prisma.userNotificationRead.findMany({
+      where: { userId: user.id },
+      select: { alertId: true },
+    });
+    const readNotificationIds = reads.map((r) => r.alertId);
+
     return {
       id: user.id,
       email: user.email,
@@ -304,6 +333,7 @@ export class AuthService {
       notificationStatus: user.notificationStatus ?? true,
       notificationEmail: user.notificationEmail ?? false,
       notificationReadAt: user.notificationReadAt?.toISOString() ?? null,
+      readNotificationIds,
     };
   }
 

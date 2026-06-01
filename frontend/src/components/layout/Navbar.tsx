@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { landingNavLinks } from "@/constants";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { cn } from "@/lib/utils";
 
 interface NavbarItem {
@@ -26,12 +27,15 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, logout, user } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, reload } = useUserNotifications();
   
   const [activeSection, setActiveSection] = useState("home");
   const [isHeroMode, setIsHeroMode] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
+  const notificationsRef = useRef<HTMLLIElement | null>(null);
   
   const isHomePage = pathname === "/";
   const isUserRoute = pathname.startsWith("/user");
@@ -56,6 +60,29 @@ export function Navbar() {
     window.addEventListener("mousedown", handleClickOutside);
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [profileOpen]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!notificationsRef.current?.contains(target)) {
+        setNotificationsOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [notificationsOpen]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      void reload();
+    };
+
+    window.addEventListener("notificationsUpdated", handleUpdate);
+    return () => window.removeEventListener("notificationsUpdated", handleUpdate);
+  }, [reload]);
 
   // Efek transisi Navbar saat di Landing Page
   useEffect(() => {
@@ -220,12 +247,13 @@ export function Navbar() {
 
           {/* Ikon Notifikasi (Muncul jika user sudah login) */}
           {isLoggedInUser && (
-            <li>
-              <Link
-                href="/user/notifications"
+            <li className="relative" ref={notificationsRef}>
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
                 className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ml-2",
-                  isRouteActive("/user/notifications")
+                  "relative inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ml-2",
+                  notificationsOpen || isRouteActive("/user/notifications")
                     ? "border-blue-200 bg-blue-50 text-blue-700"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700",
                 )}
@@ -236,7 +264,98 @@ export function Navbar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5" />
                   <path strokeLinecap="round" d="M10 19a2 2 0 004 0" />
                 </svg>
-              </Link>
+
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                    {unreadCount}
+                    <span className="absolute inset-0 rounded-full bg-rose-600/35 animate-ping opacity-75 pointer-events-none" />
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">Notifikasi</h3>
+                      <p className="text-[10px] text-slate-500">{unreadCount} belum dibaca</p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await markAllAsRead();
+                        }}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                      >
+                        Tandai semua dibaca
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-slate-500">
+                        Belum ada notifikasi baru.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 5).map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={async () => {
+                            if (!item.isRead) {
+                              await markAsRead(item.id);
+                            }
+                            setNotificationsOpen(false);
+                            router.push(`/user/notifications/${item.id}`);
+                          }}
+                          className={cn(
+                            "group flex flex-col gap-1 p-3 text-left text-xs cursor-pointer transition hover:bg-slate-50",
+                            item.isRead ? "bg-white" : "bg-blue-50/20"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="truncate font-semibold text-slate-800 group-hover:text-blue-700">
+                              {item.title}
+                            </span>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold",
+                                item.riskLevel === "red"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : item.riskLevel === "orange"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : "bg-amber-100 text-amber-700"
+                              )}
+                            >
+                              {item.riskLevel === "red" ? "Bahaya" : item.riskLevel === "orange" ? "Waspada" : "Aman"}
+                            </span>
+                          </div>
+                          <p className="line-clamp-2 text-slate-600 text-[11px] leading-relaxed">
+                            {item.message}
+                          </p>
+                          <span className="text-[9px] text-slate-400 mt-1">
+                            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {item.sensorName}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 p-2 bg-slate-50 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        router.push("/user/notifications");
+                      }}
+                      className="inline-flex w-full items-center justify-center rounded-lg py-2 text-xs font-bold text-blue-600 hover:bg-blue-100/50 hover:text-blue-700 transition"
+                    >
+                      Lihat Semua
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           )}
 

@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Put, Request, UseGuards } from '@nestjs/common';
+import { Controller, HttpCode, Param, Put, Request, UseGuards } from '@nestjs/common';
 import { ok } from '../common/api-response';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
@@ -20,6 +20,14 @@ export class NotificationsController {
   @HttpCode(200)
   async markAllRead(@Request() req: AuthenticatedRequest) {
     const data = await this.notificationsService.markAllRead(req.user.id);
+    return ok(data);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/read')
+  @HttpCode(200)
+  async markRead(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const data = await this.notificationsService.markRead(req.user.id, id);
     return ok(data);
   }
 }

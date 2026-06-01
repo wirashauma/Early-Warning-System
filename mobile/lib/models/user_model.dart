@@ -9,6 +9,7 @@ class UserModel {
   final bool notificationStatus;
   final bool notificationEmail;
   final DateTime? notificationReadAt;
+  final List<String> readNotificationIds;
   final DateTime createdAt;
 
   UserModel({
@@ -22,6 +23,7 @@ class UserModel {
     this.notificationStatus = true,
     this.notificationEmail = false,
     this.notificationReadAt,
+    this.readNotificationIds = const [],
     required this.createdAt,
   });
 
@@ -35,6 +37,7 @@ class UserModel {
     bool? notificationStatus,
     bool? notificationEmail,
     DateTime? notificationReadAt,
+    List<String>? readNotificationIds,
   }) {
     return UserModel(
       id: id,
@@ -47,6 +50,7 @@ class UserModel {
       notificationStatus: notificationStatus ?? this.notificationStatus,
       notificationEmail: notificationEmail ?? this.notificationEmail,
       notificationReadAt: notificationReadAt ?? this.notificationReadAt,
+      readNotificationIds: readNotificationIds ?? this.readNotificationIds,
       createdAt: createdAt,
     );
   }
@@ -91,6 +95,9 @@ class UserModel {
       notificationReadAt: _parseNullableDateTime(
         map['notificationReadAt'] ?? map['notification_read_at'],
       ),
+      readNotificationIds: map['readNotificationIds'] != null
+          ? List<String>.from(map['readNotificationIds'])
+          : [],
       createdAt: _parseDateTime(map['createdAt'] ?? map['created_at']),
     );
   }
@@ -107,6 +114,7 @@ class UserModel {
     'notificationStatus': notificationStatus,
     'notificationEmail': notificationEmail,
     'notificationReadAt': notificationReadAt?.toIso8601String(),
+    'readNotificationIds': readNotificationIds,
     'createdAt': createdAt.toIso8601String(),
   };
 }

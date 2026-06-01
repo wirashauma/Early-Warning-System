@@ -63,7 +63,10 @@ function mapSeverityToGuideHref(severity: string): string {
   return "/user/education#aksi-kuning";
 }
 
-function isNotificationRead(sentAt: string, notificationReadAt: string | null) {
+function isNotificationRead(sentAt: string, notificationReadAt: string | null, id: string, readNotificationIds: string[]) {
+  if (readNotificationIds.includes(id)) {
+    return true;
+  }
   if (!notificationReadAt) {
     return false;
   }
@@ -106,6 +109,7 @@ export default function UserNotificationDetailPage() {
         ]);
 
         const notificationReadAt = meResponse.data?.data?.notificationReadAt ?? null;
+        const readNotificationIds = meResponse.data?.data?.readNotificationIds ?? [];
         const row = response.data?.data as {
           id: string;
           title: string;
@@ -120,8 +124,9 @@ export default function UserNotificationDetailPage() {
           sentAt: string;
         };
 
-        if (!isNotificationRead(row.sentAt, notificationReadAt)) {
-          await api.put("/auth/notifications/read-all");
+        if (!isNotificationRead(row.sentAt, notificationReadAt, row.id, readNotificationIds)) {
+          await api.put(`/auth/notifications/${row.id}/read`);
+          window.dispatchEvent(new CustomEvent("notificationsUpdated"));
         }
 
         const sourceType = row.sourceType ?? (row.user?.name ? "ADMIN" : "SYSTEM");

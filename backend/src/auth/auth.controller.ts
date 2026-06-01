@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Param,
   Post,
   Put,
   Request,
@@ -147,6 +148,14 @@ export class AuthController {
   @HttpCode(200)
   async markNotificationsReadAll(@Request() req: AuthenticatedRequest) {
     const data = await this.authService.markAllNotificationsRead(req.user.id);
+    return ok(data);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('notifications/:id/read')
+  @HttpCode(200)
+  async markNotificationRead(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const data = await this.authService.markNotificationRead(req.user.id, id);
     return ok(data);
   }
 

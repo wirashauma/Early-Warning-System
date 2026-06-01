@@ -262,6 +262,10 @@ class ApiService {
     return await put('notifications/read-all', {}) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> markNotificationRead(String id) async {
+    return await put('notifications/$id/read', {}) as Map<String, dynamic>;
+  }
+
   // ==========================================
   // TELEMETRY & ALERTS HISTORY METHODS
   // ==========================================

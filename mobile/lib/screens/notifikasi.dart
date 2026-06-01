@@ -101,14 +101,16 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
       body: Consumer<AdminProvider>(
         builder: (context, provider, _) {
           final List<AlertModel> list = provider.alertHistory;
-          final readAt = context
-              .watch<AuthProvider>()
-              .currentUser
-              ?.notificationReadAt;
+          final currentUser = context.watch<AuthProvider>().currentUser;
+          final readAt = currentUser?.notificationReadAt;
+          final readIds = currentUser?.readNotificationIds ?? [];
+
           final unreadCount = list.where((a) {
+            if (readIds.contains(a.id)) return false;
             final cutoff = readAt ?? DateTime.fromMillisecondsSinceEpoch(0);
             return a.sentAt.isAfter(cutoff);
           }).length;
+
           return RefreshIndicator(
             onRefresh: _onRefresh,
             child: Column(
@@ -185,126 +187,183 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
         : Colors.green;
     final dateStr = alert.sentAt.toLocal().toString().split('.').first;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final readAt = currentUser?.notificationReadAt;
+    final readIds = currentUser?.readNotificationIds ?? [];
+    final isRead = readIds.contains(alert.id) ||
+        (readAt != null && !alert.sentAt.isAfter(readAt));
+
+    void handleOpenDetail() {
+      if (!isRead) {
+        final auth = context.read<AuthProvider>();
+        final admin = context.read<AdminProvider>();
+        auth.markNotificationAsRead(alert.id).then((success) {
+          if (success) {
+            admin.loadAlertHistory();
+          }
+        });
+      }
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
+          title: Text(
+            alert.title.isNotEmpty ? alert.title : 'Detail Peringatan',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Tingkat: $tag',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  alert.message,
+                  style: const TextStyle(height: 1.5, fontSize: 14, color: Color(0xFF334155)),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Waktu: $dateStr',
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: handleOpenDetail,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isRead ? Colors.white : const Color(0xFFEFF6FF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isRead ? const Color(0xFFE2E8F0) : const Color(0xFFBFDBFE),
+            width: isRead ? 1 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    tag,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+                if (!isRead) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Baru',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                Text(
+                  dateStr,
+                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              alert.title.isNotEmpty ? alert.title : alert.message,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              alert.message,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: handleOpenDetail,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: isRead ? const Color(0xFFE2E8F0) : const Color(0xFF93C5FD),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: Text(
-                  tag,
+                  "Buka Detail",
                   style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
+                    color: isRead ? Colors.black87 : Colors.blue[700],
+                    fontSize: 12,
+                    fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              const Spacer(),
-              Text(
-                dateStr,
-                style: const TextStyle(color: Colors.grey, fontSize: 10),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            alert.title.isNotEmpty ? alert.title : alert.message,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            alert.message,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-              height: 1.4,
             ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: Text(
-                      alert.title.isNotEmpty
-                          ? alert.title
-                          : 'Detail Peringatan',
-                    ),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Tingkat: $tag',
-                            style: TextStyle(
-                              color: color,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            alert.message,
-                            style: const TextStyle(height: 1.5),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Waktu: $dateStr',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Tutup'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                "Buka Detail",
-                style: TextStyle(color: Colors.black87, fontSize: 12),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

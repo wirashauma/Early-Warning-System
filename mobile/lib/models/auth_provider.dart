@@ -173,4 +173,22 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
+  Future<bool> markNotificationAsRead(String id) async {
+    _setLoading(true);
+    clearError();
+
+    try {
+      final result = await _authService.markNotificationRead(id);
+      if (!result.isSuccess) {
+        _errorMessage = result.errorMessage;
+      }
+      return result.isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
 }

@@ -17,4 +17,24 @@ export class NotificationsService {
       notificationReadAt: updated.notificationReadAt?.toISOString() ?? null,
     };
   }
+
+  async markRead(userId: string, alertId: string) {
+    const read = await this.prisma.userNotificationRead.upsert({
+      where: {
+        userId_alertId: { userId, alertId },
+      },
+      update: {},
+      create: {
+        userId,
+        alertId,
+      },
+    });
+
+    return {
+      id: read.id,
+      userId: read.userId,
+      alertId: read.alertId,
+      readAt: read.readAt.toISOString(),
+    };
+  }
 }

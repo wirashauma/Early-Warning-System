@@ -42,7 +42,10 @@ function mapSeverityToGuideHref(severity: ApiAlertItem["severity"]): string {
   return "/user/education#aksi-kuning";
 }
 
-function isNotificationRead(sentAt: string, notificationReadAt: string | null) {
+function isNotificationRead(sentAt: string, notificationReadAt: string | null, id: string, readNotificationIds: string[]) {
+  if (readNotificationIds.includes(id)) {
+    return true;
+  }
   if (!notificationReadAt) {
     return false;
   }
@@ -60,6 +63,7 @@ function getErrorMessage(error: unknown) {
 export function useUserNotifications() {
   const [items, setItems] = useState<UserNotificationItem[]>([]);
   const [notificationReadAt, setNotificationReadAt] = useState<string | null>(null);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -76,9 +80,11 @@ export function useUserNotifications() {
         }),
       ]);
 
-      const backendUser = meResponse.data?.data as { notificationReadAt?: string | null } | undefined;
+      const backendUser = meResponse.data?.data as { notificationReadAt?: string | null; readNotificationIds?: string[] } | undefined;
       const readAt = backendUser?.notificationReadAt ?? null;
+      const readIds = backendUser?.readNotificationIds ?? [];
       setNotificationReadAt(readAt);
+      setReadNotificationIds(readIds);
 
       const rows = (alertsResponse.data?.data?.items ?? []) as ApiAlertItem[];
 
@@ -95,7 +101,7 @@ export function useUserNotifications() {
           title: row.title,
           message: row.message,
           createdAt: row.sentAt,
-          isRead: isNotificationRead(row.sentAt, readAt),
+          isRead: isNotificationRead(row.sentAt, readAt, row.id, readIds),
           guideHref: mapSeverityToGuideHref(row.severity),
           senderName: row.user?.name?.trim() || (sourceType === "ADMIN" ? "Admin EWS" : "Sistem EWS"),
           sourceType,
@@ -130,6 +136,8 @@ export function useUserNotifications() {
 
       setNotificationReadAt(readAt);
       setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      // Emit custom update event
+      window.dispatchEvent(new CustomEvent("notificationsUpdated"));
     } catch (error) {
       setError(getErrorMessage(error));
       throw error;
@@ -138,9 +146,20 @@ export function useUserNotifications() {
     }
   }, []);
 
-  const markAsRead = useCallback(async (_id: string) => {
-    await markAllAsRead();
-  }, [markAllAsRead]);
+  const markAsRead = useCallback(async (id: string) => {
+    try {
+      await api.put(`/auth/notifications/${id}/read`);
+      setReadNotificationIds((prev) => [...prev, id]);
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, isRead: true } : item))
+      );
+      // Emit custom update event
+      window.dispatchEvent(new CustomEvent("notificationsUpdated"));
+    } catch (error) {
+      setError(getErrorMessage(error));
+      throw error;
+    }
+  }, []);
 
   return {
     notifications: items,
@@ -152,5 +171,6 @@ export function useUserNotifications() {
     isUpdating,
     reload: loadNotifications,
     notificationReadAt,
+    readNotificationIds,
   };
 }
