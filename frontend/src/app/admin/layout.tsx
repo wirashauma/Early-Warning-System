@@ -30,10 +30,14 @@ export default function AdminLayout({ children }: PropsWithChildren) {
         ]);
 
         const notificationReadAt = meResponse.data?.data?.notificationReadAt ?? null;
+        const readNotificationIds = meResponse.data?.data?.readNotificationIds ?? [];
         const readAtTime = notificationReadAt ? new Date(notificationReadAt).getTime() : Number.NEGATIVE_INFINITY;
-        const rows = (alertsResponse.data?.data?.items ?? []) as Array<{ sentAt: string }>;
+        const rows = (alertsResponse.data?.data?.items ?? []) as Array<{ id: string; sentAt: string }>;
 
-        const count = rows.filter((row) => new Date(row.sentAt).getTime() > readAtTime).length;
+        const count = rows.filter((row) => {
+          if (readNotificationIds.includes(row.id)) return false;
+          return new Date(row.sentAt).getTime() > readAtTime;
+        }).length;
         setUnreadCount(count);
       } catch {
         // ignore

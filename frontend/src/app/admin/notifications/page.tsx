@@ -15,7 +15,8 @@ const levelDotClass: Record<NotificationConditionLevel, string> = {
   Bahaya: "bg-rose-500",
 };
 
-function isNotificationRead(sentAt: string, notificationReadAt: string | null) {
+function isNotificationRead(sentAt: string, notificationReadAt: string | null, id: string, readNotificationIds: string[]) {
+  if (readNotificationIds.includes(id)) return true;
   if (!notificationReadAt) return false;
   return new Date(sentAt).getTime() <= new Date(notificationReadAt).getTime();
 }
@@ -37,6 +38,7 @@ export default function AdminNotificationsPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const mounted = typeof window !== "undefined";
   const [notificationReadAt, setNotificationReadAt] = useState<string | null>(null);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -50,7 +52,9 @@ export default function AdminNotificationsPage() {
         ]);
 
         const readAt = meResponse.data?.data?.notificationReadAt ?? null;
+        const readIds = meResponse.data?.data?.readNotificationIds ?? [];
         setNotificationReadAt(readAt);
+        setReadNotificationIds(readIds);
 
         const rows = (response.data?.data?.items ?? []) as Array<{
           id: string;
@@ -71,7 +75,7 @@ export default function AdminNotificationsPage() {
             sender: row.user?.name ?? "Sistem EWS",
             channel: row.channels?.[0] ?? "push",
             receivedAt: row.sentAt,
-            isRead: isNotificationRead(row.sentAt, readAt),
+            isRead: isNotificationRead(row.sentAt, readAt, row.id, readIds),
           })),
         );
       } catch (error) {
@@ -93,6 +97,7 @@ export default function AdminNotificationsPage() {
       const response = await api.put("/auth/notifications/read-all");
       const readAt = response.data?.data?.notificationReadAt ?? new Date().toISOString();
       setNotificationReadAt(readAt);
+      setReadNotificationIds([]);
       setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
       setOpenMenu(null);
       window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
@@ -103,9 +108,8 @@ export default function AdminNotificationsPage() {
 
   const handleMarkAsRead = async (id: string) => {
     try {
-      const response = await api.put("/auth/notifications/read-all");
-      const readAt = response.data?.data?.notificationReadAt ?? new Date().toISOString();
-      setNotificationReadAt(readAt);
+      await api.put(`/auth/notifications/${id}/read`);
+      setReadNotificationIds((prev) => [...prev, id]);
       setItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, isRead: true } : item))
       );
