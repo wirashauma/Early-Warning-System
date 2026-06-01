@@ -1,11 +1,29 @@
+import * as dotenv from 'dotenv';
 import { PrismaClient, SensorType, SensorConnectivity } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import axios from 'axios';
 
-const prisma = new PrismaClient();
+dotenv.config();
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('DATABASE_URL not found in environment variables');
+  process.exit(1);
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
 const API_URL = 'http://localhost:4101/api/iot/ingest';
 
 async function main() {
   console.log('🚀 Starting Sensor Hardware Spoofing Simulation...');
+
+  // Log active thresholds
+  const thresholds = await prisma.threshold.findMany();
+  console.log('📊 Active Thresholds in Database:', JSON.stringify(thresholds));
 
   // 1. Ensure we have a test user with notificationEmail: true
   let testUser = await prisma.user.findFirst({
@@ -81,13 +99,14 @@ async function main() {
   // 4. Run Sequential Ingestions
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // --- RAINFALL STEP 1: Normal Level ---
-  console.log('\n--- STEP 1: Sending Normal Rainfall (1.5 mm/hour) ---');
+  // --- STEP 1: Sending Normal Water Level (3.0 cm) ---
+  console.log('\n--- STEP 1: Sending Normal Water Level (3.0 cm) ---');
+  console.log('👉 EXPECTED: Ingested successfully, status NORMAL (Green).');
   try {
     const res = await axios.post(API_URL, {
-      sensorId: rainSensor.sensorId,
-      rainfall: 1.5,
-      batteryLevel: 98,
+      sensorId: waterSensor.sensorId,
+      waterLevel: 3.0,
+      batteryLevel: 85,
       connectivity: 'ONLINE',
     });
     console.log('Response Status:', res.status);
@@ -96,16 +115,17 @@ async function main() {
     console.error('Step 1 Ingest failed:', err.response?.data || err.message);
   }
 
-  await sleep(2000);
+  console.log('⏳ Sleeping 10 seconds to avoid spamming...');
+  await sleep(10000);
 
-  // --- RAINFALL STEP 2: Warning Threshold Trigger ---
-  console.log('\n--- STEP 2: Sending Warning Threshold Rainfall (12.0 mm/hour) ---');
-  console.log('👉 EXPECTED: Alert warning status + email trigger logged in console!');
+  // --- STEP 2: Sending Waspada / Kuning Water Level (6.0 cm) ---
+  console.log('\n--- STEP 2: Sending Waspada / Kuning Water Level (6.0 cm) ---');
+  console.log('👉 EXPECTED: Status WARNING (Yellow) -> Automated FCM & Email Alert Broadcast!');
   try {
     const res = await axios.post(API_URL, {
-      sensorId: rainSensor.sensorId,
-      rainfall: 12.0,
-      batteryLevel: 97,
+      sensorId: waterSensor.sensorId,
+      waterLevel: 6.0,
+      batteryLevel: 85,
       connectivity: 'ONLINE',
     });
     console.log('Response Status:', res.status);
@@ -114,16 +134,17 @@ async function main() {
     console.error('Step 2 Ingest failed:', err.response?.data || err.message);
   }
 
-  await sleep(2000);
+  console.log('⏳ Sleeping 10 seconds to avoid spamming...');
+  await sleep(10000);
 
-  // --- RAINFALL STEP 3: Repeated Warning / Anti-Spam Check ---
-  console.log('\n--- STEP 3: Re-sending Warning Threshold Rainfall (13.5 mm/hour) within 1-Hour ---');
-  console.log('👉 EXPECTED: Event ingested, but email skipped due to anti-spam rate limiting!');
+  // --- STEP 3: Sending Siaga / Orange Water Level (10.0 cm) ---
+  console.log('\n--- STEP 3: Sending Siaga / Orange Water Level (10.0 cm) ---');
+  console.log('👉 EXPECTED: Status ALERT (Orange) -> Automated FCM & Email Alert Broadcast!');
   try {
     const res = await axios.post(API_URL, {
-      sensorId: rainSensor.sensorId,
-      rainfall: 13.5,
-      batteryLevel: 97,
+      sensorId: waterSensor.sensorId,
+      waterLevel: 10.0,
+      batteryLevel: 84,
       connectivity: 'ONLINE',
     });
     console.log('Response Status:', res.status);
@@ -132,15 +153,16 @@ async function main() {
     console.error('Step 3 Ingest failed:', err.response?.data || err.message);
   }
 
-  await sleep(2000);
+  console.log('⏳ Sleeping 10 seconds to avoid spamming...');
+  await sleep(10000);
 
-  // --- WATER LEVEL STEP 4: Critical Water Level ---
-  console.log('\n--- STEP 4: Sending Critical Water Level (235.0 cm) ---');
-  console.log('👉 EXPECTED: Danger alert status + email trigger logged for Water Level!');
+  // --- STEP 4: Sending Bahaya / Merah Water Level (15.0 cm) ---
+  console.log('\n--- STEP 4: Sending Bahaya / Merah Water Level (15.0 cm) ---');
+  console.log('👉 EXPECTED: Status DANGER (Red) -> Automated FCM & Email Alert Broadcast!');
   try {
     const res = await axios.post(API_URL, {
       sensorId: waterSensor.sensorId,
-      waterLevel: 235.0,
+      waterLevel: 15.0,
       batteryLevel: 84,
       connectivity: 'ONLINE',
     });
@@ -150,7 +172,7 @@ async function main() {
     console.error('Step 4 Ingest failed:', err.response?.data || err.message);
   }
 
-  console.log('\n🏁 Simulation steps executed. Please check your backend terminal logs to verify alerts and email debouncing.');
+  console.log('\n🏁 Simulation steps executed. Please check your backend terminal logs and frontend dashboard to verify FCM alerts!');
 }
 
 main()
@@ -160,4 +182,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

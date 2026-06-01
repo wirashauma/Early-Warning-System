@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { IngestPayload } from './dto/ingest.dto';
 import { EmailService } from '../common/email/email.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { AlertsService } from '../alerts/alerts.service';
 
 export interface IngestResult {
   recordedAt: string;
@@ -41,6 +42,7 @@ export class IotService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly realtimeService: RealtimeService,
+    private readonly alertsService: AlertsService,
   ) {}
 
   async ingest(payload: IngestPayload): Promise<IngestResult> {
@@ -155,36 +157,7 @@ export class IotService {
           status: waterStatus,
         };
 
-        // Automated alerts: Trigger alert if status is DANGER
-        const dangerMin = waterThreshold?.dangerMin ?? 221;
-        if (waterStatus === WaterLevelStatus.DANGER || (payload.waterLevel as number) >= dangerMin) {
-          // 15-minute throttle check to prevent spamming
-          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-          const existingAlert = await tx.alert.findFirst({
-            where: {
-              severity: AlertSeverity.DANGER,
-              createdAt: { gte: fifteenMinutesAgo },
-              OR: [
-                { title: { contains: sensor.sensorId } },
-                { message: { contains: sensor.sensorId } },
-                { targetArea: sensor.name }
-              ]
-            }
-          });
 
-          if (!existingAlert) {
-            await tx.alert.create({
-              data: {
-                title: `CRITICAL FLOOD WARNING (${sensor.sensorId})`,
-                message: `CRITICAL ALERT: Sensor ${sensor.name} has detected water levels reaching ${payload.waterLevel} cm, exceeding the danger threshold of ${dangerMin} cm. Evacuation protocols should be considered immediately.`,
-                severity: AlertSeverity.DANGER,
-                channels: ['PUSH', 'EMAIL'],
-                targetArea: sensor.name,
-                sentBy: sentById,
-              }
-            });
-          }
-        }
       }
 
       // Handle Rainfall Reading
@@ -240,36 +213,7 @@ export class IotService {
           intensity,
         };
 
-        // Automated alerts: Trigger alert if intensity is HEAVY / breaches dangerMin
-        const dangerMin = rainfallThreshold?.dangerMin ?? 20;
-        if (intensity === RainfallIntensity.HEAVY || (payload.rainfall as number) >= dangerMin) {
-          // 15-minute throttle check to prevent spamming
-          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-          const existingAlert = await tx.alert.findFirst({
-            where: {
-              severity: AlertSeverity.DANGER,
-              createdAt: { gte: fifteenMinutesAgo },
-              OR: [
-                { title: { contains: sensor.sensorId } },
-                { message: { contains: sensor.sensorId } },
-                { targetArea: sensor.name }
-              ]
-            }
-          });
 
-          if (!existingAlert) {
-            await tx.alert.create({
-              data: {
-                title: `CRITICAL RAINFALL WARNING (${sensor.sensorId})`,
-                message: `CRITICAL ALERT: Sensor ${sensor.name} has recorded extreme rainfall of ${payload.rainfall} mm/hour, exceeding the danger threshold of ${dangerMin} mm/hour. Watch for potential flash floods in surrounding areas.`,
-                severity: AlertSeverity.DANGER,
-                channels: ['PUSH', 'EMAIL'],
-                targetArea: sensor.name,
-                sentBy: sentById,
-              }
-            });
-          }
-        }
       }
 
       // Handle Flow Rate Reading
@@ -319,38 +263,7 @@ export class IotService {
           unit: 'l/min',
         };
 
-        // Automated alerts for Flow Rate (if thresholds exist)
-        if (flowThreshold && flowThreshold.dangerMin) {
-          const dangerMin = flowThreshold.dangerMin;
-          if ((payload.flowRate as number) >= dangerMin) {
-            // 15-minute throttle check to prevent spamming
-            const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-            const existingAlert = await tx.alert.findFirst({
-              where: {
-                severity: AlertSeverity.DANGER,
-                createdAt: { gte: fifteenMinutesAgo },
-                OR: [
-                  { title: { contains: sensor.sensorId } },
-                  { message: { contains: sensor.sensorId } },
-                  { targetArea: sensor.name }
-                ]
-              }
-            });
 
-            if (!existingAlert) {
-              await tx.alert.create({
-                data: {
-                  title: `CRITICAL FLOW RATE WARNING (${sensor.sensorId})`,
-                  message: `CRITICAL ALERT: Sensor ${sensor.name} has recorded dangerous water flow rate of ${payload.flowRate} l/min, exceeding the danger threshold of ${dangerMin} l/min.`,
-                  severity: AlertSeverity.DANGER,
-                  channels: ['PUSH', 'EMAIL'],
-                  targetArea: sensor.name,
-                  sentBy: sentById,
-                }
-              });
-            }
-          }
-        }
       }
 
       return resultData;
@@ -359,53 +272,111 @@ export class IotService {
     // 3. Emit SSE real-time sensor updates
     this.realtimeService.emitSensorUpdate(result);
 
-    // 4. Trigger automated email notifications outside the transaction loop
+    // 4. Trigger automated FCM push & email alerts outside transaction loop
     try {
-      if (result.rainfall) {
-        const rainInfo = result.rainfall;
-        const sensor = await this.prisma.sensor.findUnique({
-          where: { sensorId: rainInfo.sensorId },
-        });
-        if (sensor && (rainInfo.intensity === 'MODERATE' || rainInfo.intensity === 'HEAVY')) {
-          const level = rainInfo.intensity === 'HEAVY' ? 'DANGER' : 'WARNING';
-          const warningMin = rainfallThreshold?.warningMin ?? 5;
-          const dangerMin = rainfallThreshold?.dangerMin ?? 20;
-          const thresholdVal = level === 'DANGER' ? dangerMin : warningMin;
-
-          await this.emailService.sendAutomatedThresholdAlert(
-            sensor.sensorId,
-            sensor.name,
-            rainInfo.rainfall,
-            thresholdVal,
-            level,
-            'RAINFALL',
-          );
-        }
-      }
-
       if (result.water) {
         const waterInfo = result.water;
         const sensor = await this.prisma.sensor.findUnique({
           where: { sensorId: waterInfo.sensorId },
         });
-        if (sensor && (waterInfo.status === 'WARNING' || waterInfo.status === 'ALERT' || waterInfo.status === 'DANGER')) {
-          const level = waterInfo.status === 'DANGER' ? 'DANGER' : 'WARNING';
+
+        if (
+          sensor &&
+          (waterInfo.status === WaterLevelStatus.WARNING ||
+            waterInfo.status === WaterLevelStatus.ALERT ||
+            waterInfo.status === WaterLevelStatus.DANGER)
+        ) {
+          const severity =
+            waterInfo.status === WaterLevelStatus.DANGER
+              ? AlertSeverity.DANGER
+              : AlertSeverity.WARNING;
+
           const warningMin = waterThreshold?.warningMin ?? 151;
           const dangerMin = waterThreshold?.dangerMin ?? 221;
-          const thresholdVal = level === 'DANGER' ? dangerMin : warningMin;
+          const alertMin = waterThreshold?.alertMin ?? 180;
 
-          await this.emailService.sendAutomatedThresholdAlert(
-            sensor.sensorId,
-            sensor.name,
-            waterInfo.waterLevel,
-            thresholdVal,
-            level,
-            'WATER_LEVEL',
-          );
+          // 15-minute throttle check to prevent spamming
+          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+          const existingAlert = await this.prisma.alert.findFirst({
+            where: {
+              severity: severity,
+              targetArea: sensor.name,
+              sentAt: { gte: fifteenMinutesAgo },
+              title: { contains: sensor.sensorId },
+            },
+          });
+
+          if (!existingAlert) {
+            await this.alertsService.broadcast({
+              title:
+                waterInfo.status === WaterLevelStatus.DANGER
+                  ? `BAHAYA: Ketinggian Air Kritikal (${sensor.sensorId})`
+                  : waterInfo.status === WaterLevelStatus.ALERT
+                    ? `SIAGA: Ketinggian Air Tinggi (${sensor.sensorId})`
+                    : `WASPADA: Ketinggian Air Meningkat (${sensor.sensorId})`,
+              message:
+                waterInfo.status === WaterLevelStatus.DANGER
+                  ? `PERINGATAN BAHAYA: Sensor ${sensor.name} mendeteksi ketinggian air mencapai ${waterInfo.waterLevel} cm, melebihi ambang batas bahaya ${dangerMin} cm. Mohon segera lakukan evakuasi!`
+                  : waterInfo.status === WaterLevelStatus.ALERT
+                    ? `PERINGATAN SIAGA: Sensor ${sensor.name} mendeteksi ketinggian air mencapai ${waterInfo.waterLevel} cm, melebihi ambang batas siaga ${alertMin} cm. Tingkatkan kewaspadaan!`
+                    : `PERINGATAN WASPADA: Sensor ${sensor.name} mendeteksi ketinggian air mencapai ${waterInfo.waterLevel} cm, melebihi ambang batas waspada ${warningMin} cm. Selalu pantau situasi terupdate!`,
+              severity: severity,
+              channels: ['PUSH', 'EMAIL'],
+              targetArea: sensor.name,
+            });
+          }
+        }
+      }
+
+      if (result.rainfall) {
+        const rainInfo = result.rainfall;
+        const sensor = await this.prisma.sensor.findUnique({
+          where: { sensorId: rainInfo.sensorId },
+        });
+
+        if (
+          sensor &&
+          (rainInfo.intensity === RainfallIntensity.MODERATE ||
+            rainInfo.intensity === RainfallIntensity.HEAVY)
+        ) {
+          const severity =
+            rainInfo.intensity === RainfallIntensity.HEAVY
+              ? AlertSeverity.DANGER
+              : AlertSeverity.WARNING;
+
+          const warningMin = rainfallThreshold?.warningMin ?? 5;
+          const dangerMin = rainfallThreshold?.dangerMin ?? 20;
+
+          // 15-minute throttle check to prevent spamming
+          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+          const existingAlert = await this.prisma.alert.findFirst({
+            where: {
+              severity: severity,
+              targetArea: sensor.name,
+              sentAt: { gte: fifteenMinutesAgo },
+              title: { contains: sensor.sensorId },
+            },
+          });
+
+          if (!existingAlert) {
+            await this.alertsService.broadcast({
+              title:
+                rainInfo.intensity === RainfallIntensity.HEAVY
+                  ? `BAHAYA: Curah Hujan Ekstrim (${sensor.sensorId})`
+                  : `WASPADA: Curah Hujan Tinggi (${sensor.sensorId})`,
+              message:
+                rainInfo.intensity === RainfallIntensity.HEAVY
+                  ? `PERINGATAN BAHAYA: Sensor ${sensor.name} mencatat curah hujan ekstrim sebesar ${rainInfo.rainfall} mm/jam, melebihi ambang batas bahaya ${dangerMin} mm/jam. Waspadai banjir bandang segera!`
+                  : `PERINGATAN WASPADA: Sensor ${sensor.name} mencatat curah hujan tinggi sebesar ${rainInfo.rainfall} mm/jam, melebihi ambang batas waspada ${warningMin} mm/jam. Berhati-hati saat beraktivitas!`,
+              severity: severity,
+              channels: ['PUSH', 'EMAIL'],
+              targetArea: sensor.name,
+            });
+          }
         }
       }
     } catch (err) {
-      console.error('Failed to trigger email threshold alert:', err);
+      console.error('Failed to trigger automatic FCM & email alerts:', err);
     }
 
     return result;
