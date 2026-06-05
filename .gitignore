@@ -20,17 +20,10 @@ mobile/build/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 
-# Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-backend/config/firebase-service-account.json
-backend/config/*firebase*adminsdk*.json
-*firebase-adminsdk*.json
 
+# Environment
+# (Removed to allow committing .env files as requested, but firebase credentials are kept local)
+backend/config/firebase-service-account.json
 
 # Debug
 npm-debug.log*

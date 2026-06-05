@@ -46,10 +46,4 @@ app.*.map.json
 /android/app/release
 
 # env
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-
+# (Removed to allow committing .env files as requested)
