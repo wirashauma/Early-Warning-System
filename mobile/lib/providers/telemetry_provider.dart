@@ -182,6 +182,7 @@ class TelemetryProvider extends ChangeNotifier {
       _activeAlerts = await _apiService.fetchActiveAlerts();
 
       debugPrint('✅ TelemetryProvider: Loaded initial data successfully.');
+      _initSse();
     } catch (e) {
       _errorMessage = 'Gagal memuat data telemetri: $e';
       debugPrint('❌ TelemetryProvider Error: $e');
@@ -208,6 +209,103 @@ class TelemetryProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error refreshing water levels: $e');
+    }
+  }
+
+  void _initSse() {
+    _sseSub?.cancel();
+    _sseClient?.close();
+
+    final sseUrl = '${_apiService.baseUrl}/sensors/stream';
+    debugPrint('🔌 [SSE] Connecting to $sseUrl...');
+
+    _sseClient = SseClient(sseUrl);
+
+    _sseSub = _sseClient!.stream.listen(
+      (event) {
+        debugPrint('📩 [SSE] Received event: ${event.event}, data: ${event.data}');
+        try {
+          final decoded = jsonDecode(event.data);
+          _handleRealtimeTelemetry(decoded);
+        } catch (e) {
+          debugPrint('❌ [SSE] Error parsing SSE payload: $e');
+        }
+      },
+      onError: (err) {
+        debugPrint('❌ [SSE] Stream error: $err');
+      },
+      onDone: () {
+        debugPrint('🔌 [SSE] Stream closed');
+      },
+    );
+  }
+
+  void _handleRealtimeTelemetry(dynamic data) {
+    if (data is! Map<String, dynamic>) return;
+
+    bool updated = false;
+
+    // Check if it's water reading
+    if (data.containsKey('water') && data['water'] != null) {
+      final water = data['water'];
+      final String? sId = water['sensorId']?.toString();
+      final double? level = (water['waterLevel'] as num?)?.toDouble();
+      final String? stat = water['status']?.toString();
+
+      if (sId != null) {
+        final index = _sensors.indexWhere((s) => s.sensorId == sId);
+        if (index != -1) {
+          _sensors[index] = _sensors[index].copyWith(
+            waterLevel: level,
+            status: stat,
+            lastActiveAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          updated = true;
+        }
+      }
+    }
+
+    // Check if it's rainfall reading
+    if (data.containsKey('rainfall') && data['rainfall'] != null) {
+      final rainfallData = data['rainfall'];
+      final String? sId = rainfallData['sensorId']?.toString();
+      final double? rain = (rainfallData['rainfall'] as num?)?.toDouble();
+
+      if (sId != null) {
+        final index = _sensors.indexWhere((s) => s.sensorId == sId);
+        if (index != -1) {
+          _sensors[index] = _sensors[index].copyWith(
+            rainfall: rain,
+            lastActiveAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          updated = true;
+        }
+      }
+    }
+
+    // Check if it's flowRate reading
+    if (data.containsKey('flowRate') && data['flowRate'] != null) {
+      final flowRateData = data['flowRate'];
+      final String? sId = flowRateData['sensorId']?.toString();
+      final double? flow = (flowRateData['flowRate'] as num?)?.toDouble();
+
+      if (sId != null) {
+        final index = _sensors.indexWhere((s) => s.sensorId == sId);
+        if (index != -1) {
+          _sensors[index] = _sensors[index].copyWith(
+            flowRate: flow,
+            lastActiveAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          updated = true;
+        }
+      }
+    }
+
+    if (updated) {
+      notifyListeners();
     }
   }
 

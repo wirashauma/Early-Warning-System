@@ -20,6 +20,7 @@ interface RegisterPayload {
   password: string;
   name: string;
   institution?: string;
+  phone?: string;
 }
 
 interface UpdateProfilePayload {
@@ -74,6 +75,7 @@ export class AuthService {
     const email = payload.email.trim().toLowerCase();
     const name = payload.name.trim();
     const institution = payload.institution?.trim() || null;
+    const phone = payload.phone?.trim() || null;
 
     if (!name) {
       throw new BadRequestException('Nama wajib diisi.');
@@ -94,12 +96,17 @@ export class AuthService {
         name,
         password: hashedPassword,
         institution,
+        phone,
         role: UserRole.USER,
         isActive: true,
       },
     });
 
-    return await this.toPublicUser(newUser);
+    return {
+      accessToken: await this.buildToken(newUser, 900),
+      refreshToken: await this.buildToken(newUser, 604800),
+      user: await this.toPublicUser(newUser),
+    };
   }
 
   // --- FUNGSI LOGIN ---
@@ -300,7 +307,7 @@ export class AuthService {
       return;
     }
 
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('Admin123!', 10);
 
     await this.prisma.user.create({
       data: {

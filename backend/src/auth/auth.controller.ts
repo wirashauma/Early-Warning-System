@@ -28,6 +28,7 @@ interface RegisterRequest {
   email: string;
   password: string;
   institution?: string;
+  phone?: string;
 }
 
 interface RefreshRequest {
