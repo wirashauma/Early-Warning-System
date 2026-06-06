@@ -1,3 +1,13 @@
+---
+title: EWS Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
+
 # Backend EWS (NestJS + Prisma + Supabase PostgreSQL)
 
 Backend untuk sistem Early Warning banjir, dibangun dengan:
