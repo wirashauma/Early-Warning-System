@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import type { PropsWithChildren } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { BottomNavbar } from "@/components/layout/BottomNavbar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -104,10 +106,11 @@ export default function AdminLayout({ children }: PropsWithChildren) {
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-20 border-b border-slate-200/90 bg-white/95 px-4 py-3 backdrop-blur lg:px-6">
           <div className="flex items-center gap-3">
+            {/* Collapse Sidebar Button - desktop only */}
             <button
               type="button"
               onClick={() => setCollapsed((prev) => !prev)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50"
+              className="hidden lg:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50"
               aria-label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
               title={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
             >
@@ -115,6 +118,12 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
               </svg>
             </button>
+
+            {/* EWS Brand Logo and Name - mobile & tablet only */}
+            <div className="flex items-center gap-2.5 lg:hidden">
+              <Image src="/logo.png" alt="EWS Logo" width={28} height={28} className="h-7 w-7 object-contain" />
+              <span className="font-bold text-slate-900 text-sm tracking-wide">EWS Flood Guard</span>
+            </div>
 
             <div className="relative hidden min-w-0 flex-1 md:block">
               <svg
@@ -178,10 +187,18 @@ export default function AdminLayout({ children }: PropsWithChildren) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-slate-100 p-4 lg:p-6">
+        {/* Padding bottom added to main container on mobile/tablet to clear the bottom navbar */}
+        <main className="flex-1 overflow-y-auto bg-slate-100 p-4 pb-24 lg:p-6 lg:pb-6">
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </section>
+
+      {/* Bottom Navbar for Mobile & Tablet Views */}
+      <BottomNavbar
+        unreadCount={unreadCount}
+        onLogoutClick={() => setLogoutConfirmOpen(true)}
+        userName={user?.name}
+      />
 
       <ConfirmDialog
         open={logoutConfirmOpen}

@@ -104,7 +104,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-slate-800 bg-[#0B1120] text-slate-50 shadow-2xl shadow-slate-950/40 transition-all duration-300 md:flex",
+        "sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-slate-800 bg-[#0B1120] text-slate-50 shadow-2xl shadow-slate-950/40 transition-all duration-300 lg:flex",
         collapsed ? "w-20 xl:w-24" : "w-64 xl:w-72",
       )}
     >
