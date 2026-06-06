@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
-import { FLOW_SENSOR_ID, API_URL, WS_URL } from "@/constants";
+import { FLOW_SENSOR_ID } from "@/constants";
 import type { LiveFlowRate, WaterLevelPoint } from "@/types/water-level";
 
 interface UseFlowRateOptions {
@@ -25,7 +25,6 @@ interface ApiFlowHistory {
 
 const DEFAULT_REFRESH_MS = 5_000;
 const HISTORY_HOURS = 7 * 24;
-const MAX_HISTORY_POINTS = 500;
 const STABLE_FALLBACK_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 function toIsoNow() {
@@ -33,7 +32,7 @@ function toIsoNow() {
 }
 
 export function useFlowRate(options: UseFlowRateOptions = {}) {
-  const { sensorId, refreshMs = DEFAULT_REFRESH_MS } = options;
+  const { sensorId } = options;
   const [latest, setLatest] = useState<LiveFlowRate>({
     sensorId: sensorId ?? FLOW_SENSOR_ID ?? "",
     sensorName: "Sensor",
@@ -136,9 +135,11 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
   }, [latest.sensorId, sensorId]);
 
   useEffect(() => {
-    // Immediate initial fetch
-    void loadCurrent();
-    void loadHistory();
+    // Immediate initial fetch via setTimeout to avoid synchronous setState warning
+    const fetchTimer = setTimeout(() => {
+      void loadCurrent();
+      void loadHistory();
+    }, 0);
 
     // Setup bulletproof 60-second silent background polling
     const timer = window.setInterval(() => {
@@ -147,6 +148,7 @@ export function useFlowRate(options: UseFlowRateOptions = {}) {
     }, 60000);
 
     return () => {
+      clearTimeout(fetchTimer);
       window.clearInterval(timer);
     };
   }, [loadCurrent, loadHistory]);

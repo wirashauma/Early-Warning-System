@@ -89,7 +89,7 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
           } catch {}
           audioRef.current = null;
         };
-      } catch (err) {
+      } catch {
         // Silenced initialization error
       }
     }
@@ -102,7 +102,7 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
         await audioRef.current.play();
         setIsSirenPlaying(true);
         setAutoplayBlocked(false);
-      } catch (err: any) {
+      } catch {
         // Completely silenced to stop console pollution
         setAutoplayBlocked(true);
         setIsSirenPlaying(false);
@@ -116,7 +116,7 @@ export function useSupabaseRealtime(options: UseSupabaseRealtimeOptions = {}) {
       try {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
-      } catch (err) {
+      } catch {
         // Silenced pause/currentTime reset errors
       }
       setIsSirenPlaying(false);

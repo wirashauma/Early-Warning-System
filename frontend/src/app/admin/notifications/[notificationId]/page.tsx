@@ -7,6 +7,21 @@ import { Card } from "@/components/ui/Card";
 import api from "@/lib/api";
 import { formatTimestamp } from "@/lib/utils";
 
+interface AlertDetail {
+  id: string;
+  title: string;
+  message: string;
+  severity?: string;
+  sentAt?: string;
+  receivedAt?: string;
+  source?: string;
+  user?: {
+    name: string;
+  };
+  channels?: string[];
+  targetArea?: string;
+}
+
 export default function AdminNotificationDetailPage() {
   const params = useParams<{ notificationId: string | string[] }>();
   const notificationId = useMemo(() => {
@@ -15,7 +30,7 @@ export default function AdminNotificationDetailPage() {
   }, [params]);
 
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<AlertDetail | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,12 +57,12 @@ export default function AdminNotificationDetailPage() {
               if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
               }
-            } catch (err) {
+            } catch {
               // ignore
             }
           }
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setData(null);
           setLoading(false);

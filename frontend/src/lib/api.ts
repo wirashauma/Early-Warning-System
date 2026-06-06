@@ -78,7 +78,7 @@ api.interceptors.response.use(
         }
       }
 
-      const backendMessage = (responseData as any)?.message;
+      const backendMessage = (responseData as Record<string, unknown>)?.message;
       return Array.isArray(backendMessage) ? backendMessage[0] : backendMessage;
     };
 

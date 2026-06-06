@@ -26,9 +26,12 @@ export default function UserNotificationsPage() {
   useEffect(() => {
     if (!error) return;
 
-    setToastMessage(error);
+    const toastTimer = window.setTimeout(() => setToastMessage(error), 0);
     const timer = window.setTimeout(() => setToastMessage(null), 3500);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(toastTimer);
+      window.clearTimeout(timer);
+    };
   }, [error]);
 
   // --- FUNGSI UNTUK MENGETES PUSH NOTIFICATION ---

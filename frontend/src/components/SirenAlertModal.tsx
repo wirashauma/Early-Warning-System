@@ -83,7 +83,7 @@ export function SirenAlertModal({
         {/* Warning Details & Message */}
         <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-center md:p-5">
           <p className="text-sm leading-relaxed text-slate-300 md:text-base font-medium">
-            "{alert.message}"
+            &ldquo;{alert.message}&rdquo;
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export function SirenAlertModal({
 
           {autoplayBlocked && (
             <p className="mt-3 text-center text-[11px] font-semibold text-rose-300 animate-pulse">
-              ⚠️ Browser memblokir suara otomatis. Klik "Bunyikan Siren" di atas untuk memutar secara manual.
+              ⚠️ Browser memblokir suara otomatis. Klik &quot;Bunyikan Siren&quot; di atas untuk memutar secara manual.
             </p>
           )}
         </div>

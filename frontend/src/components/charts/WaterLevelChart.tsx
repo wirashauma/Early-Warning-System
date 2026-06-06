@@ -25,7 +25,8 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
   const isEmpty = !points || points.length === 0;
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const isDemo = points.length === 0;
@@ -50,7 +51,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
     return diffHours > 24;
   }, [points, validPoints, isDemo]);
 
-  const formatXAxisTick = (value: any) => {
+  const formatXAxisTick = (value: string | number | Date | null | undefined) => {
     if (!value) return "";
     try {
       const date = new Date(value);
@@ -68,7 +69,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
         const minutes = String(date.getMinutes()).padStart(2, "0");
         return `${hours}:${minutes}`;
       }
-    } catch (e) {
+    } catch {
       return String(value);
     }
   };
@@ -76,7 +77,7 @@ export function WaterLevelChart({ points = [] }: WaterLevelChartProps) {
   // Aggregate and filter data points for Recharts based on range selection
   const chartData = useMemo(() => {
     if (isDemo) {
-      const baseTime = Date.now();
+      const baseTime = 1717689600000; // Fixed timestamp for purity
       return [
         { label: "08:00", value: 2.1, waterLevel: 2.1, timestamp: baseTime - 6 * 60 * 60 * 1000 },
         { label: "09:00", value: 2.5, waterLevel: 2.5, timestamp: baseTime - 5 * 60 * 60 * 1000 },

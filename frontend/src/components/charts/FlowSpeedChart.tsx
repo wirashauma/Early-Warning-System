@@ -296,7 +296,8 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
   };
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const isDemo = points.length === 0;
@@ -321,7 +322,7 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
     return diffHours > 24;
   }, [points, validPoints, isDemo]);
 
-  const formatXAxisTick = (value: any) => {
+  const formatXAxisTick = (value: string | number | Date | null | undefined) => {
     if (!value) return "";
     try {
       const date = new Date(value);
@@ -339,15 +340,15 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
         const minutes = String(date.getMinutes()).padStart(2, "0");
         return `${hours}:${minutes}`;
       }
-    } catch (e) {
+    } catch {
       return String(value);
     }
   };
 
   // Aggregate and filter data points for Recharts based on range selection
-  const chartData = useMemo(() => {
+  const getChartData = () => {
     if (isDemo) {
-      const baseTime = Date.now();
+      const baseTime = 1717689600000; // Fixed timestamp for purity
       const basePoints = [13.0, 16.8, 15.2, 15.8, 14.0, 14.0, 11.5, 15.0, 15.0, 15.0, 13.0, 14.0, 18.0, 18.0, 15.0, 12.2, 10.6, 12.0, 26.6, 20.3];
       return basePoints.map((val, index) => {
         const offsetMinutes = (basePoints.length - 1 - index) * 10;
@@ -404,12 +405,13 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
         value: parseFloat((value.sum / Math.max(value.count, 1)).toFixed(2)),
         timestamp: value.ts,
       }));
-  }, [validPoints, range, referenceNow, isDemo]);
+  };
+  const chartData = getChartData();
 
   // Hardcoded ticks removed in favor of responsive, auto-calculated date/time ticks.
 
   // Reactive stats — auto-recompute when chart data changes
-  const stats = useMemo(() => {
+  const getStats = () => {
     if (isEmpty) {
       return { min: 0, max: 0, latest: 0, average: 0 };
     }
@@ -425,7 +427,8 @@ export function FlowSpeedChart({ points = [] }: FlowSpeedChartProps) {
         ? parseFloat((values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(2))
         : 0);
     return { min, max, latest, average };
-  }, [chartData, validPoints, isDemo, isEmpty]);
+  };
+  const stats = getStats();
 
   // Status Badge and Trend Resolution
   const trendClass =

@@ -107,15 +107,18 @@ export function ThresholdRainfallChart({ data, loading }: ThresholdRainfallChart
     }
 
     if (latestPoints.length === 0) {
-      setSeries([]);
-      return;
+      const timer = setTimeout(() => setSeries([]), 0);
+      return () => clearTimeout(timer);
     }
 
-    setSeries((prev) => {
-      const merged = [...prev, ...latestPoints];
-      const deduped = Array.from(new Map(merged.map((item) => [item.key, item])).values());
-      return deduped.slice(-MAX_POINTS);
-    });
+    const timer = setTimeout(() => {
+      setSeries((prev) => {
+        const merged = [...prev, ...latestPoints];
+        const deduped = Array.from(new Map(merged.map((item) => [item.key, item])).values());
+        return deduped.slice(-MAX_POINTS);
+      });
+    }, 0);
+    return () => clearTimeout(timer);
   }, [latestPoints, loading]);
 
   const chartData = series.length > 0 ? series : latestPoints;

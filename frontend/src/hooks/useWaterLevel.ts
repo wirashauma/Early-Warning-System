@@ -109,7 +109,7 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
-  const waterSensorIdsRef = useRef<Set<string>>(new Set());
+  const [waterSensorIds, setWaterSensorIds] = useState<Set<string>>(new Set());
   const sensorUuidMapRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
@@ -162,11 +162,12 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
       const effectiveSensors = primaryFiltered.length > 0 ? primaryFiltered : sensors;
       const effectiveSensorIds = new Set(effectiveSensors.map((sensor) => sensor.sensorId));
 
-      waterSensorIdsRef.current = new Set(
+      const waterIds = new Set(
         waterRows
           .map((row) => row.sensorId)
           .filter((id) => effectiveSensorIds.has(id)),
       );
+      setWaterSensorIds(waterIds);
 
       const nextSensors: Sensor[] = effectiveSensors.map((sensor) => {
         const water = waterBySensorId.get(sensor.sensorId);
@@ -214,8 +215,8 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
 
       setLatestBySensor(nextLiveBySensor);
       setIsLoading(false);
-    } catch (e) {
-      console.error("Gagal memuat data sensor saat polling:", e);
+    } catch {
+      console.error("Gagal memuat data sensor saat polling:");
       if (isMountedRef.current) {
         setSensorsSnapshot([]);
         setLatestBySensor({});
@@ -223,11 +224,13 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [showAll]);
 
   useEffect(() => {
-    // Immediate initial fetch
-    void loadCurrent();
+    // Immediate initial fetch via setTimeout to avoid synchronous setState warning
+    const fetchTimer = setTimeout(() => {
+      void loadCurrent();
+    }, 0);
 
     // Setup bulletproof 60-second silent background polling
     const timer = window.setInterval(() => {
@@ -236,12 +239,13 @@ export function useWaterLevel(options: UseWaterLevelOptions = {}) {
     }, 60000);
 
     return () => {
+      clearTimeout(fetchTimer);
       window.clearInterval(timer);
     };
   }, [loadCurrent]);
 
   const preferredWaterSensorId =
-    sensorsSnapshot.find((sensor) => waterSensorIdsRef.current.has(sensor.id))?.id ?? "";
+    sensorsSnapshot.find((sensor) => waterSensorIds.has(sensor.id))?.id ?? "";
   const activeSensorId =
     sensorId && latestBySensor[sensorId]
       ? sensorId

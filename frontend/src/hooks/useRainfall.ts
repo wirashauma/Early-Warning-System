@@ -68,7 +68,7 @@ export function useRainfall(options: UseRainfallOptions = {}) {
         rainfallMm: selected.rainfall ?? 0,
         updatedAt: selected.recordedAt ?? new Date().toISOString(),
       });
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [sensorId]);
@@ -114,7 +114,7 @@ export function useRainfall(options: UseRainfallOptions = {}) {
       }));
 
       setHistory(mapped);
-    } catch (e) {
+    } catch {
       if (isMountedRef.current) {
         setHistory([]);
       }
@@ -122,8 +122,10 @@ export function useRainfall(options: UseRainfallOptions = {}) {
   }, [latest.sensorId, sensorId]);
 
   useEffect(() => {
-    void loadCurrent();
-    void loadHistory();
+    const fetchTimer = setTimeout(() => {
+      void loadCurrent();
+      void loadHistory();
+    }, 0);
 
     const timer = window.setInterval(() => {
       void loadCurrent();
@@ -131,6 +133,7 @@ export function useRainfall(options: UseRainfallOptions = {}) {
     }, 60000);
 
     return () => {
+      clearTimeout(fetchTimer);
       window.clearInterval(timer);
     };
   }, [loadCurrent, loadHistory]);

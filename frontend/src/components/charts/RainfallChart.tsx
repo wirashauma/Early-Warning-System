@@ -53,7 +53,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
     return diffHours > 24;
   }, [points, validPoints, isDemo]);
 
-  const formatXAxisTick = (value: any) => {
+  const formatXAxisTick = (value: string | number | Date | null | undefined) => {
     if (!value) return "";
     try {
       const date = new Date(value);
@@ -71,7 +71,7 @@ export function RainfallChart({ points }: RainfallChartProps) {
         const minutes = String(date.getMinutes()).padStart(2, "0");
         return `${hours}:${minutes}`;
       }
-    } catch (e) {
+    } catch {
       return String(value);
     }
   };

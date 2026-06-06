@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { SensorConnectivity } from "@prisma/client";
+import { SensorConnectivity, SensorType } from "@prisma/client";
 
 export async function PATCH(
   request: Request,
@@ -10,10 +10,25 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const dataToUpdate: any = {};
+    const dataToUpdate: Partial<{
+      sensorId: string;
+      name: string;
+      type: SensorType;
+      latitude: number;
+      longitude: number;
+      batteryLevel: number;
+      connectivity: SensorConnectivity;
+      lastActiveAt: Date;
+    }> = {};
     if (body.sensorId !== undefined) dataToUpdate.sensorId = body.sensorId;
     if (body.name !== undefined) dataToUpdate.name = body.name;
-    if (body.type !== undefined) dataToUpdate.type = body.type;
+    
+    if (body.type !== undefined) {
+      const typeUpper = body.type.toUpperCase();
+      if (Object.values(SensorType).includes(typeUpper as SensorType)) {
+        dataToUpdate.type = typeUpper as SensorType;
+      }
+    }
     if (body.latitude !== undefined) dataToUpdate.latitude = Number(body.latitude);
     if (body.longitude !== undefined) dataToUpdate.longitude = Number(body.longitude);
     if (body.batteryLevel !== undefined) dataToUpdate.batteryLevel = Number(body.batteryLevel);
@@ -39,10 +54,10 @@ export async function PATCH(
       success: true,
       data: updatedSensor,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating sensor via Next.js API:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to update sensor" },
+      { success: false, error: error instanceof Error ? error.message : "Failed to update sensor" },
       { status: 500 }
     );
   }

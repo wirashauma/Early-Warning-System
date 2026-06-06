@@ -73,8 +73,8 @@ export default function ProfilePage() {
       setAvatarFile(null);
       setMessage({ type: "success", text: "Profil berhasil diperbarui!" });
 
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message || "Gagal memperbarui profil.";
+    } catch (err) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Gagal memperbarui profil.";
       setMessage({ type: "error", text: errorMsg });
     } finally {
       setIsSubmitting(false);

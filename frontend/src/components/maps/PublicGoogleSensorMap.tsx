@@ -243,7 +243,9 @@ export function PublicGoogleSensorMap({
       console.log("[PublicGoogleSensorMap] Map markers created:", sensors.length);
     } catch (error) {
       console.error("[PublicGoogleSensorMap] Error initializing map:", error);
-      setScriptState({ ready: false, error: "Error: " + (error instanceof Error ? error.message : String(error)) });
+      setTimeout(() => {
+        setScriptState({ ready: false, error: "Error: " + (error instanceof Error ? error.message : String(error)) });
+      }, 0);
     }
   }, [center, onMarkerSelect, scriptState.ready, selectedSensorId, sensors]);
 
