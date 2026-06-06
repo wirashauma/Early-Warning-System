@@ -95,7 +95,8 @@ async function bootstrap() {
   // 6. GLOBAL CONFIG
   app.setGlobalPrefix('api');
 
-  const port = Number(config.get<number>('PORT') ?? 4101);
+  // Ambil port dari environment variable, jika tidak ada gunakan 7860
+  const port = Number(process.env.PORT || config.get<number>('PORT') || 7860);
   await app.listen(port, '0.0.0.0');
   
   logger.log(`EWS Backend is running on: ${await app.getUrl()}`);
