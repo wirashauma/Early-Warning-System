@@ -1,5 +1,5 @@
 # Gunakan image Node.js yang ringan
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set direktori kerja di dalam container
 WORKDIR /app
@@ -12,6 +12,9 @@ COPY prisma ./prisma/
 
 # Install semua dependensi
 RUN npm install
+
+# Instal paksa library yang hilang
+RUN npm install @nestjs/config joi
 
 # Generate Prisma Client (Wajib untuk database Supabase)
 RUN npx prisma generate
@@ -30,4 +33,4 @@ ENV PORT=7860
 EXPOSE 7860
 
 # Jalankan server
-CMD ["npm", "run", "start:prod"]
+CMD ["sh", "-c", "node dist/main.js || node dist/src/main.js || node dist/main.cjs"]
