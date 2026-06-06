@@ -214,7 +214,7 @@ export function Navbar() {
         </Link>
         <ul className="flex flex-wrap items-center gap-2 sm:gap-3">
           {links.map((item) => (
-            <li key={item.href} className="hidden md:block">
+            <li key={item.href} className="hidden lg:block">
               <Link
                 href={item.href}
                 className={cn(
