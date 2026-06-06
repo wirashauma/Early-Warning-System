@@ -104,17 +104,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-slate-800 bg-[#0B1120] text-slate-50 shadow-2xl shadow-slate-950/40 transition-all duration-300 lg:flex",
+        "sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-slate-200 bg-white text-slate-600 shadow-xl shadow-slate-100/40 transition-all duration-300 lg:flex",
         collapsed ? "w-20 xl:w-24" : "w-64 xl:w-72",
       )}
     >
       <div className="relative flex h-full w-full flex-col px-3 py-4">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(59,130,246,0.18),transparent_34%),radial-gradient(circle_at_90%_100%,rgba(15,23,42,0.2),transparent_40%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(59,130,246,0.06),transparent_35%)]" />
 
-        <div className="relative z-10 mb-4 border-b border-slate-800/80 pb-4 pt-1">
+        <div className="relative z-10 mb-4 border-b border-slate-100 pb-4 pt-1">
           {!collapsed ? (
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-700/80 bg-slate-800/60 px-3 py-3 shadow-lg shadow-slate-950/20 backdrop-blur-md">
-              <div className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/95 ring-1 ring-white/10">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-3 shadow-sm shadow-slate-100/50 backdrop-blur-md">
+              <div className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white border border-slate-200">
                 <Image
                   src="/logo.png"
                   alt="EWS Flood Guard"
@@ -125,14 +125,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-[0.72rem] font-medium uppercase tracking-[0.18em] text-slate-400">Early Warning</p>
-                <h2 className="truncate text-[1.2rem] font-bold leading-tight tracking-wide text-white">Flood Guard</h2>
-                <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-500">Dashboard Admin</p>
+                <p className="truncate text-[0.72rem] font-medium uppercase tracking-[0.18em] text-slate-500">Early Warning</p>
+                <h2 className="truncate text-[1.2rem] font-bold leading-tight tracking-wide text-slate-900">Flood Guard</h2>
+                <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-400">Dashboard Admin</p>
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-2.5 py-1">
-              <div className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-white/95 p-1.5 shadow-sm">
+              <div className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
                 <Image
                   src="/logo.png"
                   alt="EWS Flood Guard"
@@ -141,7 +141,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   className="h-full w-full object-contain"
                 />
               </div>
-              <div className="rounded-xl border border-slate-700 bg-slate-800/70 px-2.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] leading-none text-slate-200">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] leading-none text-slate-600">
                 EWS
               </div>
             </div>
@@ -152,10 +152,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {!collapsed ? (
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Menu Admin</span>
-              <span className="h-px flex-1 bg-linear-to-r from-slate-700 to-transparent" />
+              <span className="h-px flex-1 bg-linear-to-r from-slate-200 to-transparent" />
             </div>
           ) : (
-            <span className="mx-auto block h-7 w-px bg-slate-700" />
+            <span className="mx-auto block h-7 w-px bg-slate-200" />
           )}
         </div>
 
@@ -172,10 +172,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     title={item.label}
                     aria-label={item.label}
                     className={cn(
-                      "group relative mx-2 flex items-center gap-3 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-all duration-200",
-                      "text-slate-400 hover:bg-slate-800/50 hover:text-white",
+                      "group relative mx-2 flex items-center gap-3 rounded-xl border border-transparent px-4 py-2.5 text-sm font-medium transition-all duration-200",
+                      "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
                       collapsed && "mx-auto h-11 w-11 justify-center rounded-xl px-0 py-0",
-                      isActive && "bg-blue-600 text-white shadow-md shadow-blue-900/20 hover:bg-blue-600",
+                      isActive && "bg-blue-600 text-white shadow-sm shadow-blue-500/20 hover:bg-blue-600 hover:text-white",
                     )}
                   >
                     <span
@@ -190,14 +190,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       className={cn(
                         "h-[1.05rem] w-[1.05rem] shrink-0 transition-transform duration-200 group-hover:scale-110",
                         collapsed && "h-[1.15rem] w-[1.15rem]",
-                        isActive ? "text-white" : "text-slate-400 group-hover:text-white",
+                        isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700",
                       )}
                     />
                     {!collapsed && <span className="text-[0.95rem] font-medium">{item.label}</span>}
                     {!collapsed && (
                       <span
                         className={cn(
-                          "ml-auto h-1.5 w-1.5 rounded-full bg-white/10 transition-colors",
+                          "ml-auto h-1.5 w-1.5 rounded-full bg-slate-200 transition-colors",
                           isActive && "bg-white/95",
                         )}
                       />
@@ -211,16 +211,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         <div className="relative z-10 mt-auto px-2 pb-2 pt-4">
           {!collapsed ? (
-            <div className="mx-2 mb-4 rounded-xl border border-slate-700/60 bg-slate-800/50 p-4 backdrop-blur-md">
-              <div className="flex items-center gap-2.5 text-slate-100">
-                <Activity className="h-4 w-4 text-blue-400" aria-hidden="true" />
-                <p className="text-xs font-semibold tracking-wide text-slate-200">Monitoring banjir real-time</p>
+            <div className="mx-2 mb-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+              <div className="flex items-center gap-2.5 text-slate-900">
+                <Activity className="h-4 w-4 text-blue-600" aria-hidden="true" />
+                <p className="text-xs font-semibold tracking-wide text-slate-800">Monitoring banjir real-time</p>
               </div>
-              <p className="mt-1.5 text-[11px] leading-5 text-slate-400">Status sistem dipantau 24/7 untuk respons cepat.</p>
+              <p className="mt-1.5 text-[11px] leading-5 text-slate-500">Status sistem dipantau 24/7 untuk respons cepat.</p>
             </div>
           ) : (
             <div className="mx-auto mb-4 mt-1 flex flex-col items-center gap-1.5">
-              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300">
+              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500">
                 <Activity className="h-4 w-4" aria-hidden="true" />
               </div>
             </div>
@@ -232,7 +232,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <button
               type="button"
               onClick={onToggle}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-xs font-semibold text-slate-200 transition-all duration-200 hover:bg-slate-700/70 hover:text-white"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900"
             >
               <CollapseIcon collapsed={false} className="h-3.5 w-3.5" />
               <span>Ciutkan Sidebar</span>
@@ -241,7 +241,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <button
               type="button"
               onClick={onToggle}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 transition-all duration-200 hover:bg-slate-700 hover:text-white"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900"
               aria-label="Buka sidebar"
               title="Buka sidebar"
             >

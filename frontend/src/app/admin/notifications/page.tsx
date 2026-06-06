@@ -7,13 +7,28 @@ import { Card } from "@/components/ui/Card";
 import { formatTimestamp } from "@/lib/utils";
 import api from "@/lib/api";
 
-type NotificationConditionLevel = "Aman" | "Waspada" | "Bahaya";
+type NotificationConditionLevel = "Aman" | "Waspada" | "Siaga" | "Bahaya";
 
 const levelDotClass: Record<NotificationConditionLevel, string> = {
   Aman: "bg-emerald-500",
   Waspada: "bg-amber-500",
+  Siaga: "bg-orange-500",
   Bahaya: "bg-rose-500",
 };
+
+function resolveNotificationLevel(title: string, message: string, severity: string): NotificationConditionLevel {
+  const text = `${title} ${message}`.toLowerCase();
+  if (severity === "DANGER" || text.includes("bahaya") || text.includes("danger") || text.includes("red") || text.includes("merah")) {
+    return "Bahaya";
+  }
+  if (text.includes("siaga") || text.includes("alert") || text.includes("orange") || text.includes("oranye")) {
+    return "Siaga";
+  }
+  if (severity === "WARNING" || text.includes("waspada") || text.includes("warning") || text.includes("yellow") || text.includes("kuning")) {
+    return "Waspada";
+  }
+  return "Aman";
+}
 
 function isNotificationRead(sentAt: string, notificationReadAt: string | null, id: string, readNotificationIds: string[]) {
   if (readNotificationIds.includes(id)) return true;
@@ -67,16 +82,19 @@ export default function AdminNotificationsPage() {
         }>;
 
         setItems(
-          rows.map((row) => ({
-            id: row.id,
-            subject: row.title,
-            message: row.message,
-            level: row.severity === "DANGER" ? "Bahaya" : row.severity === "WARNING" ? "Waspada" : "Aman",
-            sender: row.user?.name ?? "Sistem EWS",
-            channel: row.channels?.[0] ?? "push",
-            receivedAt: row.sentAt,
-            isRead: isNotificationRead(row.sentAt, readAt, row.id, readIds),
-          })),
+          rows.map((row) => {
+            const resolvedLevel = resolveNotificationLevel(row.title, row.message, row.severity);
+            return {
+              id: row.id,
+              subject: row.title,
+              message: row.message,
+              level: resolvedLevel,
+              sender: row.user?.name ?? "Sistem EWS",
+              channel: row.channels?.[0] ?? "push",
+              receivedAt: row.sentAt,
+              isRead: isNotificationRead(row.sentAt, readAt, row.id, readIds),
+            };
+          }),
         );
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Gagal memuat notifikasi.");
@@ -206,14 +224,28 @@ export default function AdminNotificationsPage() {
       </div>
 
       <Card className="border border-slate-100 bg-white/96 p-0 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.28)] backdrop-blur-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">Inbox Notifikasi</h2>
               <p className="mt-1 text-sm text-slate-500">Pesan masuk berdasarkan beragam kondisi peringatan.</p>
             </div>
-            <div className="inline-flex items-center gap-2 self-start rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 md:self-auto">
-              <span className="size-2 rounded-full bg-rose-500" />
-              {dangerCount} pesan level Bahaya
+            <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                >
+                  <svg viewBox="0 0 24 24" className="size-3.5 text-slate-500" fill="none" aria-hidden="true">
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Tandai Semua Dibaca
+                </button>
+              )}
+              <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
+                <span className="size-2 rounded-full bg-rose-500" />
+                {dangerCount} pesan level Bahaya
+              </div>
             </div>
           </div>
 
@@ -273,7 +305,7 @@ export default function AdminNotificationsPage() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              void handleMarkAllRead();
+                              void handleMarkAsRead(item.id);
                             }}
                             disabled={item.isRead}
                             className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
@@ -308,9 +340,11 @@ export default function AdminNotificationsPage() {
                       className={`inline-flex items-center rounded-full px-2.5 py-1 font-semibold ring-1 ring-inset ${
                         item.level === "Bahaya"
                           ? "bg-rose-50 text-rose-700 ring-rose-100"
-                          : item.level === "Waspada"
-                            ? "bg-amber-50 text-amber-700 ring-amber-100"
-                            : "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                          : item.level === "Siaga"
+                            ? "bg-orange-50 text-orange-700 ring-orange-100"
+                            : item.level === "Waspada"
+                              ? "bg-amber-50 text-amber-700 ring-amber-100"
+                              : "bg-emerald-50 text-emerald-700 ring-emerald-100"
                       }`}
                     >
                       {item.level}

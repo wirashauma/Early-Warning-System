@@ -36,21 +36,15 @@ export default function AdminNotificationDetailPage() {
           setData(fetchedData);
           setLoading(false);
 
-          if (fetchedData && typeof window !== "undefined") {
-            const ADMIN_NOTIFICATION_STORAGE_KEY = "ews_admin_notifications_read_map";
-            const parseReadMap = (raw: string | null): Record<string, boolean> => {
-              if (!raw) return {};
-              try {
-                const parsed = JSON.parse(raw);
-                return parsed && typeof parsed === "object" ? parsed : {};
-              } catch {
-                return {};
+          if (fetchedData) {
+            try {
+              await api.put(`/auth/notifications/${notificationId}/read`);
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
               }
-            };
-            const savedReadMap = parseReadMap(localStorage.getItem(ADMIN_NOTIFICATION_STORAGE_KEY));
-            savedReadMap[notificationId] = true;
-            localStorage.setItem(ADMIN_NOTIFICATION_STORAGE_KEY, JSON.stringify(savedReadMap));
-            window.dispatchEvent(new CustomEvent("adminNotificationsUpdated"));
+            } catch (err) {
+              // ignore
+            }
           }
         }
       } catch (err) {
