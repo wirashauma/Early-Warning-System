@@ -14,10 +14,15 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    let backendUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:4101";
+    backendUrl = backendUrl.replace(/\/$/, "");
+    if (backendUrl.endsWith("/api")) {
+      backendUrl = backendUrl.slice(0, -4);
+    }
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:4101/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

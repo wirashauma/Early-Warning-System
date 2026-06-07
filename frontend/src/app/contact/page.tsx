@@ -33,9 +33,12 @@ const supportChannels = [
 
 async function getEmergencyContacts(): Promise<EmergencyContact[]> {
   try {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4101/api";
-    const cleanUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-    const res = await fetch(`${cleanUrl}/emergency-contacts`, {
+    let backendUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:4101";
+    backendUrl = backendUrl.replace(/\/$/, "");
+    if (!backendUrl.endsWith("/api")) {
+      backendUrl = `${backendUrl}/api`;
+    }
+    const res = await fetch(`${backendUrl}/emergency-contacts`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return [];
