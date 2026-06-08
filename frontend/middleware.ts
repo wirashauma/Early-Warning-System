@@ -46,7 +46,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - firebase-messaging-sw.js (FCM Service Worker — must be publicly accessible)
+     * - Static asset extensions (png, jpg, svg, etc.)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|favicon\\.ico|firebase-messaging-sw\\.js|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|mp3|woff|woff2)$).*)",
   ],
 };

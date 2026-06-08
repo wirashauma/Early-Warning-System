@@ -27,10 +27,12 @@ async function bootstrap() {
     .filter(Boolean);
 
   const defaultOrigins = [
+    'http://localhost:4000',
+    'http://127.0.0.1:4000',
     'http://localhost:4100',
     'http://127.0.0.1:4100',
     'http://localhost:4101',
-    'https://ews-floodguard.vercel.app', // Example production URL
+    'https://ews-floodguard.vercel.app', // Frontend production URL di Vercel
   ];
 
   const isLocalOrigin = (origin: string) => {

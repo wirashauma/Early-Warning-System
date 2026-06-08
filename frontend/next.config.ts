@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        // Google profile photos from Google Sign-In (Firebase Auth)
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      {
+        // Google profile photos (alternate CDN)
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
     ],
   },
   async rewrites() {

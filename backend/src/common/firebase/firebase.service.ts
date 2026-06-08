@@ -21,6 +21,29 @@ export class FirebaseService implements OnModuleInit {
   private app: admin.app.App | null = null;
 
   onModuleInit() {
+    // Prioritas 1: Gunakan JSON langsung dari environment variable (untuk production/cloud hosting)
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+    if (serviceAccountJson) {
+      try {
+        const serviceAccount = JSON.parse(serviceAccountJson) as admin.ServiceAccount;
+        if (!admin.apps.length) {
+          this.app = admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            projectId: process.env.FIREBASE_PROJECT_ID,
+          });
+        } else {
+          this.app = admin.app();
+        }
+        this.logger.log('Firebase Admin initialized successfully via FIREBASE_SERVICE_ACCOUNT_JSON env var.');
+        return;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: ${message}`);
+        // Lanjut ke fallback (file path)
+      }
+    }
+
+    // Prioritas 2: Gunakan file path (untuk development lokal)
     const credentialPath = this.resolveServiceAccountPath();
 
     if (!credentialPath) {
@@ -47,7 +70,7 @@ export class FirebaseService implements OnModuleInit {
         this.app = admin.app();
       }
 
-      this.logger.log('Firebase Admin initialized successfully.');
+      this.logger.log('Firebase Admin initialized successfully via service account file.');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to initialize Firebase Admin: ${message}`);

@@ -37,6 +37,7 @@ import { StorageModule } from './common/storage/storage.module';
         DIRECT_URL: Joi.string().optional(),
         JWT_SECRET: Joi.string().default('rahasia-super-kuat-ews-123'),
         FIREBASE_SERVICE_ACCOUNT_PATH: Joi.string().optional(),
+        FIREBASE_SERVICE_ACCOUNT_JSON: Joi.string().optional(),
         SUPABASE_URL: Joi.string().optional(),
         SUPABASE_SERVICE_ROLE_KEY: Joi.string().optional(),
         SMTP_HOST: Joi.string().optional(),
