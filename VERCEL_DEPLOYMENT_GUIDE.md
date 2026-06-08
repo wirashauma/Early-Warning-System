@@ -1,97 +1,93 @@
-# 🚀 Panduan Deployment Vercel + Firebase
+# 🚀 Panduan Deployment: Vercel (Frontend) & Hugging Face Spaces (Backend)
 
-## ⚠️ Langkah WAJIB yang harus dilakukan MANUAL (tidak bisa dari kode)
-
----
-
-## 1. Tambahkan Domain Vercel ke Firebase Authorized Domains
-
-**Ini penyebab error `auth/unauthorized-domain`.**
-
-1. Buka [Firebase Console](https://console.firebase.google.com/) → Project `ews-aplication`
-2. Pergi ke **Authentication** → **Settings** → **Authorized domains**
-3. Klik **Add domain** dan tambahkan:
-   - `ews-floodguard.vercel.app` (ganti dengan URL Vercel kamu yang sebenarnya)
-   - Jika pakai custom domain, tambahkan juga
+Dokumen ini berisi panduan konfigurasi lengkap untuk menghubungkan aplikasi frontend Next.js di **Vercel** dengan backend NestJS di **Hugging Face Spaces (Docker)**.
 
 ---
 
-## 2. Dapatkan VAPID Key untuk FCM Web Push
-
-**Ini penyebab FCM tidak mendapatkan token push notification.**
-
-1. Buka [Firebase Console](https://console.firebase.google.com/) → Project `ews-aplication`
-2. Pergi ke **Project Settings** (ikon ⚙️) → tab **Cloud Messaging**
-3. Scroll ke bagian **Web configuration** → **Web Push certificates**
-4. Klik **Generate key pair** jika belum ada, atau salin **Key pair** yang sudah ada
-5. Copy nilai **Key pair** tersebut (dimulai dengan `B...`)
+## 📌 Bagaimana Arsitektur Ini Bekerja
+1. **Frontend (Vercel)**:
+   - Request API client-side dikirim ke path relatif `/api/...` (misalnya `/api/sensors`).
+   - Vercel Serverless Function menggunakan fitur `rewrites` di [next.config.ts](file:///d:/Folder%20Project%20Howarts/Early-Warning-System/frontend/next.config.ts) untuk mem-proxy request `/api/*` secara internal ke URL backend Hugging Face Spaces (`BACKEND_API_URL`).
+   - Hal ini menghindari masalah **CORS** di sisi browser karena browser hanya berkomunikasi dengan domain Vercel.
+2. **Backend (Hugging Face Spaces)**:
+   - Berjalan sebagai Docker container (menggunakan [backend/Dockerfile](file:///d:/Folder%20Project%20Howarts/Early-Warning-System/backend/Dockerfile)) pada port internal `7860`.
+   - Mengakses database PostgreSQL secara langsung di **Supabase**.
 
 ---
 
-## 3. Konfigurasi Environment Variables di Vercel
+## ⚠️ PENTING: Pengaturan Hugging Face Space
+Agar backend di Hugging Face Spaces dapat diakses oleh Vercel:
+1. **Space Visibility harus PUBLIC**:
+   Jika Space diset ke *Private*, Hugging Face akan memasang dinding autentikasi (redirect 302/login screen), sehingga proxy dari Vercel akan diblokir dengan error *401 Unauthorized* atau *302 Found*.
+2. **Space Sleep/Idle (Free Tier)**:
+   Secara default, Space gratis akan "tidur" setelah beberapa jam tidak ada aktivitas. Request pertama setelah tidur akan memakan waktu 10-30 detik untuk men-spin up container kembali.
 
-Di **Vercel Dashboard** → Project → **Settings** → **Environment Variables**, tambahkan semua variabel berikut:
+---
 
-### Frontend Environment Variables (wajib semua ada di Vercel)
+## 1. Konfigurasi Environment Variables di Vercel (Frontend)
 
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_API_URL` | `/api` |
-| `NEXT_PUBLIC_WS_URL` | `wss://URL-BACKEND-KAMU` |
+Masuk ke **Vercel Dashboard → Project → Settings → Environment Variables** dan tambahkan variabel berikut:
+
+| Nama Variabel | Nilai Contoh / Deskripsi |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `/api` (Tetap gunakan ini agar proxy Next.js bekerja) |
+| `BACKEND_API_URL` | `https://wira123-ews-backend.hf.space` (Ganti dengan subdomain Space kamu) |
+| `NEXT_PUBLIC_WS_URL` | `wss://wira123-ews-backend.hf.space` (Wajib protokol `wss` untuk secure WebSocket) |
 | `NEXT_PUBLIC_PRIMARY_SENSOR_ID` | `EWS-RF-002` |
 | `NEXT_PUBLIC_FLOW_SENSOR_ID` | `EWS-FL-001` |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `AIzaSyDSfvMlRB7soewujF-SduY1osX2dZPrK9w` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | `AIzaSyAbTrWQwwc-S2pQmDlz-oAQqJWXayR8VtA` |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `ews-aplication.firebaseapp.com` |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `ews-aplication` |
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `ews-aplication.firebasestorage.app` |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `235513471209` |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | `1:235513471209:web:48e337cb4cf5cdcbe79078` |
-| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | **[VAPID Key dari langkah 2]** |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `AIzaSyDSfvMlRB7soewujF-SduY1osX2dZPrK9w` |
+| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | *[VAPID Key hasil generate dari Firebase Console]* |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://iizjtnuydhwrggsmtood.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `[anon key supabase]` |
-| `BACKEND_API_URL` | `https://URL-BACKEND-KAMU` (tanpa trailing slash) |
-
-> **Catatan:** `BACKEND_API_URL` adalah variabel server-side (tanpa `NEXT_PUBLIC_`), dipakai oleh `next.config.ts` untuk proxy `/api/*` ke backend.
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | *[Anon key dari Supabase dashboard]* |
 
 ---
 
-## 4. Konfigurasi Environment Variables di Backend Hosting (Railway/Render/Fly.io)
+## 2. Konfigurasi Environment Variables di Hugging Face Spaces (Backend)
 
-Tambahkan variabel berikut di dashboard hosting backend:
+Karena file [backend/.env](file:///d:/Folder%20Project%20Howarts/Early-Warning-System/backend/.env) masuk dalam `.gitignore` dan tidak di-push ke Hugging Face, Anda **wajib** mengisi variabel berikut di **Hugging Face Space → Settings → Variables and Secrets**:
 
-| Variable | Value |
-|----------|-------|
+### A. Secrets (Gunakan tipe **Secret**)
+| Nama Secret | Deskripsi / Nilai |
+|---|---|
+| `DATABASE_URL` | `postgresql://postgres.iizjtnuydhwrggsmtood:databaseews2026@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true` |
+| `DIRECT_URL` | `postgresql://postgres.iizjtnuydhwrggsmtood:databaseews2026@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres` |
+| `JWT_SECRET` | `EwsProduksi2026!Secr3tK3ySuperAmanBanget998877` |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Konten lengkap file [firebase-service-account.json](file:///d:/Folder%20Project%20Howarts/Early-Warning-System/backend/config/firebase-service-account.json) yang diformat dalam **satu baris** (tanpa newline) |
+
+### B. Variables (Gunakan tipe **Variable**)
+| Nama Variable | Deskripsi / Nilai |
+|---|---|
 | `NODE_ENV` | `production` |
-| `PORT` | `7860` (atau sesuai hosting) |
-| `DATABASE_URL` | `[pooler URL supabase dengan pgbouncer=true]` |
-| `DIRECT_URL` | `[direct URL supabase]` |
-| `JWT_SECRET` | `[JWT secret panjang dan acak]` |
+| `PORT` | `7860` (Wajib untuk Hugging Face Spaces agar port routingnya sesuai) |
 | `FIREBASE_PROJECT_ID` | `ews-aplication` |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | `[konten JSON dari backend/.env — satu baris]` |
 | `FCM_DEFAULT_TOPIC` | `ews-alerts` |
-| `ALLOWED_ORIGINS` | `https://ews-floodguard.vercel.app` |
+| `ALLOWED_ORIGINS` | `https://ews-floodguard.vercel.app` (Ganti dengan domain Vercel Anda) |
 | `ALLOW_NGROK_ORIGINS` | `false` |
 
-> **Penting:** `FIREBASE_SERVICE_ACCOUNT_JSON` sudah tersedia di `backend/.env` (sudah diisi dengan credentials yang ada). Copy nilai tersebut ke dashboard hosting backend.
+---
+
+## 3. Cara Push / Update Backend ke Hugging Face Spaces
+
+Karena Hugging Face Space adalah repository git terpisah dan backend kita berada di subfolder `backend`, gunakan perintah berikut di terminal root proyek untuk men-deploy perubahan backend saja:
+
+```bash
+# Push perubahan backend ke Hugging Face
+git subtree push --prefix=backend hf main
+```
+
+*Catatan: Pastikan Anda sudah melakukan `git commit` di branch `main` lokal Anda sebelum menjalankan perintah di atas.*
 
 ---
 
-## 5. Update URL di Kode Jika URL Vercel Berbeda
+## 4. Konfigurasi Firebase Authorized Domains (Wajib)
+Jika tombol **Google Sign-In** mengalami error auth:
+1. Buka [Firebase Console](https://console.firebase.google.com/) → Project `ews-aplication`
+2. Buka **Authentication** → **Settings** → **Authorized domains**
+3. Tambahkan domain Vercel Anda (misalnya `ews-floodguard.vercel.app`).
 
-Jika URL Vercel frontend kamu **bukan** `https://ews-floodguard.vercel.app`, update di:
-
-1. `backend/src/main.ts` → array `defaultOrigins` (baris ~33)
-2. `backend/.env` → variabel `ALLOWED_ORIGINS`
-
----
-
-## ✅ Checklist Final Sebelum Deploy
-
-- [ ] Domain Vercel sudah ditambahkan ke Firebase Authorized Domains
-- [ ] VAPID Key sudah didapatkan dan ditambahkan ke Vercel env vars
-- [ ] Semua `NEXT_PUBLIC_FIREBASE_*` sudah ada di Vercel env vars
-- [ ] `BACKEND_API_URL` sudah diisi di Vercel env vars
-- [ ] `FIREBASE_SERVICE_ACCOUNT_JSON` sudah diisi di backend hosting
-- [ ] `ALLOWED_ORIGINS` di backend hosting sudah berisi URL frontend Vercel
-- [ ] URL Vercel di `defaultOrigins` (main.ts) sudah benar
