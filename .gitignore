@@ -22,7 +22,7 @@ mobile/.flutter-plugins-dependencies
 
 
 # Environment
-# (Removed to allow committing .env files as requested, but firebase credentials are kept local)
+# Firebase service account credentials — JANGAN pernah commit ke git!
 backend/config/firebase-service-account.json
 
 # Debug

@@ -23,6 +23,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        // Terapkan ke semua routes
+        source: "/(.*)",
+        headers: [
+          {
+            // WAJIB untuk Firebase Google Sign-In popup.
+            // "same-origin" memblokir komunikasi dengan popup Firebase (firebaseapp.com).
+            // "same-origin-allow-popups" mengizinkan popup yang dibuka oleh halaman ini (Firebase Auth).
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+          {
+            // Izinkan embedding resource dari Firebase/Google untuk Auth dan FCM
+            key: "Cross-Origin-Embedder-Policy",
+            value: "unsafe-none",
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     let backendUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:4101";
     backendUrl = backendUrl.replace(/\/$/, "");
