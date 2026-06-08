@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/water_level_log.dart';
@@ -11,8 +12,6 @@ class SupabaseService {
   SupabaseService._internal();
 
   bool _initialized = false;
-  SupabaseClient? _client;
-
   // StreamControllers to publish realtime events
   final _waterLevelController = StreamController<WaterLevelLog>.broadcast();
   final _alertController = StreamController<AlertModel>.broadcast();
@@ -21,10 +20,6 @@ class SupabaseService {
   Stream<WaterLevelLog> get waterLevelStream => _waterLevelController.stream;
   Stream<AlertModel> get alertStream => _alertController.stream;
   Stream<SensorModel> get sensorStream => _sensorController.stream;
-
-  RealtimeChannel? _waterLevelChannel;
-  RealtimeChannel? _alertChannel;
-  RealtimeChannel? _sensorChannel;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -50,16 +45,15 @@ class SupabaseService {
           authFlowType: AuthFlowType.pkce,
         ),
       );
-      _client = Supabase.instance.client;
       _initialized = true;
-      print('⚡ Supabase Initialized successfully!');
+      debugPrint('⚡ Supabase Initialized successfully!');
     } catch (e) {
-      print('❌ Error initializing Supabase: $e');
+      debugPrint('❌ Error initializing Supabase: $e');
     }
   }
 
   void subscribeToRealtime() {
-    print('📡 [SupabaseService] Realtime PostgreSQL CDC is disabled. Standardized on NestJS SSE stream instead.');
+    debugPrint('📡 [SupabaseService] Realtime PostgreSQL CDC is disabled. Standardized on NestJS SSE stream instead.');
   }
 
   void unsubscribe() {

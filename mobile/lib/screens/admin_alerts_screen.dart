@@ -53,7 +53,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  value: _selectedLevel,
+                  initialValue: _selectedLevel,
                   decoration: const InputDecoration(
                     labelText: 'Tingkat Bahaya',
                     border: OutlineInputBorder(),
@@ -134,6 +134,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                                   ? 'WARNING'
                                   : 'INFO';
 
+                              final messenger = ScaffoldMessenger.of(context);
                               final success = await provider.broadcastAlert(
                                 title: _titleCtrl.text.trim(),
                                 message: _messageCtrl.text.trim(),
@@ -142,8 +143,10 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                                 pushEnabled: _sendPush,
                               );
 
+                              if (!mounted) return;
+
                               if (success) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text(
                                       'Peringatan berhasil disiarkan',
@@ -153,7 +156,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                                 // clear message but keep title as template
                                 _messageCtrl.clear();
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
                                       provider.errorMessage ??
@@ -252,7 +255,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withAlpha(26),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(

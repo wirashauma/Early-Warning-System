@@ -66,7 +66,7 @@ class NotificationService {
     await _flutterLocal.initialize(initializationSettings);
 
     // Request permission (iOS) and get token
-    NotificationSettings settings = await _messaging.requestPermission(
+    await _messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -84,14 +84,17 @@ class NotificationService {
             targetArea: targetArea,
           );
         } catch (e) {
-          if (kDebugMode)
+          if (kDebugMode) {
             debugPrint(
               '[NotificationService] Failed to register token with backend: $e',
             );
+          }
         }
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('[NotificationService] getToken error: $e');
+      if (kDebugMode) {
+        debugPrint('[NotificationService] getToken error: $e');
+      }
     }
 
     // Foreground message handler

@@ -20,7 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
 
-  bool _agreeTerms = false;
+  final bool _agreeTerms = false;
 
   @override
   void dispose() {
@@ -37,7 +37,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Anda harus menyetujui syarat & ketentuan')),
+        const SnackBar(
+          content: Text('Anda harus menyetujui syarat & ketentuan'),
+        ),
       );
       return;
     }
@@ -92,100 +94,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.pageBg,
+      backgroundColor: const Color(0xFFF0F4F8),
       body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             children: [
               _buildHeader(),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      if (context.watch<AuthProvider>().errorMessage != null)
-                        ErrorBanner(message: context.watch<AuthProvider>().errorMessage!),
-                      AuthTextField(
-                        label: 'Nama Lengkap',
-                        hint: 'Masukkan nama Anda',
-                        controller: _nameCtrl,
-                        prefixIcon: Icons.person_outline,
-                        validator: (v) => v!.isEmpty ? 'Nama wajib diisi' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      AuthTextField(
-                        label: 'Email',
-                        hint: 'contoh@email.com',
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        prefixIcon: Icons.email_outlined,
-                        validator: (v) => v!.contains('@') ? null : 'Email tidak valid',
-                      ),
-                      const SizedBox(height: 16),
-                      AuthTextField(
-                        label: 'Nomor Telepon',
-                        hint: '08xxxxxxxxxx',
-                        controller: _phoneCtrl,
-                        keyboardType: TextInputType.phone,
-                        prefixIcon: Icons.phone_outlined,
-                        validator: (v) => v!.length < 10 ? 'Nomor tidak valid' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      AuthTextField(
-                        label: 'Institusi / Instansi (Opsional)',
-                        hint: 'Masukkan nama instansi atau tempat kerja',
-                        controller: _addressCtrl,
-                        prefixIcon: Icons.business_outlined,
-                      ),
-                      const SizedBox(height: 16),
-                      AuthTextField(
-                        label: 'Password',
-                        hint: 'Minimal 6 karakter',
-                        controller: _passCtrl,
-                        isPassword: true,
-                        prefixIcon: Icons.lock_outline,
-                        validator: (v) => v!.length < 6 ? 'Password terlalu pendek' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      AuthTextField(
-                        label: 'Konfirmasi Password',
-                        hint: 'Ulangi password Anda',
-                        controller: _confirmPassCtrl,
-                        isPassword: true,
-                        prefixIcon: Icons.lock_reset,
-                        validator: (v) => v != _passCtrl.text ? 'Password tidak cocok' : null,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildTermsCheckbox(),
-                      const SizedBox(height: 24),
-                      AuthButton(
-                        label: 'Buat Akun',
-                        onPressed: _handleRegister,
-                        isLoading: context.watch<AuthProvider>().isLoading,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('atau', style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
-                          ),
-                          Expanded(child: Divider(color: AppTheme.textGrey.withValues(alpha: 0.3))),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      GoogleSignInButton(
-                        onPressed: _handleGoogleRegister,
-                        isLoading: context.watch<AuthProvider>().isLoading,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildFooter(),
-                    ],
-                  ),
-                ),
-              ),
+              const SizedBox(height: 16),
+              _buildFormCard(),
             ],
           ),
         ),
@@ -194,40 +111,166 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)]),
-      ),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          const Icon(Icons.person_add_outlined, color: Colors.white, size: 48),
-          const SizedBox(height: 16),
-          const Text('Daftar Akun', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
-        ],
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(Icons.arrow_back_ios, size: 14, color: Colors.black87),
+        label: const Text(
+          'Kembali',
+          style: TextStyle(color: Colors.black87, fontSize: 14),
+        ),
+        style: TextButton.styleFrom(
+          backgroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
     );
   }
 
-  Widget _buildTermsCheckbox() {
-    return Row(
-      children: [
-        Checkbox(
-          value: _agreeTerms,
-          onChanged: (v) { if(v != null) setState(() => _agreeTerms = v); },
+  Widget _buildFormCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            // Logo gambar
+            Image.asset('assets/images/logo.png', width: 60, height: 60),
+            const SizedBox(height: 8),
+            Text(
+              'DAFTAR AKUN EWS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.primaryBlue,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Daftar Akun Baru',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Lengkapi formulir di bawah untuk bergabung.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // Error banner
+            if (context.watch<AuthProvider>().errorMessage != null)
+              ErrorBanner(message: context.watch<AuthProvider>().errorMessage!),
+
+            // Google button
+            GoogleSignInButton(
+              onPressed: _handleGoogleRegister,
+              isLoading: context.watch<AuthProvider>().isLoading,
+            ),
+            const SizedBox(height: 20),
+
+            // Divider ATAU
+            Row(
+              children: [
+                Expanded(
+                  child: Divider(color: Colors.grey.withValues(alpha: 0.3)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'ATAU',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(color: Colors.grey.withValues(alpha: 0.3)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Form fields
+            AuthTextField(
+              label: 'NAMA LENGKAP',
+              hint: 'Nama lengkap',
+              controller: _nameCtrl,
+              prefixIcon: Icons.person_outline,
+              validator: (v) => v!.isEmpty ? 'Nama wajib diisi' : null,
+            ),
+            const SizedBox(height: 16),
+            AuthTextField(
+              label: 'INSTANSI / ORGANISASI',
+              hint: 'Contoh: BPBD Padang',
+              controller: _addressCtrl,
+              prefixIcon: Icons.business_outlined,
+            ),
+            const SizedBox(height: 16),
+            AuthTextField(
+              label: 'EMAIL',
+              hint: 'nama@email.com',
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              prefixIcon: Icons.email_outlined,
+              validator: (v) => v!.contains('@') ? null : 'Email tidak valid',
+            ),
+            const SizedBox(height: 16),
+            AuthTextField(
+              label: 'PASSWORD',
+              hint: 'Minimal 8 karakter',
+              controller: _passCtrl,
+              isPassword: true,
+              prefixIcon: Icons.lock_outline,
+              validator: (v) =>
+                  v!.length < 6 ? 'Password terlalu pendek' : null,
+            ),
+            const SizedBox(height: 16),
+            AuthTextField(
+              label: 'KONFIRMASI PASSWORD',
+              hint: 'Ulangi password',
+              controller: _confirmPassCtrl,
+              isPassword: true,
+              prefixIcon: Icons.lock_reset,
+              validator: (v) =>
+                  v != _passCtrl.text ? 'Password tidak cocok' : null,
+            ),
+            const SizedBox(height: 24),
+
+            // Tombol Daftar
+            AuthButton(
+              label: 'Daftar',
+              onPressed: _handleRegister,
+              isLoading: context.watch<AuthProvider>().isLoading,
+            ),
+            const SizedBox(height: 16),
+
+            _buildFooter(),
+          ],
         ),
-        const Expanded(
-          child: Text('Saya menyetujui Syarat & Ketentuan EWS Flood Guard', style: TextStyle(fontSize: 12)),
-        ),
-      ],
+      ),
     );
   }
 
@@ -235,10 +278,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text('Sudah punya akun? '),
+        const Text('Sudah punya akun? ', style: TextStyle(color: Colors.grey)),
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Text('Masuk', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
+          child: const Text(
+            'Login di sini',
+            style: TextStyle(
+              color: AppTheme.primaryBlue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );

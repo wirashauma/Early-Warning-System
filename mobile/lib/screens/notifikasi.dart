@@ -23,6 +23,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     super.initState();
     // load initial history
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       try {
         context.read<AdminProvider>().loadAlertHistory();
       } catch (e) {
@@ -32,6 +33,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
     // listen to incoming foreground messages to refresh list
     _sub = NotificationService.instance.onMessageStream.listen((message) {
+      if (!mounted) return;
       try {
         context.read<AdminProvider>().loadAlertHistory();
       } catch (e) {
@@ -222,7 +224,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withAlpha(26),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -274,7 +276,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withAlpha(5),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -288,7 +290,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withAlpha(26),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

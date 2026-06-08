@@ -97,8 +97,9 @@ class AdminService extends ChangeNotifier {
       };
       if (type != null) body['type'] = type;
       if (riverName != null) body['riverName'] = riverName;
-      if (zeroCalibrationCm != null)
+      if (zeroCalibrationCm != null) {
         body['zeroCalibrationCm'] = zeroCalibrationCm;
+      }
 
       return await _apiService.put('/sensors/$id', body);
     } catch (e) {

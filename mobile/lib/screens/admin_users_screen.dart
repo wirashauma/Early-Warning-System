@@ -19,6 +19,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     String id,
     String name,
   ) async {
+    final provider = context.read<AdminProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed =
         await showDialog<bool>(
           context: context,
@@ -47,15 +49,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         false;
 
     if (!confirmed) return;
-
-    final provider = context.read<AdminProvider>();
-    final messenger = ScaffoldMessenger.of(context);
+    if (!mounted) return;
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       const SnackBar(content: Text('Menghapus pengguna...')),
     );
 
     final success = await provider.deleteUser(id);
+    if (!mounted) return;
     messenger.hideCurrentSnackBar();
 
     messenger.showSnackBar(
@@ -157,7 +158,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: role,
+                          initialValue: role,
                           decoration: const InputDecoration(labelText: 'Role'),
                           items: const [
                             DropdownMenuItem(
@@ -185,8 +186,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     if (!formKey.currentState!.validate()) {
                                       return;
                                     }
-                                    final messenger = ScaffoldMessenger.of(context);
                                     final provider = context.read<AdminProvider>();
+                                    final sheetNavigator = Navigator.of(sheetContext);
+                                    final messenger = ScaffoldMessenger.of(context);
                                     setSheetState(() => isSubmitting = true);
                                     final success = await provider.createUser(
                                       name: nameController.text.trim(),
@@ -198,32 +200,29 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                           : phoneController.text.trim(),
                                     );
                                     setSheetState(() => isSubmitting = false);
+                                    if (!mounted) return;
                                     if (success) {
                                       provider.loadUsers().catchError((e) {
                                         debugPrint('loadUsers failed: $e');
                                         return const <dynamic>[];
                                       });
-                                      if (mounted) {
-                                        messenger.showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Pengguna baru berhasil ditambahkan.',
-                                            ),
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Pengguna baru berhasil ditambahkan.',
                                           ),
-                                        );
-                                      }
-                                      Navigator.of(sheetContext).pop();
+                                        ),
+                                      );
+                                      sheetNavigator.pop();
                                     } else {
-                                      if (mounted) {
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              provider.errorMessage ??
-                                                  'Gagal membuat pengguna.',
-                                            ),
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            provider.errorMessage ??
+                                                'Gagal membuat pengguna.',
                                           ),
-                                        );
-                                      }
+                                        ),
+                                      );
                                     }
                                   },
                             child: isSubmitting
@@ -336,7 +335,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: role,
+                          initialValue: role,
                           decoration: const InputDecoration(labelText: 'Role'),
                           items: const [
                             DropdownMenuItem(
@@ -364,8 +363,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     if (!formKey.currentState!.validate()) {
                                       return;
                                     }
-                                    final messenger = ScaffoldMessenger.of(context);
                                     final provider = context.read<AdminProvider>();
+                                    final sheetNavigator = Navigator.of(sheetContext);
+                                    final messenger = ScaffoldMessenger.of(context);
                                     setSheetState(() => isSubmitting = true);
                                     final success = await provider.updateUser(
                                       id: user['id']?.toString() ?? '',
@@ -379,32 +379,29 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                           ?.toString(),
                                     );
                                     setSheetState(() => isSubmitting = false);
+                                    if (!mounted) return;
                                     if (success) {
                                       provider.loadUsers().catchError((e) {
                                         debugPrint('loadUsers failed: $e');
                                         return const <dynamic>[];
                                       });
-                                      if (mounted) {
-                                        messenger.showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Pengguna berhasil diperbarui.',
-                                            ),
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Pengguna berhasil diperbarui.',
                                           ),
-                                        );
-                                      }
-                                      Navigator.of(sheetContext).pop();
+                                        ),
+                                      );
+                                      sheetNavigator.pop();
                                     } else {
-                                      if (mounted) {
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              provider.errorMessage ??
-                                                  'Gagal memperbarui pengguna.',
-                                            ),
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            provider.errorMessage ??
+                                                'Gagal memperbarui pengguna.',
                                           ),
-                                        );
-                                      }
+                                        ),
+                                      );
                                     }
                                   },
                             child: isSubmitting
@@ -436,6 +433,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Future<void> _showLogoutDialog(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
     final confirmed =
         await showDialog<bool>(
           context: context,
@@ -464,9 +463,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         false;
 
     if (!confirmed) return;
+    if (!mounted) return;
 
-    context.read<AuthProvider>().logout();
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    authProvider.logout();
+    navigator.pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
   @override

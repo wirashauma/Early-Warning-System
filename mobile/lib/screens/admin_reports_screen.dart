@@ -433,7 +433,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -631,7 +631,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
           touchTooltipData: LineTouchTooltipData(
             tooltipBorderRadius: BorderRadius.circular(8),
             getTooltipColor: (touchedSpot) =>
-                const Color(0xFF0F172A).withOpacity(0.9),
+                const Color(0xFF0F172A).withAlpha(230),
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final log = logs[spot.spotIndex];

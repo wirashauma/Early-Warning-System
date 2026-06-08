@@ -218,7 +218,7 @@ class LiveTelemetryChart extends StatelessWidget {
                   touchTooltipData: LineTouchTooltipData(
                     tooltipBorderRadius: BorderRadius.circular(8),
                     getTooltipColor: (touchedSpot) =>
-                        const Color(0xFF0F172A).withOpacity(0.9),
+                        const Color(0xFF0F172A).withAlpha(230),
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((spot) {
                         final log = sortedData[spot.spotIndex];

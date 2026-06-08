@@ -37,7 +37,14 @@ class _AuthTextFieldState extends State<AuthTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textDark)),
+        Text(
+          widget.label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppTheme.textDark,
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: widget.controller,
@@ -54,14 +61,22 @@ class _AuthTextFieldState extends State<AuthTextField> {
                 : null,
             suffixIcon: widget.isPassword
                 ? IconButton(
-                    icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: AppTheme.textGrey, size: 20),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: AppTheme.textGrey,
+                      size: 20,
+                    ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   )
                 : null,
             filled: true,
             fillColor: widget.enabled ? Colors.white : const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -72,7 +87,10 @@ class _AuthTextFieldState extends State<AuthTextField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppTheme.accentBlue, width: 2),
+              borderSide: const BorderSide(
+                color: AppTheme.accentBlue,
+                width: 2,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -80,7 +98,10 @@ class _AuthTextFieldState extends State<AuthTextField> {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppTheme.statusBahaya, width: 2),
+              borderSide: const BorderSide(
+                color: AppTheme.statusBahaya,
+                width: 2,
+              ),
             ),
           ),
         ),
@@ -107,38 +128,61 @@ class AuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = color ?? AppTheme.primaryBlue;
-
+    final bgColor = color ?? const Color(0xFF2563EB);
     if (isOutlined) {
       return SizedBox(
         width: double.infinity,
-        height: 50,
+        height: 56,
         child: OutlinedButton(
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: bgColor),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
-          child: Text(label, style: TextStyle(color: bgColor, fontWeight: FontWeight.w600, fontSize: 15)),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: bgColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
         ),
       );
     }
 
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 56,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: bgColor,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: bgColor.withOpacity(0.6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          disabledBackgroundColor: bgColor.withAlpha(153),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           elevation: 0,
         ),
         child: isLoading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
       ),
     );
   }
@@ -154,15 +198,27 @@ class ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.statusBahaya.withOpacity(0.08),
+        color: AppTheme.statusBahaya.withAlpha(20),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.statusBahaya.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.statusBahaya.withAlpha(77)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppTheme.statusBahaya, size: 18),
+          const Icon(
+            Icons.error_outline,
+            color: AppTheme.statusBahaya,
+            size: 18,
+          ),
           const SizedBox(width: 8),
-          Expanded(child: Text(message, style: const TextStyle(color: AppTheme.statusBahaya, fontSize: 13))),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.statusBahaya,
+                fontSize: 13,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -179,15 +235,27 @@ class SuccessBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.statusNormal.withOpacity(0.08),
+        color: AppTheme.statusNormal.withAlpha(20),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.statusNormal.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.statusNormal.withAlpha(77)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, color: AppTheme.statusNormal, size: 18),
+          const Icon(
+            Icons.check_circle_outline,
+            color: AppTheme.statusNormal,
+            size: 18,
+          ),
           const SizedBox(width: 8),
-          Expanded(child: Text(message, style: const TextStyle(color: AppTheme.statusNormal, fontSize: 13))),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.statusNormal,
+                fontSize: 13,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -206,7 +274,10 @@ class DividerWithText extends StatelessWidget {
         const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(text, style: const TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+          child: Text(
+            text,
+            style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          ),
         ),
         const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
       ],
@@ -232,26 +303,37 @@ class GoogleSignInButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppTheme.accentBlue, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
         child: isLoading
             ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(color: AppTheme.accentBlue, strokeWidth: 2),
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: AppTheme.accentBlue,
+                  strokeWidth: 2,
+                ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.account_circle, color: AppTheme.accentBlue, size: 20),
+                  Image.asset(
+                    'assets/images/google_logo.png',
+                    width: 22,
+                    height: 22,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Masuk dengan Google',
+                    'Daftar dengan Google',
                     style: TextStyle(
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
                       fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

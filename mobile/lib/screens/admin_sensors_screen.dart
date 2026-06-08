@@ -27,6 +27,9 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context, String id) async {
+    final provider = context.read<AdminProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -47,22 +50,24 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       ),
     );
 
+    if (!mounted) return;
+
     if (confirmed == true) {
-      final provider = context.read<AdminProvider>();
       final success = await provider.deleteSensor(id);
+      if (!mounted) return;
       if (success) {
         await provider.loadSensors();
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sensor berhasil dihapus')),
-          );
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Sensor berhasil dihapus')),
+        );
       } else {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(provider.errorMessage ?? 'Gagal menghapus sensor'),
-            ),
-          );
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage ?? 'Gagal menghapus sensor'),
+          ),
+        );
       }
     }
   }
@@ -92,6 +97,9 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     );
     String typeValue = (sensor['type']?.toString() ?? 'WATER_LEVEL').toString();
 
+    final provider = context.read<AdminProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -114,7 +122,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: typeValue,
+                initialValue: typeValue,
                 items: const [
                   DropdownMenuItem(
                     value: 'WATER_LEVEL',
@@ -157,7 +165,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: (connectivityCtrl.text.isNotEmpty
+                initialValue: (connectivityCtrl.text.isNotEmpty
                     ? connectivityCtrl.text.toUpperCase()
                     : 'ONLINE'),
                 items: const [
@@ -196,7 +204,6 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
           ? connectivityCtrl.text.trim().toUpperCase()
           : 'UNKNOWN';
 
-      final provider = context.read<AdminProvider>();
       final success = await provider.updateSensor(
         id: id,
         name: name,
@@ -209,19 +216,19 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
 
       if (success) {
         await provider.loadSensors();
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sensor berhasil diperbarui')),
-          );
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Sensor berhasil diperbarui')),
+        );
       } else {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                provider.errorMessage ?? 'Gagal memperbarui sensor',
-              ),
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.errorMessage ?? 'Gagal memperbarui sensor',
             ),
-          );
+          ),
+        );
       }
     }
   }
@@ -234,6 +241,9 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     final batteryCtrl = TextEditingController(text: '100');
     String connectivity = 'ONLINE';
     String typeValue = 'WATER_LEVEL';
+
+    final provider = context.read<AdminProvider>();
+    final messenger = ScaffoldMessenger.of(context);
 
     final result = await showDialog<bool>(
       context: context,
@@ -283,7 +293,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                   return Column(
                     children: [
                       DropdownButtonFormField<String>(
-                        value: typeValue,
+                        initialValue: typeValue,
                         items: const [
                           DropdownMenuItem(
                             value: 'WATER_LEVEL',
@@ -309,7 +319,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
-                        value: connectivity,
+                        initialValue: connectivity,
                         items: const [
                           DropdownMenuItem(
                             value: 'ONLINE',
@@ -355,7 +365,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
 
       if (sensorId.isEmpty || name.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             const SnackBar(
               content: Text('ID Perangkat dan Nama Lokasi wajib diisi'),
             ),
@@ -368,7 +378,6 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       final lng = double.tryParse(lngCtrl.text.trim()) ?? 0.0;
       final battery = int.tryParse(batteryCtrl.text.trim()) ?? 100;
 
-      final provider = context.read<AdminProvider>();
       final success = await provider.createSensor(
         sensorId: sensorId,
         name: name,
@@ -381,21 +390,19 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
 
       if (success) {
         await provider.loadSensors();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sensor baru berhasil ditambahkan')),
-          );
-        }
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Sensor baru berhasil ditambahkan')),
+        );
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                provider.errorMessage ?? 'Gagal menambahkan sensor',
-              ),
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.errorMessage ?? 'Gagal menambahkan sensor',
             ),
-          );
-        }
+          ),
+        );
       }
     }
   }

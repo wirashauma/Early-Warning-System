@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/auth_provider.dart';
-import '../theme/app_theme.dart';
 import '../widgets/auth_widgets.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onLoginSuccess;
+
   const LoginScreen({super.key, this.onLoginSuccess});
 
   @override
@@ -16,13 +16,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-
-  static const _quickAdminEmail = 'admin@ews.com';
-  static const _quickAdminPassword = 'Admin123!';
-  static const _quickUserEmail = 'user1@ews.com';
-  static const _quickUserPassword = 'User12345!';
 
   @override
   void dispose() {
@@ -35,20 +31,77 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
-    final ok = await authProvider.login(_emailCtrl.text, _passCtrl.text);
+
+    final ok = await authProvider.login(_emailCtrl.text.trim(), _passCtrl.text);
 
     if (!mounted) return;
+
     if (ok) {
-      // FIX UTAMA: Cukup panggil callback dari main.dart.
-      // Hapus Navigator.pop dari sini agar tidak menabrak rute /home atau /admin.
       widget.onLoginSuccess?.call();
     }
   }
 
-  Future<void> _handleQuickLogin(String email, String password) async {
-    _emailCtrl.text = email;
-    _passCtrl.text = password;
-    await _handleLogin();
+  Widget _buildLogoSection() {
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withAlpha(64),
+                blurRadius: 15,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+        ),
+
+        const SizedBox(height: 14),
+
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: const Text(
+            'EWS FLOOD GUARD',
+            style: TextStyle(
+              color: Color(0xFF2563EB),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        const Text(
+          'Masuk Platform',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1F2937),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        const Text(
+          'Akses dashboard monitoring banjir real-time.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF6B7280), fontSize: 15),
+        ),
+      ],
+    );
   }
 
   @override
@@ -56,199 +109,158 @@ class _LoginScreenState extends State<LoginScreen> {
     final globalAuth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.pageBg,
+      backgroundColor: const Color(0xFFF4F7FC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildHeader(),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      if (globalAuth.errorMessage != null)
-                        ErrorBanner(message: globalAuth.errorMessage!),
-                      AuthTextField(
-                        label: 'Alamat Email',
-                        hint: 'Masukkan email Anda',
-                        controller: _emailCtrl,
-                        prefixIcon: Icons.email_outlined,
-                        validator: (v) =>
-                            v!.isEmpty ? 'Email wajib diisi' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      AuthTextField(
-                        label: 'Password',
-                        hint: 'Masukkan password Anda',
-                        controller: _passCtrl,
-                        isPassword: true,
-                        prefixIcon: Icons.lock_outline,
-                        validator: (v) =>
-                            v!.isEmpty ? 'Password wajib diisi' : null,
-                      ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 500),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(13),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildLogoSection(),
 
-                      // Link Lupa Password
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => Navigator.push(
+                    const SizedBox(height: 30),
+
+                    GoogleSignInButton(
+                      onPressed: () async {
+                        final ok = await globalAuth.loginWithGoogle();
+
+                        if (!mounted) return;
+
+                        if (ok) {
+                          widget.onLoginSuccess?.call();
+                        }
+                      },
+                      isLoading: globalAuth.isLoading,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'ATAU',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    if (globalAuth.errorMessage != null)
+                      ErrorBanner(message: globalAuth.errorMessage!),
+
+                    AuthTextField(
+                      label: 'EMAIL',
+                      hint: 'nama@email.com',
+                      controller: _emailCtrl,
+                      prefixIcon: Icons.email_outlined,
+                      validator: (v) => v!.isEmpty ? 'Email wajib diisi' : null,
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    AuthTextField(
+                      label: 'PASSWORD',
+                      hint: '********',
+                      controller: _passCtrl,
+                      isPassword: true,
+                      prefixIcon: Icons.lock_outline,
+                      validator: (v) =>
+                          v!.isEmpty ? 'Password wajib diisi' : null,
+                    ),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const ForgotPasswordScreen(),
                             ),
-                          ),
-                          child: const Text(
-                            'Lupa Password?',
-                            style: TextStyle(color: AppTheme.accentBlue),
-                          ),
+                          );
+                        },
+                        child: const Text(
+                          'Lupa Password?',
+                          style: TextStyle(color: Color(0xFF2563EB)),
                         ),
                       ),
+                    ),
 
-                      const SizedBox(height: 12),
-                      AuthButton(
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: AuthButton(
                         label: 'Masuk',
                         onPressed: _handleLogin,
                         isLoading: globalAuth.isLoading,
                       ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Quick Login',
-                          style: TextStyle(
-                            color: AppTheme.textGrey,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
-                          ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Belum punya akun? ',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      AuthButton(
-                        label: 'Masuk sebagai Admin',
-                        onPressed: () => _handleQuickLogin(
-                          _quickAdminEmail,
-                          _quickAdminPassword,
-                        ),
-                        isLoading: globalAuth.isLoading,
-                        isOutlined: true,
-                        color: AppTheme.accentBlue,
-                      ),
-                      const SizedBox(height: 10),
-                      AuthButton(
-                        label: 'Masuk sebagai User',
-                        onPressed: () => _handleQuickLogin(
-                          _quickUserEmail,
-                          _quickUserPassword,
-                        ),
-                        isLoading: globalAuth.isLoading,
-                        isOutlined: true,
-                        color: AppTheme.primaryBlue,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                              color: AppTheme.textGrey.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'atau',
-                              style: TextStyle(
-                                color: AppTheme.textGrey,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Divider(
-                              color: AppTheme.textGrey.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      GoogleSignInButton(
-                        onPressed: () async {
-                          final ok = await globalAuth.loginWithGoogle();
-                          if (!mounted) return;
-                          if (ok) {
-                            // FIX UTAMA: Hapus juga navigator.pop dari tombol Google
-                            widget.onLoginSuccess?.call();
-                          }
-                        },
-                        isLoading: globalAuth.isLoading,
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Belum punya akun? ',
-                            style: TextStyle(
-                              color: AppTheme.textGrey,
-                              fontSize: 14,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.push(
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => RegisterScreen(
                                   onLoginSuccess: widget.onLoginSuccess,
                                 ),
                               ),
-                            ),
-                            child: const Text(
-                              'Daftar Sekarang',
-                              style: TextStyle(
-                                color: AppTheme.primaryBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Daftar sekarang',
+                            style: TextStyle(
+                              color: Color(0xFF2563EB),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)],
-        ),
-      ),
-      child: const Column(
-        children: [
-          Icon(Icons.water_drop, color: Colors.white, size: 48),
-          SizedBox(height: 16),
-          Text(
-            'Login',
-            style: TextStyle(
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
             ),
           ),
-        ],
+        ),
       ),
     );
   }

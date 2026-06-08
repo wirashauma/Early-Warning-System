@@ -107,7 +107,7 @@ class _StatusScreenState extends State<StatusScreen> {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withAlpha(26),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -266,16 +266,17 @@ class _StatusScreenState extends State<StatusScreen> {
     super.dispose();
   }
 
-  bool _isOnline(SensorModel sensor) {
-    return sensor.isOnline;
-  }
-
   String _sensorStatus(SensorModel sensor) {
     final raw = (sensor.status ?? '').toString().toUpperCase();
-    if (raw == 'DANGER' || raw == 'BAHAYA') return 'Bahaya';
-    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA')
+    if (raw == 'DANGER' || raw == 'BAHAYA') {
+      return 'Bahaya';
+    }
+    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') {
       return 'Waspada';
-    if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') return 'Normal';
+    }
+    if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') {
+      return 'Normal';
+    }
     return sensor.isOnline ? 'Normal' : 'Offline';
   }
 
@@ -583,7 +584,7 @@ class _StatusScreenState extends State<StatusScreen> {
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: color.withOpacity(0.45),
+                                                color: color.withAlpha(115),
                                                 blurRadius: focusedNow ? 10 : 4,
                                               ),
                                             ],

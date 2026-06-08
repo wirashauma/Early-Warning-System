@@ -614,7 +614,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                     if (!mounted) return;
                     if (ok) {
-                      Navigator.pop(sheetCtx);
+                      Navigator.pop(context);
                       setState(() {});
                       scaffoldMessenger.showSnackBar(
                         const SnackBar(
@@ -806,7 +806,7 @@ class _SwitchRow extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppTheme.primaryBlue,
+            activeThumbColor: AppTheme.primaryBlue,
           ),
         ],
       ),

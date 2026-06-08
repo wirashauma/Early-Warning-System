@@ -27,7 +27,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedSensorIndex = 0;
-  int _selectedChartTab = 0; // 0 = Tinggi Air, 1 = Curah Hujan, 2 = Debit
   bool _loadingHistory = false;
   List<WaterLevelLog> _wlHistory = [];
   List<RainfallLog> _rfHistory = [];
@@ -118,10 +117,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _sensorStatus(SensorModel sensor) {
     final raw = (sensor.status ?? '').toString().toUpperCase();
-    if (raw == 'DANGER' || raw == 'BAHAYA') return 'Bahaya';
-    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA')
+    if (raw == 'DANGER' || raw == 'BAHAYA') {
+      return 'Bahaya';
+    }
+    if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') {
       return 'Waspada';
-    if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') return 'Normal';
+    }
+    if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') {
+      return 'Normal';
+    }
     return sensor.isOnline ? 'Normal' : 'Offline';
   }
 
@@ -175,33 +179,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     });
   }
-
-  static const List<Map<String, dynamic>> _sensorLocations = [
-    {
-      'label': 'H1',
-      'colorVal': 0xFFE53E3E,
-      'lat': -0.9570,
-      'lng': 100.3530,
-      'name': 'Hulu Batang Arau',
-    },
-    {
-      'label': 'T1',
-      'colorVal': 0xFFDD6B20,
-      'lat': -0.9490,
-      'lng': 100.3610,
-      'name': 'Tengah Sungai',
-    },
-    {
-      'label': 'H2',
-      'colorVal': 0xFF38A169,
-      'lat': -0.9430,
-      'lng': 100.3700,
-      'name': 'Hilir Batang Arau',
-    },
-  ];
-
-  // Simulasi manifes data sensor dari database seed backend Anda khusus untuk tampilan Admin
-  // Admin sensor list is driven by backend via AdminProvider.sensors
 
   @override
   Widget build(BuildContext context) {
@@ -332,7 +309,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     '';
                 final sensorName = sensor['name'] ?? '';
                 final battery =
-                    sensor['battery_level'] ?? sensor['batteryLevel'] ?? null;
+                    sensor['battery_level'] ?? sensor['batteryLevel'];
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -826,10 +803,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _sensorColor(selectedSensor).withOpacity(0.1),
+                color: _sensorColor(selectedSensor).withAlpha(26),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: _sensorColor(selectedSensor).withOpacity(0.3),
+                  color: _sensorColor(selectedSensor).withAlpha(77),
                 ),
               ),
               child: Column(
@@ -940,7 +917,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: color.withOpacity(0.5),
+                                  color: color.withAlpha(128),
                                   blurRadius: 6,
                                 ),
                               ],
@@ -1155,7 +1132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1287,7 +1264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'Grafik Tinggi Air',
           liveValue: '${waterLevel.toInt()} cm',
           color: AppTheme.accentBlue,
-          values: _wlHistory.map((e) => (e as WaterLevelLog).waterLevel).toList(),
+          values: _wlHistory.map((e) => e.waterLevel).toList(),
           unit: 'cm',
           chartWidget: _buildFlChart(
             _wlHistory,
@@ -1300,7 +1277,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'Grafik Curah Hujan',
           liveValue: '${rainfall.toStringAsFixed(1)} mm/jam',
           color: const Color(0xFF10B981),
-          values: _rfHistory.map((e) => (e as RainfallLog).rainfall).toList(),
+          values: _rfHistory.map((e) => e.rainfall).toList(),
           unit: 'mm',
           chartWidget: _buildFlChart(
             _rfHistory,
@@ -1313,7 +1290,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'Grafik Debit Aliran',
           liveValue: '${currentFlow.toStringAsFixed(1)} LPM',
           color: const Color(0xFFF59E0B),
-          values: _frHistory.map((e) => (e as FlowRateLog).flowRate).toList(),
+          values: _frHistory.map((e) => e.flowRate).toList(),
           unit: 'LPM',
           chartWidget: _buildFlChart(
             _frHistory,
@@ -1499,14 +1476,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           touchTooltipData: LineTouchTooltipData(
             tooltipBorderRadius: BorderRadius.circular(8),
             getTooltipColor: (touchedSpot) =>
-                const Color(0xFF0F172A).withOpacity(0.9),
+                const Color(0xFF0F172A).withAlpha(230),
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final log = logs[spot.spotIndex];
                 DateTime? dt;
-                if (log is WaterLevelLog) dt = log.recordedAt;
-                else if (log is RainfallLog) dt = log.recordedAt;
-                else if (log is FlowRateLog) dt = log.recordedAt;
+                if (log is WaterLevelLog) {
+                  dt = log.recordedAt;
+                } else if (log is RainfallLog) {
+                  dt = log.recordedAt;
+                } else if (log is FlowRateLog) {
+                  dt = log.recordedAt;
+                }
                 final formattedTime = dt != null
                     ? DateFormat('HH:mm:ss').format(dt)
                     : '';
@@ -1562,31 +1543,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTabPill(int index, String label, Color color) {
-    final active = _selectedChartTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedChartTab = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(
-            color: active ? color : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: active ? Colors.white : AppTheme.textDark,
-            ),
-          ),
-        ),
       ),
     );
   }
