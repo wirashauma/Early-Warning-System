@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/admin_provider.dart';
 
@@ -55,19 +56,19 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                 child: Row(
                   children: [
                     _buildInboxBadge(
-                      'Total Inbox',
+                      context.t('totalInbox'),
                       '$totalCount',
                       Colors.black87,
                     ),
                     const SizedBox(width: 8),
                     _buildInboxBadge(
-                      'Alert Bahaya',
+                      context.t('dangerAlerts'),
                       '$dangerCount',
                       Colors.red,
                     ),
                     const SizedBox(width: 8),
                     _buildInboxBadge(
-                      'Alert Waspada',
+                      context.t('warningAlerts'),
                       '$warningCount',
                       AppTheme.statusWaspada,
                     ),
@@ -79,19 +80,19 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                 child: provider.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : list.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.notifications_off_outlined,
                                   size: 48,
                                   color: Color(0xFF94A3B8),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
-                                  'Belum ada riwayat notifikasi.',
-                                  style: TextStyle(
+                                  context.t('noNotificationHistory'),
+                                  style: const TextStyle(
                                     color: Color(0xFF64748B),
                                     fontSize: 13,
                                   ),

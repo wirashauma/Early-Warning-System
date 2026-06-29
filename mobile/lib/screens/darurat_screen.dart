@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../localization/app_localizations.dart';
 import '../models/api_service.dart';
 import '../models/emergency_contact_model.dart';
 import '../theme/app_theme.dart';
@@ -91,7 +92,7 @@ class _DaruratScreenState extends State<DaruratScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Tidak dapat menjangkau server. Menampilkan data cadangan. Tarik ke bawah untuk memuat ulang.',
+              context.t('offlineFallbackMessage'),
               style: TextStyle(
                 color: AppTheme.statusWaspada,
                 fontSize: 12,
@@ -144,14 +145,14 @@ class _DaruratScreenState extends State<DaruratScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Layanan Darurat Prioritas',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Text(
+            context.t('priorityEmergencyServices'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Tekan tombol panggil sesuai kebutuhan utama yang sedang terjadi.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          Text(
+            context.t('emergencyActionSubtitle'),
+            style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
           ),
           const SizedBox(height: 12),
           ..._contacts.map((c) => _ContactCard(contact: c)),
@@ -176,17 +177,17 @@ class _DaruratScreenState extends State<DaruratScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Kontak Darurat',
-                      style: TextStyle(
+                    Text(
+                      context.t('emergencyContactsTitle'),
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Gunakan halaman ini saat situasi kritis. Pilih layanan yang tepat dan sampaikan informasi yang jelas agar bantuan datang lebih cepat.',
-                      style: TextStyle(
+                    Text(
+                      context.t('emergencyContactsSubtitle'),
+                      style: const TextStyle(
                         color: AppTheme.textGrey,
                         fontSize: 13,
                         height: 1.5,
@@ -208,7 +209,7 @@ class _DaruratScreenState extends State<DaruratScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Prioritas saat\nstatus Bahaya',
+                      context.t('dangerPriorityTag'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.statusBahaya,
@@ -218,7 +219,7 @@ class _DaruratScreenState extends State<DaruratScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Keselamatan jiwa\ndahulu.',
+                      context.t('safetyFirst'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.statusBahaya,
@@ -235,15 +236,15 @@ class _DaruratScreenState extends State<DaruratScreen> {
             spacing: 8,
             children: [
               _NavPill(
-                label: 'Pantau Dashboard',
+                label: context.t('openDashboard'),
                 onTap: () => navIndexNotifier.value = 1,
               ),
               _NavPill(
-                label: 'Lihat Peta Sensor',
+                label: context.t('viewSensorMap'),
                 onTap: () => navIndexNotifier.value = 2,
               ),
               _NavPill(
-                label: 'Buka Panduan',
+                label: context.t('mitigationGuide'),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -263,10 +264,10 @@ class _DaruratScreenState extends State<DaruratScreen> {
   // ── Before Calling Tips ───────────────────────────────────────────────────
   Widget _buildBeforeCallingInfo() {
     final tips = [
-      'Sebutkan lokasi detail (alamat, patokan terdekat, atau titik Google Maps).',
-      'Jelaskan kondisi saat ini: tinggi air, arus, akses jalan, dan cuaca.',
-      'Informasikan jumlah warga terdampak dan kelompok rentan (anak/lansia/disabilitas).',
-      'Sampaikan kebutuhan paling mendesak: evakuasi, medis, logistik, atau penyelamatan.',
+      context.t('beforeCallingTip1'),
+      context.t('beforeCallingTip2'),
+      context.t('beforeCallingTip3'),
+      context.t('beforeCallingTip4'),
     ];
 
     return Container(
@@ -281,7 +282,7 @@ class _DaruratScreenState extends State<DaruratScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Informasi yang Harus Disiapkan Saat Menelepon',
+            context.t('callPreparationTitle'),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
@@ -290,7 +291,7 @@ class _DaruratScreenState extends State<DaruratScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Semakin jelas informasi yang kamu sampaikan, semakin cepat tim dapat menentukan tindakan.',
+            context.t('callPreparationSubtitle'),
             style: TextStyle(color: AppTheme.statusSiaga, fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -327,9 +328,9 @@ class _DaruratScreenState extends State<DaruratScreen> {
   // ── Quick Flow ────────────────────────────────────────────────────────────
   Widget _buildQuickFlow() {
     final steps = [
-      'Cek sensor paling berisiko di Dashboard/Peta.',
-      'Hubungi layanan darurat yang paling relevan.',
-      'Ikuti arahan petugas dan prioritaskan evakuasi aman.',
+      context.t('quickActionStep1'),
+      context.t('quickActionStep2'),
+      context.t('quickActionStep3'),
     ];
 
     return Container(
@@ -343,9 +344,9 @@ class _DaruratScreenState extends State<DaruratScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Alur Tindakan Cepat',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          Text(
+            context.t('quickActionFlowTitle'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           const SizedBox(height: 12),
           ...steps.asMap().entries.map(
@@ -454,9 +455,9 @@ class _ContactCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Nomor Darurat',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 11),
+          Text(
+            context.t('emergencyNumberLabel'),
+            style: const TextStyle(color: AppTheme.textGrey, fontSize: 11),
           ),
           Text(
             contact.phone,
@@ -475,9 +476,9 @@ class _ContactCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Fokus layanan',
-                        style: TextStyle(
+                      Text(
+                        context.t('serviceFocusLabel'),
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.textGrey,
@@ -495,9 +496,9 @@ class _ContactCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Estimasi respons',
-                        style: TextStyle(
+                      Text(
+                        context.t('responseEstimateLabel'),
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.textGrey,
@@ -520,14 +521,14 @@ class _ContactCard extends StatelessWidget {
               onPressed: () => showDialog(
                 context: context,
                 builder: (dialogCtx) => AlertDialog(
-                  title: Text('Hubungi ${contact.name}'),
+                  title: Text(context.t('callContactTitle', replacements: {'name': contact.name})),
                   content: Text(
-                    'Apakah Anda ingin menghubungi ${contact.phone}?',
+                    context.t('callContactPrompt', replacements: {'phone': contact.phone}),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogCtx),
-                      child: const Text('Batal'),
+                      child: Text(context.t('cancel')),
                     ),
                     ElevatedButton(
                       onPressed: () async {
@@ -541,13 +542,13 @@ class _ContactCard extends StatelessWidget {
                         backgroundColor: color,
                         foregroundColor: Colors.white,
                       ),
-                      child: Text('Hubungi ${contact.phone}'),
+                      child: Text(context.t('callContactButton', replacements: {'phone': contact.phone})),
                     ),
                   ],
                 ),
               ),
               icon: const Icon(Icons.phone, size: 16),
-              label: Text('Hubungi ${contact.phone}'),
+              label: Text(context.t('callContactButton', replacements: {'phone': contact.phone})),
               style: ElevatedButton.styleFrom(
                 backgroundColor: color,
                 foregroundColor: Colors.white,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../providers/telemetry_provider.dart';
 import 'alert_screen.dart';
@@ -79,31 +80,31 @@ class _MainNavigationState extends State<MainNavigation> {
           selectedFontSize: 11,
           unselectedFontSize: 10,
           elevation: 0,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'Dasbor',
+              icon: const Icon(Icons.dashboard_outlined),
+              activeIcon: const Icon(Icons.dashboard),
+              label: context.t('dashboard'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.sensors_outlined),
-              activeIcon: Icon(Icons.sensors),
-              label: 'Sensor',
+              icon: const Icon(Icons.sensors_outlined),
+              activeIcon: const Icon(Icons.sensors),
+              label: context.t('sensors'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_outlined),
-              activeIcon: Icon(Icons.notifications),
-              label: 'Peringatan',
+              icon: const Icon(Icons.notifications_outlined),
+              activeIcon: const Icon(Icons.notifications),
+              label: context.t('alertsMenu'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long),
-              label: 'Laporan',
+              icon: const Icon(Icons.receipt_long_outlined),
+              activeIcon: const Icon(Icons.receipt_long),
+              label: context.t('reports'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Pengguna',
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
+              label: context.t('profile'),
             ),
           ],
         ),
@@ -129,20 +130,20 @@ class _ReportsScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0.5,
         iconTheme: const IconThemeData(color: AppTheme.primaryBlue),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Laporan',
-              style: TextStyle(
+              context.t('reports'),
+              style: const TextStyle(
                 color: AppTheme.textDark,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
-              'Ringkasan data sistem',
-              style: TextStyle(color: AppTheme.textGrey, fontSize: 11),
+              context.t('reportSummary'),
+              style: const TextStyle(color: AppTheme.textGrey, fontSize: 11),
             ),
           ],
         ),
@@ -162,21 +163,21 @@ class _ReportsScreen extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Laporan Monitoring',
-                      style: TextStyle(
+                      context.t('monitoringReport'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
-                      'Pilih periode dan unduh rekap data pemantauan banjir.',
-                      style: TextStyle(
+                      context.t('monitoringReportSubtitle'),
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
                         height: 1.4,
@@ -195,25 +196,25 @@ class _ReportsScreen extends StatelessWidget {
                 childAspectRatio: 1.35,
                 children: [
                   _ReportMetricCard(
-                    title: 'Total Sensor',
+                    title: context.t('totalSensors'),
                     value: totalSensors.toString(),
                     icon: Icons.sensors,
                     color: AppTheme.primaryBlue,
                   ),
                   _ReportMetricCard(
-                    title: 'Sensor Online',
+                    title: context.t('onlineSensors'),
                     value: onlineSensors.toString(),
                     icon: Icons.check_circle_outline,
                     color: AppTheme.statusNormal,
                   ),
                   _ReportMetricCard(
-                    title: 'Status Waspada',
+                    title: context.t('warningStatus'),
                     value: warningCount.toString(),
                     icon: Icons.warning_amber_outlined,
                     color: AppTheme.statusWaspada,
                   ),
                   _ReportMetricCard(
-                    title: 'Status Bahaya',
+                    title: context.t('dangerStatus'),
                     value: dangerCount.toString(),
                     icon: Icons.error_outline,
                     color: AppTheme.statusBahaya,
@@ -223,8 +224,8 @@ class _ReportsScreen extends StatelessWidget {
               const SizedBox(height: 16),
               _ActionCard(
                 icon: Icons.picture_as_pdf,
-                title: 'Unduh PDF',
-                subtitle: 'Generate laporan pemantauan dalam format PDF.',
+                title: context.t('downloadPdf'),
+                subtitle: context.t('downloadReportPdf'),
                 color: Colors.red.shade600,
                 onTap: () {
                   Navigator.push(
@@ -238,8 +239,8 @@ class _ReportsScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _ActionCard(
                 icon: Icons.grid_on_outlined,
-                title: 'Unduh Excel',
-                subtitle: 'Ekspor data mentah untuk analisis lanjutan.',
+                title: context.t('downloadExcel'),
+                subtitle: context.t('downloadReportExcel'),
                 color: Colors.green.shade600,
                 onTap: () {
                   Navigator.push(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../models/admin_provider.dart';
 
 class AdminThresholdScreen extends StatefulWidget {
@@ -68,15 +69,15 @@ class _AdminThresholdScreenState extends State<AdminThresholdScreen> {
     messenger.hideCurrentSnackBar();
     if (success) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Konfigurasi ambang batas berhasil diperbarui!'),
-          backgroundColor: Color(0xFF10B981),
+        SnackBar(
+          content: Text(context.t('thresholdUpdateSuccess')),
+          backgroundColor: const Color(0xFF10B981),
         ),
       );
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(provider.errorMessage ?? 'Gagal menyimpan konfigurasi.'),
+          content: Text(provider.errorMessage ?? context.t('thresholdUpdateFailed')),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -108,18 +109,18 @@ class _AdminThresholdScreenState extends State<AdminThresholdScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('Konfigurasi Batas Tinggi Air (Ultrasonic)'),
+            _buildSectionHeader(context.t('thresholdWaterLevelTitle')),
             const SizedBox(height: 12),
-            _buildFormInput('Level Normal Maksimal (cm)', _normalMaxCtrl),
-            _buildFormInput('Level Waspada Minimal (cm)', _warningMinCtrl),
-            _buildFormInput('Level Waspada Maksimal (cm)', _warningMaxCtrl),
-            _buildFormInput('Level Bahaya Minimal (cm)', _dangerMinCtrl),
+            _buildFormInput(context.t('thresholdNormalMaxLabel'), _normalMaxCtrl),
+            _buildFormInput(context.t('thresholdWarningMinLabel'), _warningMinCtrl),
+            _buildFormInput(context.t('thresholdWarningMaxLabel'), _warningMaxCtrl),
+            _buildFormInput(context.t('thresholdDangerMinLabel'), _dangerMinCtrl),
             const SizedBox(height: 20),
-            _buildSectionHeader('Konfigurasi Batas Intensitas Curah Hujan'),
+            _buildSectionHeader(context.t('thresholdRainfallTitle')),
             const SizedBox(height: 12),
-            _buildFormInput('Hujan Ringan Maksimal (mm/jam)', _rainLightMaxCtrl),
-            _buildFormInput('Hujan Sedang Maksimal (mm/jam)', _rainModerateMaxCtrl),
-            _buildFormInput('Hujan Lebat Minimal (mm/jam)', _rainHeavyMinCtrl),
+            _buildFormInput(context.t('thresholdRainLightMaxLabel'), _rainLightMaxCtrl),
+            _buildFormInput(context.t('thresholdRainModerateMaxLabel'), _rainModerateMaxCtrl),
+            _buildFormInput(context.t('thresholdRainHeavyMinLabel'), _rainHeavyMinCtrl),
             const SizedBox(height: 24),
             Consumer<AdminProvider>(
               builder: (context, provider, _) {
@@ -175,8 +176,8 @@ class _AdminThresholdScreenState extends State<AdminThresholdScreen> {
         controller: controller,
         keyboardType: TextInputType.number,
         validator: (v) {
-          if (v == null || v.trim().isEmpty) return 'Nilai wajib diisi';
-          if (num.tryParse(v.trim()) == null) return 'Masukkan angka yang valid';
+          if (v == null || v.trim().isEmpty) return context.t('fieldRequired');
+          if (num.tryParse(v.trim()) == null) return context.t('numberInvalid');
           return null;
         },
         decoration: InputDecoration(

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/report_provider.dart';
 
 class AdminReportsScreen extends StatelessWidget {
@@ -59,7 +60,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      SnackBar(content: Text('Mengunduh ${format.toUpperCase()}...')),
+      SnackBar(content: Text('${context.t('downloadingReport')} ${format.toUpperCase()}...')),
     );
 
     try {
@@ -71,14 +72,14 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Unduh ${format.toUpperCase()} berhasil. File tersimpan di: $filePath',
+            '${context.t('downloadSuccess')} $filePath',
           ),
         ),
       );
     } catch (e) {
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
-        SnackBar(content: Text('Export gagal: ${e.toString()}')),
+        SnackBar(content: Text('${context.t('exportFailed')} ${e.toString()}')),
       );
     }
   }
@@ -106,14 +107,14 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                 // Sensor Dropdown — wired to ReportProvider
                 DropdownButtonFormField<String>(
                   initialValue: provider.selectedSensorId,
-                  decoration: const InputDecoration(
-                    labelText: 'Pilih Sensor',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.t('selectSensorLabel'),
+                    border: const OutlineInputBorder(),
                   ),
                   items: [
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'all',
-                      child: Text('Semua Sensor'),
+                      child: Text(context.t('allSensors')),
                     ),
                     ...provider.sensors.map(
                       (s) => DropdownMenuItem(
@@ -131,10 +132,10 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                 TextFormField(
                   controller: _rangeController,
                   readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Rentang Tanggal Pencarian',
-                    suffixIcon: Icon(Icons.date_range),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.t('dateRangeSearchLabel'),
+                    suffixIcon: const Icon(Icons.date_range),
+                    border: const OutlineInputBorder(),
                   ),
                   onTap: () async {
                     final range = await showDateRangePicker(
@@ -173,7 +174,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                           )
                         : const Icon(Icons.search, size: 16),
                     label: Text(
-                      provider.loading ? 'Memuat...' : 'Tampilkan Data',
+                      provider.loading ? context.t('processing') : context.t('showData'),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0066FF),
@@ -196,7 +197,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                     color: Colors.white,
                   ),
                   label: Text(
-                    provider.exporting ? 'Memproses...' : 'Unduh PDF',
+                    provider.exporting ? context.t('processing') : context.t('downloadPdf'),
                     style: const TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -221,7 +222,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                     color: Colors.white,
                   ),
                   label: Text(
-                    provider.exporting ? 'Memproses...' : 'Unduh Excel',
+                    provider.exporting ? context.t('processing') : context.t('downloadExcel'),
                     style: const TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -261,19 +262,19 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.rawRows.isEmpty
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.folder_open,
                           size: 48,
                           color: Color(0xFF94A3B8),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
-                          'Tidak ada data logs pada rentang filter ini.',
-                          style: TextStyle(
+                          context.t('noDataLogsInRange'),
+                          style: const TextStyle(
                             color: Color(0xFF64748B),
                             fontSize: 13,
                           ),
@@ -286,7 +287,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSingleChartCard(
-                          title: 'Grafik Tinggi Air',
+                          title: context.t('reportChartWaterTitle'),
                           liveValue: '${(provider.rawRows.isNotEmpty ? (provider.rawRows.last['levelCm'] ?? 0) : 0).toInt()} cm',
                           color: const Color(0xFF0066FF),
                           loading: provider.loading,
@@ -300,7 +301,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                           ),
                         ),
                         _buildSingleChartCard(
-                          title: 'Grafik Curah Hujan',
+                          title: context.t('reportChartRainTitle'),
                           liveValue: '${(provider.rawRows.isNotEmpty ? (provider.rawRows.last['rainfallMm'] ?? 0.0) : 0.0).toStringAsFixed(1)} mm/jam',
                           color: const Color(0xFF10B981),
                           loading: provider.loading,
@@ -314,7 +315,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                           ),
                         ),
                         _buildSingleChartCard(
-                          title: 'Grafik Debit Aliran',
+                          title: context.t('reportChartFlowTitle'),
                           liveValue: '${(provider.rawRows.isNotEmpty ? (provider.rawRows.last['flowRateLpm'] ?? 0.0) : 0.0).toStringAsFixed(1)} LPM',
                           color: const Color(0xFFF59E0B),
                           loading: provider.loading,
@@ -329,7 +330,9 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          '${provider.rawRows.length} record ditemukan',
+                          context.t('recordsFound', replacements: {
+                            'count': provider.rawRows.length.toString(),
+                          }),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF64748B),
@@ -341,12 +344,12 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: DataTable(
-                              columns: const [
-                                DataColumn(label: Text('Waktu')),
-                                DataColumn(label: Text('Sensor')),
-                                DataColumn(label: Text('Ketinggian (cm)')),
-                                DataColumn(label: Text('Hujan (mm)')),
-                                DataColumn(label: Text('Debit (LPM)')),
+                              columns: [
+                                DataColumn(label: Text(context.t('tableTimeLabel'))),
+                                DataColumn(label: Text(context.t('tableSensorLabel'))),
+                                DataColumn(label: Text(context.t('tableHeightLabel'))),
+                                DataColumn(label: Text(context.t('tableRainLabel'))),
+                                DataColumn(label: Text(context.t('tableFlowLabel'))),
                               ],
                               rows: provider.rawRows.map((r) {
                                 return DataRow(
@@ -437,7 +440,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Terkini: $liveValue',
+                  '${context.t('latestValueLabel')}: $liveValue',
                   style: TextStyle(
                     color: color,
                     fontSize: 11,
@@ -464,21 +467,21 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatIndicator(
-                  label: 'MIN',
+                  label: context.t('reportStatMin'),
                   value: unit == 'cm' 
                       ? '${minVal!.toInt()} $unit' 
                       : '${minVal!.toStringAsFixed(1)} $unit',
                   color: const Color(0xFF64748B),
                 ),
                 _buildStatIndicator(
-                  label: 'RATA-RATA',
+                  label: context.t('reportStatAverage'),
                   value: unit == 'cm' 
                       ? '${avgVal!.toInt()} $unit' 
                       : '${avgVal!.toStringAsFixed(1)} $unit',
                   color: color,
                 ),
                 _buildStatIndicator(
-                  label: 'TERKINI',
+                  label: context.t('reportStatLatest'),
                   value: unit == 'cm' 
                       ? '${latestVal!.toInt()} $unit' 
                       : '${latestVal!.toStringAsFixed(1)} $unit',
@@ -539,7 +542,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
             Icon(iconData, color: const Color(0xFF94A3B8), size: 28),
             const SizedBox(height: 6),
             Text(
-              'Tidak ada data terfilter.',
+              context.t('noFilteredData'),
               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
             ),
           ],

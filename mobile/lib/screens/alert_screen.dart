@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/alert_model.dart';
 import '../models/api_service.dart';
 import '../theme/app_theme.dart';
@@ -72,7 +73,7 @@ class _AlertScreenState extends State<AlertScreen> {
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: _refreshAlerts,
-                          child: const Text('Coba Lagi'),
+                          child: Text(context.t('retry')),
                         ),
                       ],
                     ),
@@ -121,9 +122,9 @@ class _AlertScreenState extends State<AlertScreen> {
 
   Widget _buildAlertsList(List<AlertModel> alerts) {
     if (alerts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
-        child: Center(child: Text('Belum ada alert aktif')),
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Center(child: Text(context.t('noActiveAlerts'))),
       );
     }
 

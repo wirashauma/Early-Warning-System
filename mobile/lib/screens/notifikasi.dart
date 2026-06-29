@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/auth_provider.dart';
 import '../models/admin_provider.dart';
@@ -92,9 +94,9 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          "Notifikasi Peringatan",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          context.t('notificationPageTitle'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
@@ -127,7 +129,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Belum dibaca: $unreadCount',
+                        '${context.t('unreadCount')}$unreadCount',
                         style: const TextStyle(
                           color: Colors.red,
                           fontWeight: FontWeight.bold,
@@ -144,9 +146,9 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text(
-                                'Tandai semua dibaca',
-                                style: TextStyle(fontSize: 13),
+                            : Text(
+                                context.t('markAllRead'),
+                                style: const TextStyle(fontSize: 13),
                               ),
                       ),
                     ],
@@ -157,7 +159,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                   child: provider.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : list.isEmpty
-                      ? const Center(child: Text('Belum ada notifikasi'))
+                      ? Center(child: Text(context.t('noNotifications')))
                       : ListView.builder(
                           itemCount: list.length,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -178,10 +180,10 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
   Widget _buildNotificationCardFromModel(AlertModel alert) {
     final severity = alert.severity.toUpperCase();
     final tag = severity == 'DANGER'
-        ? 'Bahaya'
+        ? context.t('danger')
         : severity == 'WARNING'
-        ? 'Waspada'
-        : 'Aman';
+        ? context.t('warning')
+        : context.t('safe');
     final color = severity == 'DANGER'
         ? Colors.red
         : severity == 'WARNING'
@@ -228,7 +230,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'Tingkat: $tag',
+                    '${context.t('level')}$tag',
                     style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.bold,
@@ -243,7 +245,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Waktu: $dateStr',
+                  '${context.t('time')}$dateStr',
                   style: const TextStyle(
                     color: Colors.grey,
                     fontSize: 11,
@@ -255,7 +257,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(context.t('close'), style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),

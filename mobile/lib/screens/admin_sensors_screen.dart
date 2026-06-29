@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../models/admin_provider.dart';
 import '../models/sensor_model.dart';
 
@@ -33,18 +34,19 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus sensor'),
-        content: const Text(
-          'Apakah Anda yakin ingin menghapus sensor ini? Tindakan ini tidak dapat dibatalkan.',
-        ),
+        title: Text(context.t('deleteSensorTitle')),
+        content: Text(context.t('deleteSensorConfirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
+            child: Text(context.t('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            child: Text(
+              context.t('deleteSensorAction'),
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -59,13 +61,13 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
         await provider.loadSensors();
         if (!mounted) return;
         messenger.showSnackBar(
-          const SnackBar(content: Text('Sensor berhasil dihapus')),
+          SnackBar(content: Text(context.t('deleteSensorSuccess'))),
         );
       } else {
         if (!mounted) return;
         messenger.showSnackBar(
           SnackBar(
-            content: Text(provider.errorMessage ?? 'Gagal menghapus sensor'),
+            content: Text(provider.errorMessage ?? context.t('deleteSensorFailed')),
           ),
         );
       }
@@ -103,38 +105,38 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Sensor'),
+        title: Text(context.t('editSensorTitle')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: idCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'ID Perangkat (sensorId)',
+                decoration: InputDecoration(
+                  labelText: context.t('sensorIdLabel'),
                 ),
                 enabled: false,
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Lokasi'),
+                decoration: InputDecoration(labelText: context.t('sensorLocationLabel')),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: typeValue,
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'WATER_LEVEL',
-                    child: Text('Water Level (Tinggi Air)'),
+                    child: Text(context.t('sensorTypeWaterLevel')),
                   ),
                   DropdownMenuItem(
                     value: 'RAINFALL',
-                    child: Text('Rainfall (Curah Hujan)'),
+                    child: Text(context.t('sensorTypeRainfall')),
                   ),
                   DropdownMenuItem(
                     value: 'FLOW_RATE',
-                    child: Text('Flow Rate (Debit Aliran)'),
+                    child: Text(context.t('sensorTypeFlowRate')),
                   ),
                 ],
                 onChanged: (v) {
@@ -143,24 +145,24 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                     setState(() {});
                   }
                 },
-                decoration: const InputDecoration(labelText: 'Tipe Sensor'),
+                decoration: InputDecoration(labelText: context.t('sensorTypeLabel')),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: latCtrl,
-                decoration: const InputDecoration(labelText: 'Latitude'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: context.t('latitudeLabel')),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: lngCtrl,
-                decoration: const InputDecoration(labelText: 'Longitude'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: context.t('longitudeLabel')),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: batteryCtrl,
-                decoration: const InputDecoration(labelText: 'Baterai (%)'),
+                decoration: InputDecoration(labelText: '${context.t('batteryLabel')} (%)'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 8),
@@ -168,14 +170,14 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                 initialValue: (connectivityCtrl.text.isNotEmpty
                     ? connectivityCtrl.text.toUpperCase()
                     : 'ONLINE'),
-                items: const [
-                  DropdownMenuItem(value: 'ONLINE', child: Text('Online')),
-                  DropdownMenuItem(value: 'OFFLINE', child: Text('Offline')),
+                items: [
+                  DropdownMenuItem(value: 'ONLINE', child: Text(context.t('sensorOnline'))),
+                  DropdownMenuItem(value: 'OFFLINE', child: Text(context.t('sensorOffline'))),
                 ],
                 onChanged: (v) {
                   if (v != null) connectivityCtrl.text = v;
                 },
-                decoration: const InputDecoration(labelText: 'Status Koneksi'),
+                decoration: InputDecoration(labelText: context.t('sensorConnectivityLabel')),
               ),
             ],
           ),
@@ -183,13 +185,13 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
+            child: Text(context.t('cancel')),
           ),
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop(true);
             },
-            child: const Text('Simpan'),
+            child: Text(context.t('saveSensor')),
           ),
         ],
       ),
@@ -218,14 +220,14 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
         await provider.loadSensors();
         if (!mounted) return;
         messenger.showSnackBar(
-          const SnackBar(content: Text('Sensor berhasil diperbarui')),
+          SnackBar(content: Text(context.t('sensorUpdatedSuccess'))),
         );
       } else {
         if (!mounted) return;
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              provider.errorMessage ?? 'Gagal memperbarui sensor',
+              provider.errorMessage ?? context.t('sensorUpdateFailed'),
             ),
           ),
         );
@@ -248,27 +250,27 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Sensor Baru'),
+        title: Text(context.t('addSensorTitle')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: idCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'ID Perangkat (sensorId)',
-                  hintText: 'contoh: SNS-WL-04',
+                decoration: InputDecoration(
+                  labelText: context.t('sensorIdLabel'),
+                  hintText: context.t('sensorIdHint'),
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Lokasi'),
+                decoration: InputDecoration(labelText: context.t('sensorLocationLabel')),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: latCtrl,
-                decoration: const InputDecoration(labelText: 'Latitude'),
+                decoration: InputDecoration(labelText: context.t('latitudeLabel')),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -276,7 +278,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: lngCtrl,
-                decoration: const InputDecoration(labelText: 'Longitude'),
+                decoration: InputDecoration(labelText: context.t('longitudeLabel')),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -284,7 +286,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: batteryCtrl,
-                decoration: const InputDecoration(labelText: 'Baterai (%)'),
+                decoration: InputDecoration(labelText: '${context.t('batteryLabel')} (%)'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 8),
@@ -294,18 +296,18 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: typeValue,
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'WATER_LEVEL',
-                            child: Text('Water Level'),
+                            child: Text(context.t('sensorTypeWaterLevel')),
                           ),
                           DropdownMenuItem(
                             value: 'RAINFALL',
-                            child: Text('Rainfall'),
+                            child: Text(context.t('sensorTypeRainfall')),
                           ),
                           DropdownMenuItem(
                             value: 'FLOW_RATE',
-                            child: Text('Flow Rate'),
+                            child: Text(context.t('sensorTypeFlowRate')),
                           ),
                         ],
                         onChanged: (v) {
@@ -313,21 +315,21 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                             setDialogState(() => typeValue = v);
                           }
                         },
-                        decoration: const InputDecoration(
-                          labelText: 'Tipe Sensor',
+                        decoration: InputDecoration(
+                          labelText: context.t('sensorTypeLabel'),
                         ),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         initialValue: connectivity,
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'ONLINE',
-                            child: Text('Online'),
+                            child: Text(context.t('sensorOnline')),
                           ),
                           DropdownMenuItem(
                             value: 'OFFLINE',
-                            child: Text('Offline'),
+                            child: Text(context.t('sensorOffline')),
                           ),
                         ],
                         onChanged: (v) {
@@ -335,8 +337,8 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                             setDialogState(() => connectivity = v);
                           }
                         },
-                        decoration: const InputDecoration(
-                          labelText: 'Status Koneksi',
+                        decoration: InputDecoration(
+                          labelText: context.t('sensorConnectivityLabel'),
                         ),
                       ),
                     ],
@@ -349,11 +351,11 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
+            child: Text(context.t('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Tambah'),
+            child: Text(context.t('addSensorButton')),
           ),
         ],
       ),
@@ -366,8 +368,8 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
       if (sensorId.isEmpty || name.isEmpty) {
         if (mounted) {
           messenger.showSnackBar(
-            const SnackBar(
-              content: Text('ID Perangkat dan Nama Lokasi wajib diisi'),
+            SnackBar(
+              content: Text(context.t('sensorCreateRequired')),
             ),
           );
         }
@@ -392,14 +394,14 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
         await provider.loadSensors();
         if (!mounted) return;
         messenger.showSnackBar(
-          const SnackBar(content: Text('Sensor baru berhasil ditambahkan')),
+          SnackBar(content: Text(context.t('sensorCreatedSuccess'))),
         );
       } else {
         if (!mounted) return;
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              provider.errorMessage ?? 'Gagal menambahkan sensor',
+              provider.errorMessage ?? context.t('sensorCreatedFailed'),
             ),
           ),
         );
@@ -450,7 +452,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                     ElevatedButton(
                       onPressed: () =>
                           context.read<AdminProvider>().loadSensors(),
-                      child: const Text('Coba Lagi'),
+                      child: Text(context.t('retry')),
                     ),
                   ],
                 ),
@@ -462,27 +464,27 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
+                  children: [
+                    const Icon(
                       Icons.sensors_off_outlined,
                       size: 48,
                       color: Color(0xFF64748B),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
-                      'Belum ada sensor terpasang.',
+                      context.t('noSensorsInstalledAdminTitle'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1E293B),
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Silakan tambahkan perangkat IoT terlebih dahulu agar data sensor dapat muncul di halaman ini.',
+                      context.t('noSensorsInstalledAdminSubtitle'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                     ),
                   ],
                 ),
@@ -529,7 +531,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Tipe Perangkat: ${sensor['type'] ?? '-'}',
+                              '${context.t('deviceTypeLabel')}: ${sensor['type'] ?? '-'}',
                               style: const TextStyle(
                                 color: Color(0xFF64748B),
                                 fontSize: 11,
@@ -553,7 +555,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              isOnline ? 'ONLINE' : 'OFFLINE',
+                              isOnline ? context.t('sensorOnline') : context.t('sensorOffline'),
                               style: TextStyle(
                                 color: isOnline
                                     ? const Color(0xFF10B981)
@@ -565,7 +567,7 @@ class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Baterai: ${sensor['batteryLevel'] != null ? '${sensor['batteryLevel']}%' : '-'}',
+                            '${context.t('batteryLabelShort')}: ${sensor['batteryLevel'] != null ? '${sensor['batteryLevel']}%' : '-'}',
                             style: const TextStyle(
                               fontSize: 11,
                               color: Color(0xFF64748B),

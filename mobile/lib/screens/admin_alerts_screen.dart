@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/admin_provider.dart';
 
@@ -12,18 +13,17 @@ class AdminAlertsScreen extends StatefulWidget {
 
 class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleCtrl = TextEditingController(
-    text: 'Peringatan Kenaikan Debit Air',
-  );
-  final TextEditingController _messageCtrl = TextEditingController(
-    text: 'Peringatan: Kenaikan volume air terdeteksi di pintu air hulu.',
-  );
+  final TextEditingController _titleCtrl = TextEditingController();
+  final TextEditingController _messageCtrl = TextEditingController();
   String _selectedLevel = 'Waspada';
   bool _sendPush = true;
   bool _sendEmail = false;
+
   @override
   void initState() {
     super.initState();
+    _titleCtrl.text = context.t('alertDefaultTitle');
+    _messageCtrl.text = context.t('alertDefaultMessage');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         final provider = context.read<AdminProvider>();
@@ -39,9 +39,9 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Siarkan Peringatan Manual (Broadcast)',
-            style: TextStyle(
+          Text(
+            context.t('manualAlertBroadcast'),
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
               color: Color(0xFF1E293B),
@@ -54,52 +54,54 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: _selectedLevel,
-                  decoration: const InputDecoration(
-                    labelText: 'Tingkat Bahaya',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.t('alertLevelLabel'),
+                    border: const OutlineInputBorder(),
                   ),
-                  items: ['Aman', 'Waspada', 'Bahaya']
-                      .map((l) => DropdownMenuItem(value: l, child: Text(l)))
-                      .toList(),
+                  items: [
+                    DropdownMenuItem(value: 'Aman', child: Text(context.t('safe'))),
+                    DropdownMenuItem(value: 'Waspada', child: Text(context.t('warning'))),
+                    DropdownMenuItem(value: 'Bahaya', child: Text(context.t('danger'))),
+                  ],
                   onChanged: (val) =>
                       setState(() => _selectedLevel = val ?? _selectedLevel),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _titleCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Judul Peringatan',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.t('alertTitle'),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Judul wajib diisi'
+                      ? context.t('titleRequired')
                       : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _messageCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Pesan Peringatan',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.t('alertMessage'),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Pesan wajib diisi'
+                      ? context.t('messageRequired')
                       : null,
                 ),
                 const SizedBox(height: 8),
                 CheckboxListTile(
-                  title: const Text(
-                    'Kirim via Push Notification',
-                    style: TextStyle(fontSize: 13),
+                  title: Text(
+                    context.t('sendPushNotification'),
+                    style: const TextStyle(fontSize: 13),
                   ),
                   value: _sendPush,
                   onChanged: (v) => setState(() => _sendPush = v!),
                 ),
                 CheckboxListTile(
-                  title: const Text(
-                    'Kirim via Email',
-                    style: TextStyle(fontSize: 13),
+                  title: Text(
+                    context.t('sendEmail'),
+                    style: const TextStyle(fontSize: 13),
                   ),
                   value: _sendEmail,
                   onChanged: (v) => setState(() => _sendEmail = v!),
@@ -119,9 +121,9 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
 
                               if (channels.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Pilih minimal satu saluran (Push/Email)',
+                                      context.t('chooseChannelWarning'),
                                     ),
                                   ),
                                 );
@@ -147,9 +149,9 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
 
                               if (success) {
                                 messenger.showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Peringatan berhasil disiarkan',
+                                      context.t('alertBroadcastSuccess'),
                                     ),
                                   ),
                                 );
@@ -160,7 +162,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                                   SnackBar(
                                     content: Text(
                                       provider.errorMessage ??
-                                          'Gagal mengirim peringatan',
+                                          context.t('alertBroadcastFailed'),
                                     ),
                                   ),
                                 );
@@ -179,9 +181,9 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
-                              'SIARKAN SEKARANG',
-                              style: TextStyle(
+                          : Text(
+                              context.t('broadcastNow'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -193,9 +195,9 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Riwayat Broadcast Kebencanaan',
-            style: TextStyle(
+          Text(
+            context.t('broadcastHistoryTitle'),
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
               color: Color(0xFF1E293B),
@@ -214,7 +216,7 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                 );
               }
               if (list.isEmpty) {
-                return const Text('Belum ada riwayat broadcast.');
+                return Text(context.t('noBroadcastHistory'));
               }
               return Column(
                 children: list.map((alert) {

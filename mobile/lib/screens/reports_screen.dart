@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/report_provider.dart';
 
 class ReportsScreen extends StatelessWidget {
@@ -18,7 +19,7 @@ class ReportsScreen extends StatelessWidget {
         return p;
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Laporan')),
+        appBar: AppBar(title: Text(context.t('reports'))),
         body: const _ReportsBody(),
       ),
     );
@@ -108,9 +109,9 @@ class _ReportsBodyState extends State<_ReportsBody> {
                         child: DropdownButtonFormField<String>(
                           initialValue: provider.selectedSensorId,
                           items: [
-                            const DropdownMenuItem(
+                            DropdownMenuItem(
                               value: 'all',
-                              child: Text('Semua Sensor'),
+                              child: Text(context.t('allSensors')),
                             ),
                             ...provider.sensors.map(
                               (s) => DropdownMenuItem(
@@ -122,8 +123,8 @@ class _ReportsBodyState extends State<_ReportsBody> {
                           onChanged: (v) {
                             provider.setSelectedSensor(v ?? 'all');
                           },
-                          decoration: const InputDecoration(
-                            labelText: 'Sensor',
+                          decoration: InputDecoration(
+                            labelText: context.t('sensorLabel'),
                           ),
                         ),
                       ),
@@ -134,7 +135,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                             : () => provider.applyFilter(),
                         child: provider.loading
                             ? const CircularProgressIndicator()
-                            : const Text('Tampilkan Data'),
+                            : Text(context.t('showData')),
                       ),
                     ],
                   ),
@@ -160,7 +161,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                               )
                             : const Icon(Icons.picture_as_pdf),
                         label: Text(
-                          provider.exporting ? 'Memproses...' : 'Unduh PDF',
+                          provider.exporting ? context.t('processing') : context.t('downloadPdf'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -183,7 +184,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                               )
                             : const Icon(Icons.table_chart),
                         label: Text(
-                          provider.exporting ? 'Memproses...' : 'Unduh Excel',
+                          provider.exporting ? context.t('processing') : context.t('downloadExcel'),
                         ),
                       ),
                     ],
@@ -224,7 +225,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                 children: [
                   const SizedBox(height: 12),
                   _buildSingleChartCard(
-                    title: 'Grafik Tinggi Air',
+                    title: context.t('waterLevelGraphTitle'),
                     liveValue: '${(provider.rawRows.isNotEmpty ? (provider.rawRows.last['levelCm'] ?? 0) : 0).toInt()} cm',
                     color: const Color(0xFF0066FF),
                     loading: provider.loading,
@@ -238,7 +239,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                     ),
                   ),
                   _buildSingleChartCard(
-                    title: 'Grafik Curah Hujan',
+                    title: context.t('rainfallGraphTitle'),
                     liveValue: '${(provider.rawRows.isNotEmpty ? (provider.rawRows.last['rainfallMm'] ?? 0.0) : 0.0).toStringAsFixed(1)} mm/jam',
                     color: const Color(0xFF10B981),
                     loading: provider.loading,
@@ -252,7 +253,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                     ),
                   ),
                   _buildSingleChartCard(
-                    title: 'Grafik Debit Aliran',
+                    title: context.t('flowRateGraphTitle'),
                     liveValue: '${(provider.rawRows.isNotEmpty ? (provider.rawRows.last['flowRateLpm'] ?? 0.0) : 0.0).toStringAsFixed(1)} LPM',
                     color: const Color(0xFFF59E0B),
                     loading: provider.loading,
@@ -267,20 +268,20 @@ class _ReportsBodyState extends State<_ReportsBody> {
                   ),
 
                   const SizedBox(height: 12),
-                  const Text(
-                    'Tabel Data Mentah',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    context.t('rawDataTable'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Card(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
                         columns: const [
-                          DataColumn(label: Text('Waktu')),
+                          DataColumn(label: Text('Time')),
                           DataColumn(label: Text('Sensor')),
-                          DataColumn(label: Text('Ketinggian (cm)')),
-                          DataColumn(label: Text('Hujan (mm)')),
-                          DataColumn(label: Text('Debit (LPM)')),
+                          DataColumn(label: Text('Water Level (cm)')),
+                          DataColumn(label: Text('Rainfall (mm)')),
+                          DataColumn(label: Text('Flow Rate (LPM)')),
                         ],
                         rows: provider.rawRows.map((r) {
                           return DataRow(
@@ -321,9 +322,13 @@ class _ReportsBodyState extends State<_ReportsBody> {
     required String format,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
+    final downloadingMsg = context.t('downloadingReport');
+    final successMsg = context.t('downloadSuccess');
+    final failedMsg = context.t('exportFailed');
+    
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      SnackBar(content: Text('Mengunduh ${format.toUpperCase()}...')),
+      SnackBar(content: Text('$downloadingMsg ${format.toUpperCase()}...')),
     );
 
     try {
@@ -331,19 +336,21 @@ class _ReportsBodyState extends State<_ReportsBody> {
         type: type,
         format: format,
       );
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unduh ${format.toUpperCase()} berhasil. File tersimpan di: $filePath',
+      if (mounted) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('$successMsg $filePath'),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Export gagal: ${e.toString()}')),
-      );
+      if (mounted) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(content: Text('$failedMsg ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -503,7 +510,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
             Icon(iconData, color: const Color(0xFF94A3B8), size: 28),
             const SizedBox(height: 6),
             Text(
-              'Tidak ada data terfilter.',
+              context.t('noFilteredData'),
               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
             ),
           ],

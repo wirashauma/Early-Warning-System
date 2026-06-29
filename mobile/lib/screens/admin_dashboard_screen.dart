@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../models/admin_provider.dart';
 import '../models/sensor_model.dart';
 import '../theme/app_theme.dart';
@@ -26,7 +27,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memuat dasbor admin: $e'),
+            content: Text(context.t('adminDashboardLoadFailed', replacements: {'error': e.toString()})),
             backgroundColor: const Color(0xFFDC2626),
           ),
         );
@@ -100,12 +101,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 icon: const Icon(Icons.menu, color: Color(0xFF0066FF)),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
-              title: const Column(
+              title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dasbor Admin',
-                    style: TextStyle(
+                    context.t('adminDashboardTitle'),
+                    style: const TextStyle(
                       color: Color(0xFF1E293B),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -113,8 +114,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                   ),
                   Text(
-                    'Early Warning System',
-                    style: TextStyle(
+                    context.t('appSubtitle'),
+                    style: const TextStyle(
                       color: Color(0xFF64748B),
                       fontSize: 11,
                       fontFamily: 'Poppins',
@@ -133,9 +134,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     color: const Color(0xFFE0F2FE),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    '2026/2027',
-                    style: TextStyle(
+                  child: Text(
+                    context.t('dashboardYearTag'),
+                    style: const TextStyle(
                       color: Color(0xFF0369A1),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -164,7 +165,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: 'Cari sensor, notifikasi, atau laporan...',
+                      hintText: context.t('adminSearchHint'),
                       prefixIcon: const Icon(
                         Icons.search,
                         color: Color(0xFF64748B),
@@ -242,24 +243,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
+                        Row(
                           children: [
                             Text(
-                              'Selamat Datang! ',
-                              style: TextStyle(
+                              context.t('welcomeMessage'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'Poppins',
                               ),
                             ),
-                            Text('👋', style: TextStyle(fontSize: 22)),
+                            const Text('👋', style: TextStyle(fontSize: 22)),
                           ],
                         ),
                         const SizedBox(height: 10),
-                        const Text(
-                          'Ringkasan cepat kondisi sistem Early Warning System untuk membantu tim merespons perubahan level air lebih sigap.',
-                          style: TextStyle(
+                        Text(
+                          context.t('adminDashboardSubtitle'),
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
                             height: 1.5,
@@ -269,9 +270,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(height: 20),
                         Row(
                           children: [
-                            const Text(
-                              'Status global saat ini: ',
-                              style: TextStyle(
+                            Text(
+                              context.t('globalStatus'),
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
                                 fontFamily: 'Poppins',
@@ -336,57 +337,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           childAspectRatio: 1.25,
                           children: [
                             _buildMetricCard(
-                              label: 'Sensor Aktif',
+                              label: context.t('sensorActive'),
                               value: '$onlineSensors',
-                              sub: 'Total sensor: $totalSensors',
+                              sub: '${context.t('totalSensors')}: $totalSensors',
                               icon: Icons.sensors,
                               iconColor: Colors.blue,
                               iconBg: const Color(0xFFEFF6FF),
                             ),
                             _buildMetricCard(
-                              label: 'Status Waspada',
+                              label: context.t('warning'),
                               value: '$warningCount',
                               sub: warningCount > 0
-                                  ? 'Sensor dalam status alert'
-                                  : 'Sistem terpantau aman',
+                                  ? context.t('sensorsInAlertStatus')
+                                  : context.t('systemMonitoredSafe'),
                               icon: Icons.warning_rounded,
                               iconColor: AppTheme.statusWaspada,
                               iconBg: const Color(0xFFFFFBEB),
                               isWarning: warningCount > 0,
                             ),
                             _buildMetricCard(
-                              label: 'Status Bahaya',
+                              label: context.t('danger'),
                               value: '$dangerCount',
                               sub: dangerCount > 0
-                                  ? 'Perlu respons segera'
-                                  : 'Tidak ada ancaman',
+                                  ? context.t('needsImmediateResponse')
+                                  : context.t('noThreats'),
                               icon: Icons.gpp_bad_outlined,
                               iconColor: Colors.pink,
                               iconBg: const Color(0xFFFFF1F2),
                               isDanger: dangerCount > 0,
                             ),
                             _buildMetricCard(
-                              label: 'Curah Hujan',
+                              label: context.t('rainfallLabel'),
                               value: '${avgRainfall.toStringAsFixed(1)} mm/j',
-                              sub: 'Rata-rata data sensor',
+                              sub: context.t('averageSensorData'),
                               icon: Icons.cloud_queue,
                               iconColor: Colors.cyan,
                               iconBg: const Color(0xFFECFEFF),
                             ),
                             _buildMetricCard(
-                              label: 'Puncak Tinggi Air',
+                              label: context.t('peakWaterLevel'),
                               value: '${maxLevelCm.toInt()} cm',
-                              sub: 'Pembacaan tertinggi',
+                              sub: context.t('highestReading'),
                               icon: Icons.water_drop_outlined,
                               iconColor: Colors.teal,
                               iconBg: const Color(0xFFF0FDF4),
                             ),
                             _buildMetricCard(
-                              label: 'Sensor Offline',
+                              label: context.t('sensorOffline'),
                               value: '$offlineSensors',
                               sub: offlineSensors > 0
-                                  ? 'Perlu pengecekan alat'
-                                  : 'Semua sensor online',
+                                  ? context.t('needsDeviceCheck')
+                                  : context.t('allSensorsOnline'),
                               icon: Icons.wifi_off_rounded,
                               iconColor: Colors.purple,
                               iconBg: const Color(0xFFF5F3FF),
@@ -414,9 +415,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Peta Interaktif Lokasi Sensor',
-                        style: TextStyle(
+                      Text(
+                        context.t('interactiveSensorMap'),
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: Color(0xFF0F172A),
@@ -527,23 +528,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ],
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
                           ),
                           child: Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.info_outline,
                                 size: 14,
                                 color: Color(0xFF64748B),
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Peta di atas menunjukkan sebaran sensor EWS secara real-time. Ketuk penanda sensor pada peta untuk info detail.',
-                                  style: TextStyle(
+                                  context.t('adminMapDescription'),
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     color: Color(0xFF64748B),
                                     fontFamily: 'Poppins',
@@ -691,7 +692,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     BuildContext context,
     Map<String, dynamic> sensor,
   ) {
-    final name = sensor['name']?.toString() ?? 'Sensor Tanpa Nama';
+    final name = sensor['name']?.toString() ?? context.t('sensorUnnamed');
     final sensorId =
         sensor['sensorId']?.toString() ?? sensor['id']?.toString() ?? '-';
     final type = sensor['type']?.toString() ?? 'WATER_LEVEL';
@@ -723,20 +724,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('ID Sensor', sensorId),
+            _buildDetailRow(context.t('sensorDetailsIdLabel'), sensorId),
             _buildDetailRow(
-              'Tipe',
-              type == 'WATER_LEVEL' ? 'Water Level' : 'Rain Gauge',
+              context.t('sensorTypeLabelShort'),
+              type == 'WATER_LEVEL'
+                  ? context.t('sensorTypeWaterLevelShort')
+                  : context.t('sensorTypeRainGaugeShort'),
             ),
-            _buildDetailRow('Koordinat', '$lat, $lng'),
-            _buildDetailRow('Baterai', '$battery%'),
-            _buildDetailRow('Konektivitas', connectivity.toUpperCase()),
+            _buildDetailRow(context.t('sensorCoordinatesLabel'), '$lat, $lng'),
+            _buildDetailRow(context.t('batteryLabelShort'), '$battery%'),
+            _buildDetailRow(
+              context.t('connectivityLabel'),
+              connectivity.toUpperCase() == 'ONLINE'
+                  ? context.t('sensorOnline')
+                  : context.t('sensorOffline'),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
+            child: Text(context.t('close')),
           ),
         ],
       ),
@@ -801,7 +809,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     TextField(
                       autofocus: true,
                       decoration: InputDecoration(
-                        hintText: 'Cari nama atau ID sensor...',
+                        hintText: context.t('searchSensorHint'),
                         prefixIcon: const Icon(Icons.search),
                         filled: true,
                         fillColor: const Color(0xFFF1F5F9),
@@ -826,11 +834,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         maxHeight: MediaQuery.of(context).size.height * 0.4,
                       ),
                       child: filtered.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24),
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
                               child: Text(
-                                'Sensor tidak ditemukan',
-                                style: TextStyle(color: Colors.grey),
+                                context.t('sensorNotFound'),
+                                style: const TextStyle(color: Colors.grey),
                               ),
                             )
                           : ListView.builder(

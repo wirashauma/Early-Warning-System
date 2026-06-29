@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ews_appbar.dart';
 import 'main_navigation.dart';
@@ -621,7 +623,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Buka Dashboard'),
+                child: Text(context.t('openDashboard')),
               ),
               OutlinedButton(
                 onPressed: () {
@@ -632,7 +634,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Cek Notifikasi'),
+                child: Text(context.t('checkNotifications')),
               ),
               OutlinedButton(
                 onPressed: () => navIndexNotifier.value = 2,
@@ -641,7 +643,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Lihat Peta Sensor'),
+                child: Text(context.t('viewSensorMap')),
               ),
               OutlinedButton(
                 onPressed: () => navIndexNotifier.value = 3,
@@ -650,7 +652,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Kontak Darurat'),
+                child: Text(context.t('emergencyContacts')),
               ),
             ],
           ),

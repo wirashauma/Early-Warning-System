@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/admin_provider.dart';
 import '../models/auth_provider.dart';
+import '../localization/app_localizations.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -26,20 +27,20 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: const Text('Hapus Pengguna'),
+              title: Text(context.t('deleteUserTitle')),
               content: Text(
-                'Apakah Anda yakin ingin menghapus pengguna "$name"?',
+                context.t('deleteUserConfirm', replacements: {'name': name}),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Batal'),
+                  child: Text(context.t('cancel')),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text(
-                    'Hapus',
-                    style: TextStyle(color: Colors.red),
+                  child: Text(
+                    context.t('deleteUserAction'),
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
               ],
@@ -52,7 +53,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     if (!mounted) return;
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      const SnackBar(content: Text('Menghapus pengguna...')),
+      SnackBar(content: Text(context.t('deletingUser'))),
     );
 
     final success = await provider.deleteUser(id);
@@ -99,9 +100,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Tambah Pengguna',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    context.t('addUserTitle'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Form(
@@ -110,10 +111,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       children: [
                         TextFormField(
                           controller: nameController,
-                          decoration: const InputDecoration(labelText: 'Nama'),
+                          decoration: InputDecoration(labelText: context.t('nameLabel')),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Nama wajib diisi.';
+                              return context.t('nameRequired');
                             }
                             return null;
                           },
@@ -121,13 +122,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: emailController,
-                          decoration: const InputDecoration(labelText: 'Email'),
+                          decoration: InputDecoration(labelText: context.t('emailLabel')),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Email wajib diisi.';
+                              return context.t('emailRequired');
                             }
                             if (!value.contains('@')) {
-                              return 'Masukkan email yang valid.';
+                              return context.t('emailInvalid');
                             }
                             return null;
                           },
@@ -135,16 +136,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: passwordController,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
+                          decoration: InputDecoration(
+                            labelText: context.t('passwordLabel'),
                           ),
                           obscureText: true,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Password wajib diisi.';
+                              return context.t('passwordRequired');
                             }
                             if (value.trim().length < 6) {
-                              return 'Password minimal 6 karakter.';
+                              return context.t('passwordShort');
                             }
                             return null;
                           },
@@ -152,22 +153,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: phoneController,
-                          decoration: const InputDecoration(
-                            labelText: 'No. WA',
+                          decoration: InputDecoration(
+                            labelText: context.t('whatsappNumberLabel'),
                           ),
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
                           initialValue: role,
-                          decoration: const InputDecoration(labelText: 'Role'),
-                          items: const [
+                          decoration: InputDecoration(labelText: context.t('roleLabel')),
+                          items: [
                             DropdownMenuItem(
                               value: 'ADMIN',
-                              child: Text('Admin'),
+                              child: Text(context.t('adminRole')),
                             ),
                             DropdownMenuItem(
                               value: 'USER',
-                              child: Text('User'),
+                              child: Text(context.t('userRole')),
                             ),
                           ],
                           onChanged: (selected) {
@@ -207,9 +208,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                         return const <dynamic>[];
                                       });
                                       messenger.showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Pengguna baru berhasil ditambahkan.',
+                                            context.t('createUserSuccess'),
                                           ),
                                         ),
                                       );
@@ -219,7 +220,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                         SnackBar(
                                           content: Text(
                                             provider.errorMessage ??
-                                                'Gagal membuat pengguna.',
+                                                context.t('createUserFailed'),
                                           ),
                                         ),
                                       );
@@ -233,7 +234,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text('Tambah Pengguna'),
+                                : Text(context.t('addUserButton')),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -293,9 +294,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Edit Pengguna',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    context.t('editUserTitle'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Form(
@@ -304,10 +305,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       children: [
                         TextFormField(
                           controller: nameController,
-                          decoration: const InputDecoration(labelText: 'Nama'),
+                          decoration: InputDecoration(labelText: context.t('nameLabel')),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Nama wajib diisi.';
+                              return context.t('nameRequired');
                             }
                             return null;
                           },
@@ -315,13 +316,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: emailController,
-                          decoration: const InputDecoration(labelText: 'Email'),
+                          decoration: InputDecoration(labelText: context.t('emailLabel')),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Email wajib diisi.';
+                              return context.t('emailRequired');
                             }
                             if (!value.contains('@')) {
-                              return 'Masukkan email yang valid.';
+                              return context.t('emailInvalid');
                             }
                             return null;
                           },
@@ -329,22 +330,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: phoneController,
-                          decoration: const InputDecoration(
-                            labelText: 'No. WA',
+                          decoration: InputDecoration(
+                            labelText: context.t('whatsappNumberLabel'),
                           ),
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
                           initialValue: role,
-                          decoration: const InputDecoration(labelText: 'Role'),
-                          items: const [
+                          decoration: InputDecoration(labelText: context.t('roleLabel')),
+                          items: [
                             DropdownMenuItem(
                               value: 'ADMIN',
-                              child: Text('Admin'),
+                              child: Text(context.t('adminRole')),
                             ),
                             DropdownMenuItem(
                               value: 'USER',
-                              child: Text('User'),
+                              child: Text(context.t('userRole')),
                             ),
                           ],
                           onChanged: (selected) {
@@ -386,9 +387,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                         return const <dynamic>[];
                                       });
                                       messenger.showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Pengguna berhasil diperbarui.',
+                                            context.t('userUpdatedSuccess'),
                                           ),
                                         ),
                                       );
@@ -398,7 +399,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                         SnackBar(
                                           content: Text(
                                             provider.errorMessage ??
-                                                'Gagal memperbarui pengguna.',
+                                                context.t('userUpdateFailed'),
                                           ),
                                         ),
                                       );
@@ -412,7 +413,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text('Simpan Perubahan'),
+                                : Text(context.t('saveChanges')),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -440,20 +441,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: const Text('Keluar Aplikasi'),
-              content: const Text(
-                'Apakah Anda yakin ingin keluar dari aplikasi?',
-              ),
+              title: Text(context.t('logoutAppTitle')),
+              content: Text(context.t('logoutAppContent')),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Batal'),
+                  child: Text(context.t('cancel')),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text(
-                    'Keluar',
-                    style: TextStyle(color: Colors.red),
+                  child: Text(
+                    context.t('yesLogout'),
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
               ],
@@ -529,9 +528,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Manajemen Pengguna',
-                  style: TextStyle(
+                Text(
+                  context.t('adminUsersTitle'),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E293B),
@@ -540,7 +539,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ElevatedButton.icon(
                   onPressed: () => _showCreateUserSheet(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('Tambah Pengguna'),
+                  label: Text(context.t('addUserButton')),
                 ),
               ],
             ),
@@ -550,19 +549,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             child: Row(
               children: [
                 _buildStatBadge(
-                  'Total Akun',
+                  context.t('totalAccounts'),
                   '${users.length}',
                   Colors.black87,
                 ),
                 const SizedBox(width: 8),
                 _buildStatBadge(
-                  'Role Admin',
+                  context.t('roleAdmin'),
                   '$adminCount',
                   const Color(0xFF0066FF),
                 ),
                 const SizedBox(width: 8),
                 _buildStatBadge(
-                  'Role User',
+                  context.t('roleUser'),
                   '$userCount',
                   const Color(0xFF10B981),
                 ),
@@ -588,10 +587,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             child: adminProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : users.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'Belum ada data pengguna dari backend.',
-                      style: TextStyle(color: Color(0xFF64748B)),
+                      context.t('noUsersFromBackend'),
+                      style: const TextStyle(color: Color(0xFF64748B)),
                     ),
                   )
                 : ListView.builder(
@@ -645,7 +644,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                           ),
                                         ),
                                         child: Text(
-                                          role.isEmpty ? 'User' : role,
+                                          role.isEmpty ? context.t('userRole') : role,
                                           style: TextStyle(
                                             color: isAdmin
                                                 ? const Color(0xFF0066FF)
@@ -666,7 +665,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'No. WA: $phone',
+                                    '${context.t('whatsappNumberLabel')}: $phone',
                                     style: const TextStyle(
                                       color: Color(0xFF94A3B8),
                                       fontSize: 11,
@@ -718,7 +717,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   backgroundColor: const Color(0xFFDC2626),
                 ),
                 icon: const Icon(Icons.logout),
-                label: const Text('Keluar Aplikasi'),
+                label: Text(context.t('logoutAccount')),
                 onPressed: () => _showLogoutDialog(context),
               ),
             ),

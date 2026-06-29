@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import '../localization/app_localizations.dart';
 import '../models/water_level_log.dart';
 
 class LiveTelemetryChart extends StatelessWidget {
@@ -10,7 +11,7 @@ class LiveTelemetryChart extends StatelessWidget {
   const LiveTelemetryChart({
     super.key,
     required this.telemetryData,
-    this.title = 'Grafik Ketinggian Air Terkini',
+    this.title = '',
   });
 
   @override
@@ -40,18 +41,18 @@ class LiveTelemetryChart extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Menunggu Data Masuk...',
-              style: TextStyle(
+            Text(
+              context.t('waitingForData'),
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF64748B),
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Sensor akan memancarkan telemetri secara real-time.',
-              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+            Text(
+              context.t('sensorWillStreamData'),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
         ),
@@ -80,6 +81,8 @@ class LiveTelemetryChart extends StatelessWidget {
     maxY = (maxY + 20).clamp(100.0, 500.0);
     minY = (minY - 10).clamp(0.0, 400.0);
 
+    final displayTitle = title.isEmpty ? context.t('liveChartTitle') : title;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -102,7 +105,7 @@ class LiveTelemetryChart extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                title,
+                displayTitle,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -285,19 +288,19 @@ class LiveTelemetryChart extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildStatIndicator(
-                label: 'MIN',
+                label: context.t('min'),
                 value:
                     '${sortedData.map((e) => e.waterLevel).reduce((a, b) => a < b ? a : b).toInt()} cm',
                 color: const Color(0xFF64748B),
               ),
               _buildStatIndicator(
-                label: 'RATA-RATA',
+                label: context.t('average'),
                 value:
                     '${(sortedData.map((e) => e.waterLevel).reduce((a, b) => a + b) / sortedData.length).toInt()} cm',
                 color: const Color(0xFF3B82F6),
               ),
               _buildStatIndicator(
-                label: 'TERKINI',
+                label: context.t('current'),
                 value: '${sortedData.last.waterLevel.toInt()} cm',
                 color: const Color(0xFF22C55E),
               ),

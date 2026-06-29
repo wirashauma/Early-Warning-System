@@ -16,6 +16,7 @@ import '../models/water_level_log.dart';
 import '../models/rainfall_log.dart';
 import '../models/flow_rate_log.dart';
 import '../theme/app_theme.dart';
+import '../localization/app_localizations.dart';
 import '../widgets/ews_appbar.dart';
 import 'main_navigation.dart';
 import 'edukasi_screen.dart';
@@ -303,7 +304,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _handlePdfExport(String type, String sensorId) async {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mengunduh PDF Laporan...')),
+      SnackBar(content: Text('${context.t('downloadingReport')} PDF...')),
     );
     
     try {
@@ -332,14 +333,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'File tersimpan di ${file.path}, tetapi gagal dibuka otomatis: ${openResult.message}',
+              '${context.t('downloadSuccess')} ${file.path}. ${openResult.message}',
             ),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Unduh PDF berhasil. File dibuka: ${file.path}'),
+            content: Text('${context.t('downloadSuccess')} ${file.path}'),
           ),
         );
       }
@@ -347,32 +348,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal mengekspor laporan: ${e.toString()}'),
+          content: Text('${context.t('exportFailed')} ${e.toString()}'),
           backgroundColor: AppTheme.statusBahaya,
         ),
       );
     }
   }
 
-  String _sensorStatus(SensorModel sensor) {
+  String _sensorStatusKey(SensorModel sensor) {
     final raw = (sensor.status ?? '').toString().toUpperCase();
     if (raw == 'DANGER' || raw == 'BAHAYA') {
-      return 'Bahaya';
+      return 'danger';
     }
     if (raw == 'ALERT' || raw == 'WARNING' || raw == 'WASPADA') {
-      return 'Waspada';
+      return 'warning';
     }
     if (raw == 'NORMAL' || raw == 'SAFE' || raw == 'AMAN') {
-      return 'Normal';
+      return 'normal';
     }
-    return sensor.isOnline ? 'Normal' : 'Offline';
+    return sensor.isOnline ? 'normal' : 'offline';
+  }
+
+  String _sensorStatusLabel(BuildContext context, SensorModel sensor) {
+    final key = _sensorStatusKey(sensor);
+    if (key == 'danger') return context.t('danger');
+    if (key == 'warning') return context.t('warning');
+    if (key == 'offline') return context.t('offline');
+    return context.t('normal');
   }
 
   Color _sensorColor(SensorModel sensor) {
-    final status = _sensorStatus(sensor);
-    if (status == 'Bahaya') return AppTheme.statusBahaya;
-    if (status == 'Waspada') return AppTheme.statusWaspada;
-    if (status == 'Offline') return const Color(0xFF94A3B8);
+    final statusKey = _sensorStatusKey(sensor);
+    if (statusKey == 'danger') return AppTheme.statusBahaya;
+    if (statusKey == 'warning') return AppTheme.statusWaspada;
+    if (statusKey == 'offline') return const Color(0xFF94A3B8);
     return AppTheme.statusNormal;
   }
 
@@ -410,7 +419,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal memuat dashboard: $e'),
+              content: Text('${context.t('errorLoadDashboard')} $e'),
               backgroundColor: AppTheme.statusBahaya,
             ),
           );
@@ -661,29 +670,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(color: AppTheme.lightBlue),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
-              'STATUS KESELURUHAN WILAYAH',
-              style: TextStyle(
+              context.t('overallStatusTitle'),
+              style: const TextStyle(
                 color: Color(0xFF1E3A8A),
                 fontSize: 11,
                 letterSpacing: 1,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'TIDAK TERSEDIA',
-              style: TextStyle(
+              context.t('noSensorStatusAvailable'),
+              style: const TextStyle(
                 color: Color(0xFF1E3A8A),
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Belum ada sensor terpasang. Silakan pasang perangkat IoT terlebih dahulu untuk melihat data real-time.',
-              style: TextStyle(
+              context.t('noSensorStatusSubtitle'),
+              style: const TextStyle(
                 color: Color(0xFF334155),
                 fontSize: 13,
                 height: 1.5,
@@ -708,16 +717,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               s.status != null &&
               ['ALERT', 'WARNING', 'WASPADA'].contains(s.status!.toUpperCase()),
         );
-    final globalLabel = hasDanger
-        ? 'Bahaya'
+    final globalLabelKey = hasDanger
+        ? 'danger'
         : hasAlert
-        ? 'Waspada'
-        : 'Aman';
+            ? 'warning'
+            : 'safe';
     final color = hasDanger
         ? AppTheme.statusBahaya
         : hasAlert
-        ? AppTheme.statusWaspada
-        : AppTheme.statusNormal;
+            ? AppTheme.statusWaspada
+            : AppTheme.statusNormal;
 
     DateTime u = DateTime.now();
     final latestTs = sensors
@@ -729,8 +738,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       latestTs.sort((a, b) => b.compareTo(a));
       u = latestTs.first;
     }
-    final ts =
-        '${u.day} Mei ${u.year}, ${u.hour.toString().padLeft(2, '0')}.${u.minute.toString().padLeft(2, '0')}';
+    final ts = DateFormat('dd/MM/yyyy, HH.mm').format(u);
 
     return Container(
       width: double.infinity,
@@ -739,9 +747,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'STATUS KESELURUHAN WILAYAH',
-            style: TextStyle(
+          Text(
+            context.t('overallStatusTitle'),
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 11,
               letterSpacing: 1,
@@ -750,7 +758,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            globalLabel.toUpperCase(),
+            context.t(globalLabelKey).toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -763,9 +771,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text(
-                  'Pembaruan Terakhir',
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                Text(
+                  context.t('lastUpdate'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
                 Text(
                   ts,
@@ -814,31 +822,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final riskCount = dangerCount + warningCount;
     final cards = [
       {
-        'label': 'Tinggi Air (Aktif)',
+        'label': context.t('activeWaterLevel'),
         'value': hasSensors ? '${maxLevel.toInt()} cm' : '0 cm',
-        'sub': hasSensors ? 'Puncak saat ini' : 'Belum ada sensor terpasang',
+        'sub': hasSensors ? context.t('currentPeak') : context.t('noSensorsAvailable'),
         'color': AppTheme.accentBlue,
       },
       {
-        'label': 'Curah Hujan',
+        'label': context.t('rainfallLabel'),
         'value': hasSensors
             ? '${avgRainfall.toStringAsFixed(0)} mm/j'
             : '0 mm/j',
         'sub': hasSensors
-            ? (avgRainfall < 5 ? 'Ringan' : 'Sedang')
-            : 'Data belum tersedia',
+            ? (avgRainfall < 5 ? context.t('rainfallLight') : context.t('rainfallModerate'))
+            : context.t('noSensorsAvailable'),
         'color': AppTheme.statusWaspada,
       },
       {
-        'label': 'Sensor Berisiko',
+        'label': context.t('riskSensors'),
         'value': '$riskCount',
-        'sub': 'Bahaya: $dangerCount • Waspada: $warningCount',
+        'sub': '${context.t('danger')}: $dangerCount • ${context.t('warning')}: $warningCount',
         'color': riskCount > 0 ? AppTheme.statusBahaya : AppTheme.statusNormal,
       },
       {
-        'label': 'Sensor Aktif',
+        'label': context.t('sensorOnlineActive'),
         'value': hasSensors ? '$onlineCount/$totalSensors' : '0/0',
-        'sub': hasSensors ? 'Sensor online aktif' : 'Tidak ada sensor',
+        'sub': hasSensors ? context.t('sensorOnlineActive') : context.t('noSensorsAvailable'),
         'color': AppTheme.statusNormal,
       },
     ];
@@ -912,13 +920,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Monitor Sensor Spesifik',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          Text(
+            context.t('sensorMonitorTitle'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
-          const Text(
-            'Pilih area untuk melihat detail metrik.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          Text(
+            context.t('sensorMonitorSubtitle'),
+            style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
           ),
           const SizedBox(height: 12),
           if (!hasSensors || selectedSensor == null) ...[
@@ -930,9 +938,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: const Text(
-                'Belum ada sensor terpasang. Data sensor akan muncul setelah perangkat IoT aktif.',
-                style: TextStyle(
+              child: Text(
+                context.t('noSensorsInstalled'),
+                style: const TextStyle(
                   color: AppTheme.textGrey,
                   fontSize: 13,
                   height: 1.5,
@@ -941,30 +949,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             Row(
-              children: const [
+              children: [
                 _MetricBox(
-                  label: 'STATUS',
-                  value: 'Tidak Ada',
+                  label: context.t('statusLabel'),
+                  value: context.t('notAvailable'),
                   color: AppTheme.textDark,
                   flex: 2,
                 ),
                 SizedBox(width: 8),
                 _MetricBox(
-                  label: 'TINGGI AIR',
+                  label: context.t('waterLevelLabel'),
                   value: '0 cm',
                   color: AppTheme.textDark,
                   flex: 2,
                 ),
                 SizedBox(width: 8),
                 _MetricBox(
-                  label: 'KONEKSI',
+                  label: context.t('connectivityLabel'),
                   value: '0%',
                   color: AppTheme.textDark,
                   flex: 2,
                 ),
                 SizedBox(width: 8),
                 _MetricBox(
-                  label: 'BATERAI',
+                  label: context.t('batteryLabel'),
                   value: '0%',
                   color: AppTheme.textDark,
                   flex: 2,
@@ -1006,21 +1014,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               children: [
                 _MetricBox(
-                  label: 'STATUS',
-                  value: _sensorStatus(selectedSensor),
+                  label: context.t('statusLabel'),
+                  value: _sensorStatusLabel(context, selectedSensor),
                   color: _sensorColor(selectedSensor),
                   flex: 2,
                 ),
                 const SizedBox(width: 8),
                 _MetricBox(
-                  label: 'TINGGI AIR',
+                  label: context.t('waterLevelLabel'),
                   value: '${(selectedSensor.waterLevel ?? 0.0).toInt()} cm',
                   color: AppTheme.textDark,
                   flex: 2,
                 ),
                 const SizedBox(width: 8),
                 _MetricBox(
-                  label: 'KONEKSI',
+                  label: context.t('connectivityLabel'),
                   value: selectedSensor.displayConnectivity,
                   color: selectedSensor.isOnline
                       ? AppTheme.statusNormal
@@ -1029,7 +1037,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(width: 8),
                 _MetricBox(
-                  label: 'BATERAI',
+                  label: context.t('batteryLabel'),
                   value: selectedSensor.batteryLevel != null
                       ? '${selectedSensor.batteryLevel}%'
                       : '-',
@@ -1060,7 +1068,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Tindakan yang Disarankan',
+                        context.t('recommendedActionsTitle'),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
@@ -1071,7 +1079,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _actionDesc(_sensorStatus(selectedSensor)),
+                    _actionDesc(context, _sensorStatusKey(selectedSensor)),
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textGrey,
@@ -1079,7 +1087,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._actionPoints(_sensorStatus(selectedSensor)).map(
+                  ..._actionPoints(context, _sensorStatusKey(selectedSensor)).map(
                     (p) => Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
@@ -1109,9 +1117,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          const Text(
-            'Peta Sensor',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          Text(
+            context.t('sensorMapTitle'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
           const SizedBox(height: 8),
           Container(
@@ -1201,14 +1209,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Row(
               children: [
-                Icon(Icons.visibility, color: AppTheme.accentBlue, size: 16),
-                SizedBox(width: 6),
+                const Icon(Icons.visibility, color: AppTheme.accentBlue, size: 16),
+                const SizedBox(width: 6),
                 Text(
-                  'Pantauan Prioritas',
-                  style: TextStyle(
+                  context.t('priorityMonitoringTitle'),
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                     color: AppTheme.accentBlue,
@@ -1216,10 +1224,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              'Belum ada data sensor yang dapat diprioritaskan saat ini.',
-              style: TextStyle(
+              context.t('priorityMonitoringEmpty'),
+              style: const TextStyle(
                 color: AppTheme.textGrey,
                 fontSize: 13,
                 height: 1.5,
@@ -1242,7 +1250,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       worst = SensorModel(
         id: '',
         sensorId: '',
-        name: 'Belum Tersedia',
+        name: context.t('sensorUnavailable'),
         type: 'WATER_LEVEL',
         latitude: 0,
         longitude: 0,
@@ -1265,13 +1273,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.visibility, color: AppTheme.accentBlue, size: 16),
-              SizedBox(width: 6),
+              const Icon(Icons.visibility, color: AppTheme.accentBlue, size: 16),
+              const SizedBox(width: 6),
               Text(
-                'Pantauan Prioritas',
-                style: TextStyle(
+                context.t('priorityMonitoringTitle'),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   color: AppTheme.accentBlue,
@@ -1298,7 +1306,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${(worst.waterLevel ?? 0.0).toInt()} cm • ${_sensorStatus(worst)}',
+                  '${(worst.waterLevel ?? 0.0).toInt()} cm • ${_sensorStatusLabel(context, worst)}',
                   style: TextStyle(
                     color: _sensorColor(worst),
                     fontWeight: FontWeight.bold,
@@ -1306,9 +1314,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Sensor ini menunjukkan level risiko tertinggi saat ini. Fokuskan perhatian Anda di area ini.',
-                  style: TextStyle(
+                Text(
+                  context.t('prioritySensorNote'),
+                  style: const TextStyle(
                     color: AppTheme.textGrey,
                     fontSize: 12,
                     height: 1.4,
@@ -1430,12 +1438,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Row(
                     children: [
                       _buildPillTab(
-                        label: 'Day',
+                        label: context.t('day'),
                         isActive: range == 'day',
                         onTap: () => onRangeChanged('day'),
                       ),
                       _buildPillTab(
-                        label: 'Week',
+                        label: context.t('week'),
                         isActive: range == 'week',
                         onTap: () => onRangeChanged('week'),
                       ),
@@ -1475,7 +1483,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Expanded(
                   child: _buildStatIndicator(
-                    label: 'MINIMUM',
+                    label: context.t('minimum'),
                     value: _formatValue(minVal!, unit),
                     color: const Color(0xFF3B82F6),
                     telemetryType: telemetryType,
@@ -1485,7 +1493,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildStatIndicator(
-                    label: 'RATA-RATA',
+                    label: context.t('average'),
                     value: _formatValue(avgVal!, unit),
                     color: accentColor,
                     telemetryType: telemetryType,
@@ -1495,7 +1503,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildStatIndicator(
-                    label: 'SAAT INI',
+                    label: context.t('current'),
                     value: _formatValue(latestVal!, unit),
                     color: isRain ? const Color(0xFF06B6D4) : const Color(0xFF10B981),
                     telemetryType: telemetryType,
@@ -1759,11 +1767,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildEmptyState(String telemetryType) {
-    String desc = 'Belum ada data ketinggian air yang masuk untuk sensor ini.';
+    String desc = context.t('noWaterLevelData');
     if (telemetryType == 'rainfall') {
-      desc = 'Belum ada data curah hujan yang masuk untuk sensor ini.';
+      desc = context.t('noRainfallData');
     } else if (telemetryType == 'flow_rate') {
-      desc = 'Belum ada data debit air yang masuk untuk sensor ini.';
+      desc = context.t('noFlowRateData');
     }
 
     return Container(
@@ -1850,7 +1858,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         _buildSingleChartCard(
-          title: 'Grafik Ketinggian Air',
+          title: context.t('waterLevelGraphTitle'),
           liveValue: '${waterLevel.toInt()} cm',
           color: AppTheme.accentBlue,
           processedPoints: processedWl,
@@ -1869,7 +1877,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         _buildSingleChartCard(
-          title: 'Grafik Curah Hujan',
+          title: context.t('rainfallGraphTitle'),
           liveValue: '${rainfall.toStringAsFixed(1)} mm',
           color: const Color(0xFF06B6D4),
           processedPoints: processedRf,
@@ -1888,7 +1896,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         _buildSingleChartCard(
-          title: 'Grafik Debit Air',
+          title: context.t('flowRateGraphTitle'),
           liveValue: '${currentFlow.toStringAsFixed(1)} L/m',
           color: const Color(0xFF10B981),
           processedPoints: processedFr,
@@ -1923,23 +1931,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Aksi Darurat & Pintasan',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          Text(
+            context.t('actionPanelTitle'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
-          const Text(
-            'Akses cepat menu penting.',
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          Text(
+            context.t('actionPanelSubtitle'),
+            style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
           ),
           const SizedBox(height: 14),
           _ShortcutTile(
             icon: Icons.map_outlined,
-            label: 'Buka Peta Sensor',
+            label: context.t('openSensorMap'),
             onTap: () => navIndexNotifier.value = 1,
           ),
           _ShortcutTile(
             icon: Icons.menu_book_outlined,
-            label: 'Panduan Mitigasi',
+            label: context.t('mitigationGuide'),
             onTap: () {
               Navigator.push(
                 context,
@@ -1949,7 +1957,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           _ShortcutTile(
             icon: Icons.emergency_outlined,
-            label: 'Pusat Darurat',
+            label: context.t('emergencyContacts'),
             onTap: () {
               Navigator.push(
                 context,
@@ -2240,14 +2248,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Panduan Kesiapsiagaan Banjir',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Text(
+            context.t('floodPreparednessGuideTitle'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Pelajari langkah cepat saat mendapatkan peringatan: cek status, siapkan barang penting, dan prioritaskan evakuasi.',
-            style: TextStyle(
+          Text(
+            context.t('floodPreparednessGuideSubtitle'),
+            style: const TextStyle(
               color: AppTheme.textGrey,
               fontSize: 13,
               height: 1.4,
@@ -2255,18 +2263,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
           _buildGuideStep(
-            'Kuning (Waspada)',
-            'Pantau kondisi dan siapkan tas siaga dengan dokumen, obat, dan makanan.',
+            context.t('guideStepWarningLabel'),
+            context.t('guideStepWarningDesc'),
           ),
           const SizedBox(height: 12),
           _buildGuideStep(
-            'Oren (Siaga)',
-            'Amankan barang berharga ke tempat tinggi dan siapkan jalur evakuasi.',
+            context.t('guideStepAlertLabel'),
+            context.t('guideStepAlertDesc'),
           ),
           const SizedBox(height: 12),
           _buildGuideStep(
-            'Merah (Bahaya)',
-            'Evakuasi segera ke lokasi aman resmi dan bantu keluarga keluar lebih dulu.',
+            context.t('guideStepDangerLabel'),
+            context.t('guideStepDangerDesc'),
             showDivider: false,
           ),
         ],
@@ -2317,44 +2325,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  String _actionDesc(String status) {
-    switch (status) {
-      case 'Waspada':
-        return 'Air mulai naik. Siap-siap tanpa panik.';
-      case 'Siaga':
-        return 'Risiko banjir makin tinggi. Fokus ke pra-evakuasi.';
-      case 'Bahaya':
-        return 'Kondisi kritis. Prioritas utama adalah menyelamatkan jiwa.';
+  String _actionDesc(BuildContext context, String statusKey) {
+    switch (statusKey) {
+      case 'warning':
+        return context.t('actionDescWarning');
+      case 'alert':
+        return context.t('actionDescAlert');
+      case 'danger':
+        return context.t('actionDescDanger');
       default:
-        return 'Situasi saat ini aman. Tetap pantau dashboard secara berkala.';
+        return context.t('actionDescNormal');
     }
   }
 
-  List<String> _actionPoints(String status) {
-    switch (status) {
-      case 'Waspada':
+  List<String> _actionPoints(BuildContext context, String statusKey) {
+    switch (statusKey) {
+      case 'warning':
         return [
-          'Pantau dashboard tiap 10-15 menit.',
-          'Siapkan tas siaga.',
-          'Pastikan rute evakuasi keluarga.',
+          context.t('actionPointWarning1'),
+          context.t('actionPointWarning2'),
+          context.t('actionPointWarning3'),
         ];
-      case 'Siaga':
+      case 'alert':
         return [
-          'Pindahkan barang berharga ke tempat tinggi.',
-          'Siapkan kelompok rentan untuk berangkat lebih awal.',
-          'Pastikan jalur evakuasi tidak terhalang.',
+          context.t('actionPointAlert1'),
+          context.t('actionPointAlert2'),
+          context.t('actionPointAlert3'),
         ];
-      case 'Bahaya':
+      case 'danger':
         return [
-          'Evakuasi segera ke lokasi aman resmi.',
-          'Hubungi layanan darurat jika ada yang terjebak.',
-          'Ikuti instruksi petugas.',
+          context.t('actionPointDanger1'),
+          context.t('actionPointDanger2'),
+          context.t('actionPointDanger3'),
         ];
       default:
         return [
-          'Pantau pembaruan level air setiap 30 menit.',
-          'Pastikan notifikasi perangkat tetap aktif.',
-          'Simpan jalur evakuasi sebagai antisipasi.',
+          context.t('actionPointNormal1'),
+          context.t('actionPointNormal2'),
+          context.t('actionPointNormal3'),
         ];
     }
   }

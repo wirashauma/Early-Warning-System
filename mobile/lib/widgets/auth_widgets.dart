@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../localization/app_localizations.dart';
 
 class AuthTextField extends StatefulWidget {
   final String label;
@@ -328,9 +329,9 @@ class GoogleSignInButton extends StatelessWidget {
                     height: 22,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Daftar dengan Google',
-                    style: TextStyle(
+                  Text(
+                    context.t('loginWithGoogle'),
+                    style: const TextStyle(
                       color: Color(0xFF111827),
                       fontSize: 15,
                       fontWeight: FontWeight.w600,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/auth_service.dart';
 import '../models/auth_provider.dart';
@@ -35,9 +36,9 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
 
     return AppBar(
-      title: const Text(
-        'EWS Flood Guard',
-        style: TextStyle(
+      title: Text(
+        context.t('appTitle'),
+        style: const TextStyle(
           color: AppTheme.primaryBlue,
           fontWeight: FontWeight.bold,
           fontSize: 18,
@@ -123,8 +124,8 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'profile', child: Text('Profil')),
-                const PopupMenuItem(value: 'logout', child: Text('Logout')),
+                PopupMenuItem(value: 'profile', child: Text(context.t('profile'))),
+                PopupMenuItem(value: 'logout', child: Text(context.t('logoutAccount'))),
               ],
               child: Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -146,7 +147,7 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      user?.name.split(' ').first ?? 'Profil',
+                      user?.name.split(' ').first ?? context.t('profile'),
                       style: const TextStyle(
                         color: AppTheme.textDark,
                         fontSize: 13,
@@ -169,9 +170,9 @@ class EWSAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ).then((_) => onRefresh?.call());
             },
-            child: const Text(
-              'Login',
-              style: TextStyle(
+            child: Text(
+              context.t('loginButton'),
+              style: const TextStyle(
                 color: AppTheme.primaryBlue,
                 fontWeight: FontWeight.w600,
               ),

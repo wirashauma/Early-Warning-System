@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../models/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/auth_widgets.dart';
@@ -37,8 +38,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda harus menyetujui syarat & ketentuan'),
+        SnackBar(
+          content: Text(context.t('agreeTerms')),
         ),
       );
       return;
@@ -58,8 +59,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.pop(context);
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registrasi Berhasil!'),
+        SnackBar(
+          content: Text(context.t('successRegistrasi')),
           backgroundColor: AppTheme.statusNormal,
         ),
       );
@@ -76,15 +77,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.pop(context);
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registrasi & Login dengan Google Berhasil!'),
+        SnackBar(
+          content: Text(context.t('registerWithGoogle')),
           backgroundColor: AppTheme.statusNormal,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Google sign-up gagal'),
+          content: Text(authProvider.errorMessage ?? context.t('googleSignUpFailed')),
           backgroundColor: AppTheme.statusBahaya,
         ),
       );
@@ -116,9 +117,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: TextButton.icon(
         onPressed: () => Navigator.pop(context),
         icon: const Icon(Icons.arrow_back_ios, size: 14, color: Colors.black87),
-        label: const Text(
-          'Kembali',
-          style: TextStyle(color: Colors.black87, fontSize: 14),
+        label: Text(
+          context.t('back'),
+          style: const TextStyle(color: Colors.black87, fontSize: 14),
         ),
         style: TextButton.styleFrom(
           backgroundColor: Colors.white,
@@ -161,18 +162,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Daftar Akun Baru',
-              style: TextStyle(
+            Text(
+              context.t('registerTitle'),
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Lengkapi formulir di bawah untuk bergabung.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+            Text(
+              context.t('registerSubtitle'),
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -197,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
-                    'ATAU',
+                    context.t('or'),
                     style: TextStyle(
                       color: Colors.grey.shade500,
                       fontSize: 11,
@@ -215,7 +216,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             // Form fields
             AuthTextField(
-              label: 'NAMA LENGKAP',
+              label: context.t('fullName'),
               hint: 'Nama lengkap',
               controller: _nameCtrl,
               prefixIcon: Icons.person_outline,
@@ -223,45 +224,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 16),
             AuthTextField(
-              label: 'INSTANSI / ORGANISASI',
+              label: context.t('organization'),
               hint: 'Contoh: BPBD Padang',
               controller: _addressCtrl,
               prefixIcon: Icons.business_outlined,
             ),
             const SizedBox(height: 16),
             AuthTextField(
-              label: 'EMAIL',
-              hint: 'nama@email.com',
+              label: context.t('email'),
+              hint: context.t('emailHint'),
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               prefixIcon: Icons.email_outlined,
-              validator: (v) => v!.contains('@') ? null : 'Email tidak valid',
+              validator: (v) => v!.contains('@') ? null : context.t('emailInvalid'),
             ),
             const SizedBox(height: 16),
             AuthTextField(
-              label: 'PASSWORD',
-              hint: 'Minimal 8 karakter',
+              label: context.t('password'),
+              hint: context.t('passwordHint'),
               controller: _passCtrl,
               isPassword: true,
               prefixIcon: Icons.lock_outline,
               validator: (v) =>
-                  v!.length < 6 ? 'Password terlalu pendek' : null,
+                  v!.length < 6 ? context.t('passwordShort') : null,
             ),
             const SizedBox(height: 16),
             AuthTextField(
-              label: 'KONFIRMASI PASSWORD',
-              hint: 'Ulangi password',
+              label: context.t('confirmPassword'),
+              hint: context.t('confirmPasswordHint'),
               controller: _confirmPassCtrl,
               isPassword: true,
               prefixIcon: Icons.lock_reset,
               validator: (v) =>
-                  v != _passCtrl.text ? 'Password tidak cocok' : null,
+                  v != _passCtrl.text ? context.t('passwordMismatch') : null,
             ),
             const SizedBox(height: 24),
 
             // Tombol Daftar
             AuthButton(
-              label: 'Daftar',
+              label: context.t('registerButton'),
               onPressed: _handleRegister,
               isLoading: context.watch<AuthProvider>().isLoading,
             ),
@@ -278,12 +279,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text('Sudah punya akun? ', style: TextStyle(color: Colors.grey)),
+        Text('${context.t('alreadyHaveAccount')} ', style: const TextStyle(color: Colors.grey)),
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Text(
-            'Login di sini',
-            style: TextStyle(
+          child: Text(
+            context.t('loginHere'),
+            style: const TextStyle(
               color: AppTheme.primaryBlue,
               fontWeight: FontWeight.bold,
             ),

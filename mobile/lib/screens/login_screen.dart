@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../localization/app_localizations.dart';
 import '../models/auth_provider.dart';
 import '../widgets/auth_widgets.dart';
 import 'forgot_password_screen.dart';
@@ -83,10 +84,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
         const SizedBox(height: 18),
 
-        const Text(
-          'Masuk Platform',
+        Text(
+          context.t('loginTitle'),
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.bold,
             color: Color(0xFF1F2937),
@@ -95,10 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
         const SizedBox(height: 8),
 
-        const Text(
-          'Akses dashboard monitoring banjir real-time.',
+        Text(
+          context.t('loginSubtitle'),
           textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF6B7280), fontSize: 15),
+          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 15),
         ),
       ],
     );
@@ -154,11 +155,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       children: [
                         Expanded(child: Divider(color: Colors.grey.shade300)),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
-                            'ATAU',
-                            style: TextStyle(
+                            context.t('or'),
+                            style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -175,23 +176,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       ErrorBanner(message: globalAuth.errorMessage!),
 
                     AuthTextField(
-                      label: 'EMAIL',
-                      hint: 'nama@email.com',
+                      label: context.t('email'),
+                      hint: context.t('emailHint'),
                       controller: _emailCtrl,
                       prefixIcon: Icons.email_outlined,
-                      validator: (v) => v!.isEmpty ? 'Email wajib diisi' : null,
+                      validator: (v) => v!.isEmpty ? context.t('emailRequired') : null,
                     ),
 
                     const SizedBox(height: 18),
 
                     AuthTextField(
-                      label: 'PASSWORD',
+                      label: context.t('password'),
                       hint: '********',
                       controller: _passCtrl,
                       isPassword: true,
                       prefixIcon: Icons.lock_outline,
                       validator: (v) =>
-                          v!.isEmpty ? 'Password wajib diisi' : null,
+                          v!.isEmpty ? context.t('passwordRequired') : null,
                     ),
 
                     Align(
@@ -205,9 +206,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           );
                         },
-                        child: const Text(
-                          'Lupa Password?',
-                          style: TextStyle(color: Color(0xFF2563EB)),
+                        child: Text(
+                          context.t('forgotPassword'),
+                          style: const TextStyle(color: Color(0xFF2563EB)),
                         ),
                       ),
                     ),
@@ -218,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 55,
                       child: AuthButton(
-                        label: 'Masuk',
+                        label: context.t('loginButton'),
                         onPressed: _handleLogin,
                         isLoading: globalAuth.isLoading,
                       ),
@@ -229,9 +230,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
-                          'Belum punya akun? ',
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        Text(
+                          '${context.t('alreadyHaveAccount')} ',
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
                         ),
                         GestureDetector(
                           onTap: () {
@@ -244,9 +245,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             );
                           },
-                          child: const Text(
-                            'Daftar sekarang',
-                            style: TextStyle(
+                          child: Text(
+                            context.t('registerNow'),
+                            style: const TextStyle(
                               color: Color(0xFF2563EB),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Dibutuhkan untuk context.read
-// FIX: Pastikan path import ini sesuai dengan struktur project EWS Anda
+import '../localization/app_localizations.dart';
 import '../models/auth_provider.dart'; 
 import '../models/admin_provider.dart'; 
 
@@ -22,7 +22,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   Future<void> _handleAdminLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Email dan password tidak boleh kosong';
+        _errorMessage = context.t('emailPasswordRequired');
       });
       return;
     }
@@ -57,7 +57,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           );
         } else {
           setState(() {
-            _errorMessage = 'Anda bukan admin';
+            _errorMessage = context.t('notAdminError');
           });
           authProvider.logout();
         }
@@ -90,7 +90,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin Login')),
+      appBar: AppBar(title: Text(context.t('adminLoginTitle'))),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -103,11 +103,11 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               ),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(labelText: context.t('email')),
             ),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: InputDecoration(labelText: context.t('password')),
               obscureText: true,
             ),
             const SizedBox(height: 20),
@@ -115,7 +115,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
                     onPressed: _handleAdminLogin, // Fungsi dipanggil di sini
-                    child: const Text('Login'),
+                    child: Text(context.t('loginButton')),
                   ),
           ],
         ),

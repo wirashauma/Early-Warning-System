@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../providers/telemetry_provider.dart';
 import '../models/sensor_model.dart';
 import '../theme/app_theme.dart';
@@ -92,7 +93,7 @@ class _StatusScreenState extends State<StatusScreen> {
                           ),
                         ),
                         Text(
-                          'ID: $sensorId',
+                          '${context.t('idLabel')} $sensorId',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.textGrey,
@@ -127,14 +128,14 @@ class _StatusScreenState extends State<StatusScreen> {
                   Expanded(
                     child: _buildMetricTile(
                       Icons.water,
-                      'Tinggi Air',
+                      context.t('waterLevelLabel'),
                       '$waterLevel cm',
                     ),
                   ),
                   Expanded(
                     child: _buildMetricTile(
                       Icons.grain,
-                      'Curah Hujan',
+                      context.t('rainfallLabel'),
                       '${rainfall.toStringAsFixed(1)} mm',
                     ),
                   ),
@@ -146,15 +147,15 @@ class _StatusScreenState extends State<StatusScreen> {
                   Expanded(
                     child: _buildMetricTile(
                       Icons.speed,
-                      'Debit Air',
+                      context.t('flowRateLabel'),
                       '${flowRate.toStringAsFixed(1)} LPM',
                     ),
                   ),
                   Expanded(
                     child: _buildMetricTile(
                       Icons.battery_charging_full,
-                      'Baterai',
-                      battery != null ? '$battery%' : 'N/A',
+                      context.t('batteryLabel'),
+                      battery != null ? '$battery%' : context.t('notAvailable'),
                     ),
                   ),
                 ],
@@ -165,7 +166,7 @@ class _StatusScreenState extends State<StatusScreen> {
                   Expanded(
                     child: _buildMetricTile(
                       Icons.wifi,
-                      'Koneksi',
+                      context.t('connectivityLabel'),
                       connectivity,
                       subtitle: lastSeen.split('T').first,
                     ),
@@ -180,7 +181,7 @@ class _StatusScreenState extends State<StatusScreen> {
                     Navigator.pop(ctx);
                     navIndexNotifier.value = 0;
                   },
-                  child: const Text('Pantau di Dasbor'),
+                  child: Text(context.t('monitorOnDashboard')),
                 ),
               ),
             ],
@@ -251,7 +252,7 @@ class _StatusScreenState extends State<StatusScreen> {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal memuat peta sensor: $e'),
+              content: Text('${context.t('errorLoadAlerts')} $e'),
               backgroundColor: AppTheme.statusBahaya,
             ),
           );
@@ -393,9 +394,9 @@ class _StatusScreenState extends State<StatusScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'STATUS PEMANTAUAN',
-                    style: TextStyle(
+                  Text(
+                    context.t('monitorStatus'),
+                    style: const TextStyle(
                       fontSize: 10,
                       color: AppTheme.accentBlue,
                       fontWeight: FontWeight.w600,
@@ -403,14 +404,14 @@ class _StatusScreenState extends State<StatusScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Peta & Daftar Sensor',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  Text(
+                    context.t('sensorMapList'),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Identifikasi titik risiko banjir secara real-time melalui integrasi peta and data metrik sensor.',
-                    style: TextStyle(
+                  Text(
+                    context.t('sensorMapDescription'),
+                    style: const TextStyle(
                       color: AppTheme.textGrey,
                       fontSize: 12,
                       height: 1.4,
@@ -425,14 +426,14 @@ class _StatusScreenState extends State<StatusScreen> {
                     mainAxisSpacing: 10,
                     childAspectRatio: 2.2,
                     children: [
-                      _StatBox(label: 'Total Sensor', value: '$totalSensors'),
-                      _StatBox(label: 'Sensor Aktif', value: '$onlineSensors'),
+                      _StatBox(label: context.t('totalSensors'), value: '$totalSensors'),
+                      _StatBox(label: context.t('sensorActive'), value: '$onlineSensors'),
                       _StatBox(
-                        label: 'Sensor Offline',
+                        label: context.t('sensorOffline'),
                         value: '$offlineSensors',
                       ),
                       _StatBox(
-                        label: 'Pembaruan Terakhir',
+                        label: context.t('lastUpdate'),
                         value:
                             '${latestUpdate.day}/${latestUpdate.month}/${latestUpdate.year}',
                         small: true,
@@ -452,7 +453,7 @@ class _StatusScreenState extends State<StatusScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          'Status Global: $globalStatus',
+                          '${context.t('globalStatus')}$globalStatus',
                           style: const TextStyle(fontSize: 11),
                         ),
                       ),
@@ -467,7 +468,7 @@ class _StatusScreenState extends State<StatusScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          'Waspada: $warningCount • Bahaya: $dangerCount',
+                          '${context.t('warning')}: $warningCount • ${context.t('danger')}: $dangerCount',
                           style: const TextStyle(fontSize: 11),
                         ),
                       ),
@@ -491,9 +492,9 @@ class _StatusScreenState extends State<StatusScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Peta Interaktif Sensor',
-                        style: TextStyle(
+                      Text(
+                        context.t('interactiveSensorMap'),
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                         ),
@@ -617,9 +618,9 @@ class _StatusScreenState extends State<StatusScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'DETAIL FOKUS',
-                                style: TextStyle(
+                              Text(
+                                context.t('focusDetails'),
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.textGrey,
@@ -627,9 +628,9 @@ class _StatusScreenState extends State<StatusScreen> {
                               ),
                               const SizedBox(height: 8),
                               if (_focusedSensor(sensors) == null)
-                                const Text(
-                                  'Pilih titik di peta.',
-                                  style: TextStyle(
+                                Text(
+                                  context.t('selectPointOnMap'),
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     color: AppTheme.textGrey,
                                   ),
@@ -679,7 +680,7 @@ class _StatusScreenState extends State<StatusScreen> {
                     controller: _searchController,
                     onChanged: (value) => setState(() => _searchQuery = value),
                     decoration: InputDecoration(
-                      hintText: 'Cari sensor...',
+                      hintText: context.t('searchSensorHint'),
                       prefixIcon: const Icon(Icons.search, size: 18),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -717,7 +718,15 @@ class _StatusScreenState extends State<StatusScreen> {
                               ),
                             ),
                             child: Text(
-                              filter,
+                              filter == 'Semua'
+                                  ? context.t('allFilter')
+                                  : filter == 'Normal'
+                                      ? context.t('normalFilter')
+                                      : filter == 'Waspada'
+                                          ? context.t('warningFilter')
+                                          : filter == 'Bahaya'
+                                              ? context.t('dangerFilter')
+                                              : filter,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: _filter == filter
@@ -872,10 +881,10 @@ class _SensorCard extends StatelessWidget {
             mainAxisSpacing: 8,
             childAspectRatio: 3.0,
             children: [
-              _buildMinicard('Tinggi Air', '${waterLevel.toInt()} cm'),
-              _buildMinicard('Curah Hujan', '${rainfall.toStringAsFixed(1)} mm'),
-              _buildMinicard('Debit Air', '${flowRate.toStringAsFixed(1)} LPM'),
-              _buildMinicard('Baterai', battery != null ? '$battery%' : 'N/A'),
+              _buildMinicard(context.t('waterLevelLabel'), '${waterLevel.toInt()} cm'),
+              _buildMinicard(context.t('rainfallLabel'), '${rainfall.toStringAsFixed(1)} mm'),
+              _buildMinicard(context.t('flowRateLabel'), '${flowRate.toStringAsFixed(1)} LPM'),
+              _buildMinicard(context.t('batteryLabel'), battery != null ? '$battery%' : context.t('notAvailable')),
             ],
           ),
         ],

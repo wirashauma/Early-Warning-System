@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,6 +18,8 @@ import 'providers/telemetry_provider.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'localization/app_localizations.dart';
+import 'localization/locale_provider.dart';
 
 /// Global navigator key — digunakan NotificationService untuk navigasi
 /// saat user tap notifikasi dari background/terminated state.
@@ -116,38 +119,49 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => TelemetryProvider()..loadInitialData(),
         ),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()..loadLocale()),
       ],
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        debugShowCheckedModeBanner: false,
-        title: 'EWS Flood Guard',
-        theme: AppTheme.theme,
-        initialRoute: '/splash',
-        routes: {
-          '/splash': (context) => const SplashScreen(),
-          '/login': (context) => LoginScreen(
-            onLoginSuccess: () {
-              // MENGAMBIL DATA AKUN YANG BARU LOGIN
-              final auth = context.read<AuthProvider>();
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) {
+          return MaterialApp(
+            navigatorKey: navigatorKey,
+            debugShowCheckedModeBanner: false,
+            title: 'EWS Flood Guard',
+            theme: AppTheme.theme,
+            locale: localeProvider.locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              // These delegates provide default localization for
+              // widgets like Material components.
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            initialRoute: '/splash',
+            routes: {
+              '/splash': (context) => const SplashScreen(),
+              '/login': (context) => LoginScreen(
+                onLoginSuccess: () {
+                  final auth = context.read<AuthProvider>();
+                  final currentRole = auth.userRole.toString().toUpperCase();
+                  final isAdmin =
+                      currentRole == 'ADMIN' ||
+                      currentRole == 'SUPER_ADMIN' ||
+                      currentRole.contains('ADMIN');
 
-              // CEK ROLE SECARA TEGAS (Mengantisipasi huruf besar/kecil,
-              // variabel enum backend, atau role berformat USERROLE.ADMIN)
-              final currentRole = auth.userRole.toString().toUpperCase();
-              final isAdmin =
-                  currentRole == 'ADMIN' ||
-                  currentRole == 'SUPER_ADMIN' ||
-                  currentRole.contains('ADMIN');
-
-              if (isAdmin) {
-                Navigator.pushReplacementNamed(context, '/admin');
-              } else {
-                Navigator.pushReplacementNamed(context, '/home');
-              }
+                  if (isAdmin) {
+                    Navigator.pushReplacementNamed(context, '/admin');
+                  } else {
+                    Navigator.pushReplacementNamed(context, '/home');
+                  }
+                },
+              ),
+              '/register': (context) => const RegisterScreen(),
+              '/home': (context) => const MainNavigation(),
+              '/admin': (context) => const AdminNavigation(),
             },
-          ),
-          '/register': (context) => const RegisterScreen(),
-          '/home': (context) => const MainNavigation(),
-          '/admin': (context) => const AdminNavigation(),
+          );
         },
       ),
     );

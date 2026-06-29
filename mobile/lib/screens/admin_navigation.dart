@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
+import '../localization/locale_provider.dart';
 import '../theme/app_theme.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_sensors_screen.dart';
@@ -17,16 +20,16 @@ class AdminNavigation extends StatefulWidget {
 class _AdminNavigationState extends State<AdminNavigation> {
   int _currentIndex = 0;
 
-  final List<String> _titles = [
-    'Dasbor Admin',
-    'Sensor',
-    'Peringatan',
-    'Laporan',
-    'Pengguna',
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final titles = [
+      context.t('adminDashboardTitle'),
+      context.t('sensors'),
+      context.t('alertsMenu'),
+      context.t('reports'),
+      context.t('users'),
+    ];
+
     final List<Widget> screens = [
       const AdminDashboardScreen(),
       const AdminSensorsScreen(),
@@ -45,19 +48,37 @@ class _AdminNavigationState extends State<AdminNavigation> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _titles[_currentIndex],
+              titles[_currentIndex],
               style: const TextStyle(
                 color: Color(0xFF1E293B),
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const Text(
-              'Early Warning System',
-              style: TextStyle(color: Colors.grey, fontSize: 11),
+            Text(
+              context.t('appSubtitle'),
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language, color: Color(0xFF0066FF)),
+            onSelected: (value) {
+              context.read<LocaleProvider>().setLocale(Locale(value));
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'id',
+                child: Text(context.t('indonesian')),
+              ),
+              PopupMenuItem(
+                value: 'en',
+                child: Text(context.t('english')),
+              ),
+            ],
+          ),
+        ],
       ),
       body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
@@ -71,31 +92,31 @@ class _AdminNavigationState extends State<AdminNavigation> {
           selectedItemColor: const Color(0xFF0066FF),
           unselectedItemColor: AppTheme.textGrey,
           backgroundColor: Colors.white,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'Dasbor',
+              icon: const Icon(Icons.dashboard_outlined),
+              activeIcon: const Icon(Icons.dashboard),
+              label: context.t('dashboard'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.sensors),
-              activeIcon: Icon(Icons.sensors_outlined),
-              label: 'Sensor',
+              icon: const Icon(Icons.sensors),
+              activeIcon: const Icon(Icons.sensors_outlined),
+              label: context.t('sensors'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.campaign_outlined),
-              activeIcon: Icon(Icons.campaign),
-              label: 'Peringatan',
+              icon: const Icon(Icons.campaign_outlined),
+              activeIcon: const Icon(Icons.campaign),
+              label: context.t('alertsMenu'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined),
-              activeIcon: Icon(Icons.analytics),
-              label: 'Laporan',
+              icon: const Icon(Icons.analytics_outlined),
+              activeIcon: const Icon(Icons.analytics),
+              label: context.t('reports'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.people_alt_outlined),
-              activeIcon: Icon(Icons.people),
-              label: 'Pengguna',
+              icon: const Icon(Icons.people_alt_outlined),
+              activeIcon: const Icon(Icons.people),
+              label: context.t('users'),
             ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/auth_provider.dart';
 import '../widgets/auth_widgets.dart';
@@ -94,15 +95,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: const Icon(Icons.lock_reset, color: Colors.white, size: 28),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Lupa Password?', 
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)
+          Text(
+            context.t('forgotPasswordTitle'), 
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Masukkan email Anda dan kami akan kirimkan link reset password.',
+          Text(
+            context.t('forgotPasswordSubtitle'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
           ),
         ],
       ),
@@ -119,27 +120,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ErrorBanner(message: _auth.errorMessage!),
             const SizedBox(height: 16),
           ],
-          const Text(
-            'Alamat Email',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          Text(
+            context.t('emailAddress'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           const SizedBox(height: 8),
           AuthTextField(
-            label: 'Email',
+            label: context.t('emailAddress'),
             hint: 'contoh@email.com',
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             prefixIcon: Icons.email_outlined,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Email wajib diisi';
-              if (!v.contains('@')) return 'Format email tidak valid';
+              if (v == null || v.isEmpty) return context.t('emailRequired');
+              if (!v.contains('@')) return context.t('emailInvalid');
               return null;
             },
           ),
           const SizedBox(height: 24),
           AuthButton(
-            label: 'Kirim Link Reset',
-            onPressed: _handleForgot, // Memanggil fungsi _handleForgot
+            label: context.t('resetPassword'),
+            onPressed: _handleForgot,
             isLoading: _auth.isLoading,
           ),
         ],
@@ -152,9 +153,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       children: [
         const Icon(Icons.check_circle_outline, color: AppTheme.statusNormal, size: 64),
         const SizedBox(height: 16),
-        const Text(
-          'Berhasil!', 
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+        Text(
+          context.t('success'), 
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
         ),
         const SizedBox(height: 8),
         Text(
@@ -164,7 +165,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 24),
         AuthButton(
-          label: 'Kembali ke Login',
+          label: context.t('returnLogin'),
           onPressed: () => Navigator.pop(context),
         ),
       ],
